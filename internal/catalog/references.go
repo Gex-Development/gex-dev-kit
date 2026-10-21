@@ -27,15 +27,7 @@ func ReferencedSkills() []CatalogReference {
 func HookCandidates() []CatalogReference {
 	const claude = "https://github.com/davila7/claude-code-templates/tree/100b8bcbb2800b24cb33b6d5e5606c302fff198c/cli-tool/components/hooks/"
 	const codex = "https://github.com/am-will/codex-skills/tree/9f954c3b63fda0d1875252009c196bf15072c1ca/hooks/aitmpl-codex/"
-	const git = "https://git-scm.com/docs/githooks"
-	candidates := []CatalogReference{
-		{"gex-commit-msg", "por função", "Git hook por projeto; não é hook global de agente.", git + "#_commit_msg"},
-		{"gex-pre-commit", "por função", "Git hook por projeto; requer regras e instalação próprias.", git + "#_pre_commit"},
-		{"gex-pre-push", "por função", "Git hook por projeto; não substitui proteção remota.", git + "#_pre_push"},
-		{"gex-session-start", "somente referência", "Instruções Core globais já carregadas; evento não requer hook redundante.", "https://code.claude.com/docs/en/hooks"},
-		{"gex-sensitive-action-warning", "somente referência", "Conceito de alerta ainda sem adaptador seguro para Claude/Codex.", "https://learn.chatgpt.com/docs/hooks"},
-		{"gex-pre-pr", "somente referência", "Pré-PR é fluxo de skill, não existe hook Git nativo de abertura de PR.", git},
-	}
+	var candidates []CatalogReference
 	claudeTemplates := []struct{ name, path, reason string }{
 		{"lint-on-save", "development-tools/lint-on-save.json", "Pode reescrever arquivos e baixar ESLint; requer adaptação."},
 		{"smart-formatting", "development-tools/smart-formatting.json", "Formata arquivos automaticamente e omite falhas."},

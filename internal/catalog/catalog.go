@@ -112,13 +112,22 @@ func SkillDescription(name string) string {
 	return description
 }
 
-func Hooks() []string { return []string{"gex-conventional-commits"} }
+func Hooks() []string {
+	var names []string
+	for _, spec := range HookSpecs() {
+		if spec.Scope == HookScopeAgent {
+			names = append(names, spec.Name)
+		}
+	}
+	return names
+}
 
 func HookDescription(name string) string {
-	if name == "gex-conventional-commits" {
-		return "Bloqueia mensagens git commit fora do padrão Conventional Commits."
+	spec, ok := HookSpecByName(name)
+	if !ok || spec.Scope != HookScopeAgent {
+		return ""
 	}
-	return ""
+	return spec.Description
 }
 
 func ValidateSelection(skills, hooks []string) error {
@@ -145,7 +154,7 @@ func validateSelection(skills, hooks []string, deferProductivity bool) error {
 		}
 	}
 	for _, name := range hooks {
-		if name != "gex-conventional-commits" {
+		if !slices.Contains(Hooks(), name) {
 			return fmt.Errorf("hook indisponível: %s", name)
 		}
 	}
@@ -223,24 +232,8 @@ func Build(home, executable string, skills, hooks []string) ([]File, error) {
 			files = append(files, File{Path: dest + name + "/LICENSE", Data: license, Mode: 0644})
 		}
 	}
-	if len(hooks) != 0 {
-		binary, err := BinaryFile(executable)
-		if err != nil {
-			return nil, err
-		}
-		stable := StableBinary(home)
-		files = append(files, binary)
-		for _, dest := range []string{".claude/settings.json", ".codex/hooks.json"} {
-			previous, err := readHome(home, dest)
-			if err != nil {
-				return nil, err
-			}
-			merged, err := mergeHook(previous, stable, strings.HasPrefix(dest, ".claude/"))
-			if err != nil {
-				return nil, fmt.Errorf("%s: %w", dest, err)
-			}
-			files = append(files, File{Path: dest, Data: merged, Mode: 0600})
-		}
+	if err := appendHooks(&files, home, executable, hooks); err != nil {
+		return nil, err
 	}
 	return files, nil
 }
@@ -280,7 +273,7 @@ func BinaryFile(executable string) (File, error) {
 	if err != nil {
 		return File{}, fmt.Errorf("não foi possível ler executável: %w", err)
 	}
-	return File{Path: path.Join(".local", "share", "gex-dev-kit", "bin", catalogBinaryName()), Data: binary, Mode: 0755}, nil
+	return File{Path: stableRelative(), Data: binary, Mode: 0755}, nil
 }
 
 func catalogBinaryName() string {
@@ -341,77 +334,365 @@ func mergeCore(previous, core []byte) ([]byte, error) {
 	return append(append(result, section...), '\n'), nil
 }
 
-func mergeHook(previous []byte, executable string, claude bool) ([]byte, error) {
-	settings := map[string]json.RawMessage{}
-	if len(bytes.TrimSpace(previous)) != 0 {
-		if err := json.Unmarshal(previous, &settings); err != nil {
-			return nil, errors.New("JSON de configuração inválido")
-		}
-		if settings == nil {
-			return nil, errors.New("configuração não é objeto JSON")
-		}
+type hookTarget struct {
+	path  string
+	agent Agent
+}
+
+var hookTargets = []hookTarget{{".claude/settings.json", AgentClaude}, {".codex/hooks.json", AgentCodex}}
+
+type hookHandler struct {
+	Command string   `json:"command"`
+	Args    []string `json:"args"`
+}
+
+func stableRelative() string {
+	return path.Join(".local", "share", "gex-dev-kit", "bin", catalogBinaryName())
+}
+
+func IsKitHandler(command string, args []string, executable string) (string, bool) {
+	if executable == "" {
+		return "", false
 	}
-	events := map[string]json.RawMessage{}
-	if raw := settings["hooks"]; len(raw) > 0 {
-		if err := json.Unmarshal(raw, &events); err != nil || events == nil {
-			return nil, errors.New("hooks inválidos")
+	if args != nil {
+		if command == executable && len(args) >= 2 && args[0] == "hook" && args[1] != "" {
+			return args[1], true
 		}
+		return "", false
 	}
-	var groups []json.RawMessage
-	if raw := events["PreToolUse"]; len(raw) > 0 {
-		if err := json.Unmarshal(raw, &groups); err != nil || groups == nil {
-			return nil, errors.New("PreToolUse inválido")
-		}
+	if command == executable {
+		return "commit-msg", true
 	}
-	filtered := make([]json.RawMessage, 0, len(groups)+1)
-	for _, group := range groups {
-		var g map[string]json.RawMessage
-		if err := json.Unmarshal(group, &g); err != nil || g == nil {
-			return nil, errors.New("grupo PreToolUse inválido")
-		}
-		var handlers []json.RawMessage
-		if err := json.Unmarshal(g["hooks"], &handlers); err != nil || handlers == nil {
-			return nil, errors.New("handlers PreToolUse inválidos")
-		}
-		kept := make([]json.RawMessage, 0, len(handlers))
-		for _, raw := range handlers {
-			var handler struct {
-				Command string `json:"command"`
-			}
-			if err := json.Unmarshal(raw, &handler); err != nil {
-				return nil, errors.New("handler PreToolUse inválido")
-			}
-			if handler.Command != executable && handler.Command != quoteCommand(executable)+" hook commit-msg" {
-				kept = append(kept, raw)
+	for _, prefix := range []string{executable + " hook ", quoteCommand(executable) + " hook "} {
+		if rest, found := strings.CutPrefix(command, prefix); found {
+			if fields := strings.Fields(rest); len(fields) != 0 {
+				return fields[0], true
 			}
 		}
-		if len(kept) == 0 {
+	}
+	return "", false
+}
+
+func selectedHookSpecs(names []string) []HookSpec {
+	var selected []HookSpec
+	for _, spec := range HookSpecs() {
+		if spec.Scope == HookScopeAgent && slices.Contains(names, spec.Name) {
+			selected = append(selected, spec)
+		}
+	}
+	return selected
+}
+
+func supportFor(spec HookSpec, agent Agent) HookSupport {
+	if agent == AgentCodex {
+		return spec.Codex
+	}
+	return spec.Claude
+}
+
+func anySupported(specs []HookSpec, agent Agent) bool {
+	return slices.ContainsFunc(specs, func(spec HookSpec) bool {
+		return supportFor(spec, agent).Supported
+	})
+}
+
+func appendHooks(files *[]File, home, executable string, hooks []string) error {
+	selected := selectedHookSpecs(hooks)
+	stable := StableBinary(home)
+	installed := false
+	for _, target := range hookTargets {
+		if data, err := readHome(home, target.path); err == nil && hasKitHandler(data, stable) {
+			installed = true
+		}
+	}
+	refresh := len(selected) != 0 || installed
+	if !refresh && executable != "" {
+		changed, err := stableDiffers(home, executable)
+		if err != nil {
+			return err
+		}
+		refresh = changed
+	}
+	if refresh {
+		binary, err := BinaryFile(executable)
+		if err != nil {
+			return err
+		}
+		*files = append(*files, binary)
+	}
+	for _, target := range hookTargets {
+		if !anySupported(selected, target.agent) {
 			continue
 		}
-		g["hooks"], _ = json.Marshal(kept)
-		updated, _ := json.Marshal(g)
-		filtered = append(filtered, updated)
+		previous, err := readHome(home, target.path)
+		if err != nil {
+			return fmt.Errorf("%s: %w", target.path, err)
+		}
+		merged, err := mergeHooks(previous, stable, target.agent, selected)
+		if err != nil {
+			return fmt.Errorf("%s: %w", target.path, err)
+		}
+		*files = append(*files, File{Path: target.path, Data: merged, Mode: 0600})
 	}
-	var handler map[string]any
-	if claude {
-		handler = map[string]any{"type": "command", "command": executable, "args": []string{"hook", "commit-msg"}, "onFailure": "block"}
-	} else {
-		handler = map[string]any{"type": "command", "command": quoteCommand(executable) + " hook commit-msg", "timeout": 10, "commandWindows": quoteCommand(executable) + " hook commit-msg"}
+	return nil
+}
+
+func stableDiffers(home, executable string) (bool, error) {
+	current, err := BinaryFile(executable)
+	if err != nil {
+		return false, err
 	}
-	group, err := json.Marshal(map[string]any{"matcher": "Bash", "hooks": []any{handler}})
+	existing, err := readHome(home, stableRelative())
+	if err != nil {
+		return false, err
+	}
+	return existing != nil && !bytes.Equal(existing, current.Data), nil
+}
+
+func hasKitHandler(data []byte, executable string) bool {
+	_, events, err := hookEvents(data)
+	if err != nil {
+		return false
+	}
+	for event, raw := range events {
+		groups, err := hookGroups(raw, event)
+		if err != nil {
+			continue
+		}
+		for _, group := range groups {
+			_, handlers, err := groupHandlers(group)
+			if err != nil {
+				continue
+			}
+			for _, handler := range handlers {
+				if _, ok, err := kitIdentity(handler, executable); err == nil && ok {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+func mergeHooks(previous []byte, executable string, agent Agent, selected []HookSpec) ([]byte, error) {
+	settings, events, err := hookEvents(previous)
 	if err != nil {
 		return nil, err
 	}
-	filtered = append(filtered, group)
-	events["PreToolUse"], err = json.Marshal(filtered)
-	if err != nil {
+	for event, raw := range events {
+		groups, err := hookGroups(raw, event)
+		if err != nil {
+			return nil, err
+		}
+		kept, err := keepHookGroups(groups, executable, selected)
+		if err != nil {
+			return nil, err
+		}
+		if len(kept) == 0 {
+			delete(events, event)
+			continue
+		}
+		if events[event], err = marshalHook(kept); err != nil {
+			return nil, err
+		}
+	}
+	for _, spec := range selected {
+		support := supportFor(spec, agent)
+		if !support.Supported {
+			continue
+		}
+		group, err := marshalHook(map[string]any{"matcher": support.Matcher, "hooks": []any{kitHandler(spec, agent, executable)}})
+		if err != nil {
+			return nil, err
+		}
+		if err := appendHookGroup(events, support.Event, group); err != nil {
+			return nil, err
+		}
+	}
+	if settings["hooks"], err = marshalHook(events); err != nil {
 		return nil, err
 	}
-	settings["hooks"], err = json.Marshal(events)
+	return marshalSettings(settings)
+}
+
+func keepHookGroups(groups []json.RawMessage, executable string, selected []HookSpec) ([]json.RawMessage, error) {
+	kept := make([]json.RawMessage, 0, len(groups))
+	for _, group := range groups {
+		fields, handlers, err := groupHandlers(group)
+		if err != nil {
+			return nil, err
+		}
+		remaining := make([]json.RawMessage, 0, len(handlers))
+		for _, handler := range handlers {
+			sub, ok, err := kitIdentity(handler, executable)
+			if err != nil {
+				return nil, err
+			}
+			if ok && slices.ContainsFunc(selected, func(spec HookSpec) bool { return spec.Command == sub }) {
+				continue
+			}
+			remaining = append(remaining, handler)
+		}
+		if len(remaining) == 0 {
+			continue
+		}
+		if len(remaining) == len(handlers) {
+			kept = append(kept, group)
+			continue
+		}
+		fields["hooks"], err = marshalHook(remaining)
+		if err != nil {
+			return nil, err
+		}
+		updated, err := marshalHook(fields)
+		if err != nil {
+			return nil, err
+		}
+		kept = append(kept, updated)
+	}
+	return kept, nil
+}
+
+func appendHookGroup(events map[string]json.RawMessage, event string, group json.RawMessage) error {
+	var groups []json.RawMessage
+	if raw, ok := events[event]; ok {
+		parsed, err := hookGroups(raw, event)
+		if err != nil {
+			return err
+		}
+		groups = parsed
+	}
+	updated, err := marshalHook(append(groups, group))
 	if err != nil {
+		return err
+	}
+	events[event] = updated
+	return nil
+}
+
+func kitIdentity(raw json.RawMessage, executable string) (string, bool, error) {
+	var handler hookHandler
+	if err := json.Unmarshal(raw, &handler); err != nil {
+		return "", false, hookError("handler de hook malformado")
+	}
+	sub, ok := IsKitHandler(handler.Command, handler.Args, executable)
+	return sub, ok, nil
+}
+
+func kitHandler(spec HookSpec, agent Agent, executable string) map[string]any {
+	args := append([]string{"hook", spec.Command}, agentArgs(spec, agent)...)
+	if agent == AgentCodex {
+		suffix := strings.Join(args, " ")
+		return map[string]any{
+			"type":           "command",
+			"command":        quoteCommand(executable) + " " + suffix,
+			"timeout":        10,
+			"commandWindows": windowsCommandPath(executable, shortPath) + " " + suffix,
+		}
+	}
+	handler := map[string]any{"type": "command", "command": executable, "args": args, "timeout": 10}
+	if spec.Command == "commit-msg" {
+		handler["onFailure"] = "block"
+	}
+	return handler
+}
+
+func agentArgs(spec HookSpec, agent Agent) []string {
+	if spec.Command != "session-start" {
+		return nil
+	}
+	return []string{"--agent", agentName(agent)}
+}
+
+func agentName(agent Agent) string {
+	if agent == AgentCodex {
+		return "codex"
+	}
+	return "claude"
+}
+
+func windowsCommandPath(executable string, short func(string) (string, error)) string {
+	if !strings.ContainsAny(executable, " \t") {
+		return executable
+	}
+	if short != nil {
+		if shortened, err := short(executable); err == nil && shortened != "" && !strings.ContainsAny(shortened, " \t") {
+			return shortened
+		}
+	}
+	return quoteCommand(executable)
+}
+
+func hookEvents(data []byte) (map[string]json.RawMessage, map[string]json.RawMessage, error) {
+	settings, err := decodeHookObject(data)
+	if err != nil {
+		return nil, nil, err
+	}
+	events := map[string]json.RawMessage{}
+	raw := settings["hooks"]
+	if len(raw) == 0 {
+		return settings, events, nil
+	}
+	if err := json.Unmarshal(raw, &events); err != nil || events == nil {
+		return nil, nil, hookError("campo hooks deve ser objeto")
+	}
+	return settings, events, nil
+}
+
+func decodeHookObject(data []byte) (map[string]json.RawMessage, error) {
+	object := map[string]json.RawMessage{}
+	if len(bytes.TrimSpace(data)) == 0 {
+		return object, nil
+	}
+	if err := json.Unmarshal(data, &object); err != nil || object == nil {
+		return nil, hookError("JSON inválido ou não é objeto")
+	}
+	return object, nil
+}
+
+func hookGroups(raw json.RawMessage, event string) ([]json.RawMessage, error) {
+	var groups []json.RawMessage
+	if err := json.Unmarshal(raw, &groups); err != nil || groups == nil {
+		return nil, hookError("evento " + event + " deve ser lista de grupos")
+	}
+	return groups, nil
+}
+
+func groupHandlers(group json.RawMessage) (map[string]json.RawMessage, []json.RawMessage, error) {
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(group, &fields); err != nil || fields == nil {
+		return nil, nil, hookError("grupo de hook malformado")
+	}
+	var handlers []json.RawMessage
+	if err := json.Unmarshal(fields["hooks"], &handlers); err != nil || handlers == nil {
+		return nil, nil, hookError("lista hooks do grupo malformada")
+	}
+	return fields, handlers, nil
+}
+
+func hookError(detail string) error {
+	return errors.New(detail + "; corrija o JSON; nada foi alterado")
+}
+
+func marshalHook(value any) (json.RawMessage, error) {
+	var buffer bytes.Buffer
+	encoder := json.NewEncoder(&buffer)
+	encoder.SetEscapeHTML(false)
+	if err := encoder.Encode(value); err != nil {
 		return nil, err
 	}
-	return json.MarshalIndent(settings, "", "  ")
+	return bytes.TrimRight(buffer.Bytes(), "\n"), nil
+}
+
+func marshalSettings(settings map[string]json.RawMessage) ([]byte, error) {
+	var buffer bytes.Buffer
+	encoder := json.NewEncoder(&buffer)
+	encoder.SetEscapeHTML(false)
+	encoder.SetIndent("", "  ")
+	if err := encoder.Encode(settings); err != nil {
+		return nil, err
+	}
+	return buffer.Bytes(), nil
 }
 
 func quoteCommand(executable string) string {

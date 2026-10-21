@@ -3,6 +3,7 @@ package catalog
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"slices"
@@ -118,7 +119,7 @@ func TestSelectedSpecialtyCopiesCompletePackOnlyWhenSelected(t *testing.T) {
 }
 
 func TestUnauditedHookCandidatesStayUnavailable(t *testing.T) {
-	for _, name := range []string{"smart-commit", "tdd-gate", "gex-pre-push", "gex-sensitive-action-warning"} {
+	for _, name := range []string{"smart-commit", "tdd-gate", "claude/smart-commit", "codex/tdd-gate"} {
 		if err := ValidateSelection(nil, []string{name}); err == nil {
 			t.Fatalf("hook sem instalador validado aceito: %s", name)
 		}
@@ -259,19 +260,339 @@ func TestHookKeepsOtherHandlersInSameMatcher(t *testing.T) {
 	executable := filepath.Join(t.TempDir(), "gex-dev-kit")
 	original := []byte(`{"hooks":{"PreToolUse":[{"matcher":"Bash","hooks":[{"type":"command","command":"OWN"},{"type":"command","command":"echo own"},{"type":"command","command":"/elsewhere/command"}]}]}}`)
 	original = bytes.Replace(original, []byte("OWN"), []byte(executable), 1)
-	merged, err := mergeHook(original, executable, true)
+	selected := selectedHookSpecs([]string{"gex-conventional-commits"})
+	merged, err := mergeHooks(original, executable, AgentClaude, selected)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(string(merged), "echo own") || !strings.Contains(string(merged), "/elsewhere/command") {
 		t.Fatal("handler alheio perdido")
 	}
-	again, err := mergeHook(merged, executable, true)
+	again, err := mergeHooks(merged, executable, AgentClaude, selected)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if strings.Count(string(again), `"onFailure": "block"`) != 1 {
 		t.Fatal("hook duplicado")
+	}
+}
+
+type catalogHookHandler struct {
+	Type           string   `json:"type"`
+	Command        string   `json:"command"`
+	Args           []string `json:"args"`
+	OnFailure      string   `json:"onFailure"`
+	Timeout        int      `json:"timeout"`
+	CommandWindows string   `json:"commandWindows"`
+}
+
+type catalogHookGroup struct {
+	Matcher string               `json:"matcher"`
+	Hooks   []catalogHookHandler `json:"hooks"`
+}
+
+func catalogHookGroups(t *testing.T, files []File, path string) map[string][]catalogHookGroup {
+	t.Helper()
+	var config struct {
+		Hooks map[string][]catalogHookGroup `json:"hooks"`
+	}
+	if err := json.Unmarshal(lookup(t, files, path).Data, &config); err != nil {
+		t.Fatal(err)
+	}
+	return config.Hooks
+}
+
+func TestAgentHooksAreFourAndAvailable(t *testing.T) {
+	want := []string{"gex-conventional-commits", "gex-sensitive-action-warning", "gex-pre-pr", "gex-session-start"}
+	if !slices.Equal(Hooks(), want) {
+		t.Fatalf("hooks de agente inesperados: %v", Hooks())
+	}
+	if err := ValidateSelection(nil, want); err != nil {
+		t.Fatalf("hooks de agente rejeitados: %v", err)
+	}
+	for _, name := range want {
+		if HookDescription(name) == "" {
+			t.Fatalf("hook sem descrição: %s", name)
+		}
+	}
+	if len(HookCandidates()) != 25 {
+		t.Fatalf("candidatos de terceiros inesperados: %d", len(HookCandidates()))
+	}
+	for _, entry := range HookCandidates() {
+		if strings.HasPrefix(entry.Name, "gex-") {
+			t.Fatalf("hook do GEX ainda listado como candidato: %s", entry.Name)
+		}
+	}
+}
+
+func TestIsKitHandlerRecognizesClaudeAndCodexForms(t *testing.T) {
+	executable := filepath.Join(t.TempDir(), "gex-dev-kit")
+	cases := []struct {
+		name    string
+		command string
+		args    []string
+		sub     string
+		ok      bool
+	}{
+		{"claude com subcomando", executable, []string{"hook", "sensitive-action"}, "sensitive-action", true},
+		{"claude legado sem args", executable, nil, "commit-msg", true},
+		{"codex sem aspas", executable + " hook pre-pr", nil, "pre-pr", true},
+		{"codex com aspas e flag", `"` + executable + `" hook session-start --agent codex`, nil, "session-start", true},
+		{"claude sem subcomando", executable, []string{"hook"}, "", false},
+		{"claude de outro executável", executable + "-outro", []string{"hook", "commit-msg"}, "", false},
+		{"comando alheio", "echo own", nil, "", false},
+	}
+	for _, tc := range cases {
+		sub, ok := IsKitHandler(tc.command, tc.args, executable)
+		if sub != tc.sub || ok != tc.ok {
+			t.Fatalf("%s: obtido (%q, %v), esperado (%q, %v)", tc.name, sub, ok, tc.sub, tc.ok)
+		}
+	}
+}
+
+func TestMergeHooksIsIdempotentForBothAgents(t *testing.T) {
+	executable := filepath.Join(t.TempDir(), "gex-dev-kit")
+	selected := selectedHookSpecs(Hooks())
+	for _, agent := range []Agent{AgentClaude, AgentCodex} {
+		first, err := mergeHooks(nil, executable, agent, selected)
+		if err != nil {
+			t.Fatal(err)
+		}
+		second, err := mergeHooks(first, executable, agent, selected)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !bytes.Equal(first, second) {
+			t.Fatalf("merge não idempotente no agente %d:\n%s\n---\n%s", agent, first, second)
+		}
+	}
+}
+
+func TestMergeHooksKeepsForeignAndOtherKitHandlers(t *testing.T) {
+	executable := filepath.Join(t.TempDir(), "gex-dev-kit")
+	encoded, err := json.Marshal(executable)
+	if err != nil {
+		t.Fatal(err)
+	}
+	previous := []byte(`{"hooks":{"PreToolUse":[{"matcher":"Bash","hooks":[{"type":"command","command":"echo own && echo more"},{"type":"command","command":` + string(encoded) + `,"args":["hook","pre-pr"]}]}]}}`)
+	merged, err := mergeHooks(previous, executable, AgentClaude, selectedHookSpecs([]string{"gex-conventional-commits"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(merged)
+	if !strings.Contains(text, "echo own && echo more") || strings.Contains(text, `\u0026`) {
+		t.Fatalf("handler alheio alterado:\n%s", text)
+	}
+	if strings.Count(text, `"pre-pr"`) != 1 {
+		t.Fatalf("handler de outro hook do kit removido:\n%s", text)
+	}
+	if strings.Count(text, `"onFailure": "block"`) != 1 {
+		t.Fatalf("handler commit-msg ausente ou duplicado:\n%s", text)
+	}
+}
+
+func TestMergeHooksReplacesLegacyCommitMsgWithoutArgs(t *testing.T) {
+	executable := filepath.Join(t.TempDir(), "gex-dev-kit")
+	encoded, err := json.Marshal(executable)
+	if err != nil {
+		t.Fatal(err)
+	}
+	previous := []byte(`{"hooks":{"PreToolUse":[{"matcher":"Bash","hooks":[{"type":"command","command":` + string(encoded) + `}]}]}}`)
+	merged, err := mergeHooks(previous, executable, AgentClaude, selectedHookSpecs([]string{"gex-conventional-commits"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(merged)
+	if strings.Count(text, `"args"`) != 1 || strings.Count(text, `"commit-msg"`) != 1 {
+		t.Fatalf("handler legado não substituído:\n%s", text)
+	}
+}
+
+func TestMergeHooksDropsEmptyGroupAfterReplacing(t *testing.T) {
+	executable := filepath.Join(t.TempDir(), "gex-dev-kit")
+	encoded, err := json.Marshal(executable)
+	if err != nil {
+		t.Fatal(err)
+	}
+	previous := []byte(`{"hooks":{"PreToolUse":[{"matcher":"Bash|PowerShell","hooks":[{"type":"command","command":` + string(encoded) + `,"args":["hook","pre-pr"]}]}]}}`)
+	merged, err := mergeHooks(previous, executable, AgentClaude, selectedHookSpecs([]string{"gex-pre-pr"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Count(string(merged), `"matcher"`) != 1 {
+		t.Fatalf("grupo vazio não foi removido:\n%s", merged)
+	}
+}
+
+func TestMergeHooksRejectsMalformedJSONWithAction(t *testing.T) {
+	executable := filepath.Join(t.TempDir(), "gex-dev-kit")
+	inputs := []string{`{`, `[]`, `{"hooks":[]}`, `{"hooks":{"PreToolUse":{}}}`, `{"hooks":{"PreToolUse":[{"hooks":"x"}]}}`}
+	for _, input := range inputs {
+		_, err := mergeHooks([]byte(input), executable, AgentClaude, selectedHookSpecs([]string{"gex-conventional-commits"}))
+		if err == nil || !strings.Contains(err.Error(), "corrija o JSON; nada foi alterado") {
+			t.Fatalf("entrada inválida aceita ou sem ação (%s): %v", input, err)
+		}
+	}
+}
+
+func TestBuildReportsInvalidSettingsWithPath(t *testing.T) {
+	home := t.TempDir()
+	if err := os.Mkdir(filepath.Join(home, ".claude"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(home, ".claude", "settings.json"), []byte("{"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	executable := filepath.Join(t.TempDir(), "gex-dev-kit")
+	if err := os.WriteFile(executable, []byte("binary"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	_, err := Build(home, executable, nil, []string{"gex-conventional-commits"})
+	if err == nil || !strings.Contains(err.Error(), ".claude/settings.json") || !strings.Contains(err.Error(), "nada foi alterado") {
+		t.Fatalf("JSON inválido sem caminho e ação: %v", err)
+	}
+}
+
+func TestWindowsCommandPathQuotesOnlyAsLastResort(t *testing.T) {
+	shortened := func(string) (string, error) { return `C:\PROGRA~1\gex\gex-dev-kit.exe`, nil }
+	failing := func(string) (string, error) { return "", errors.New("falha") }
+	stillSpaced := func(string) (string, error) { return `C:\Users\Dev Team\gex-dev-kit.exe`, nil }
+	cases := []struct {
+		name       string
+		executable string
+		short      func(string) (string, error)
+		want       string
+	}{
+		{"sem espaço não cita", `C:\gex\gex-dev-kit.exe`, failing, `C:\gex\gex-dev-kit.exe`},
+		{"com espaço usa caminho curto", `C:\Users\Dev Team\gex-dev-kit.exe`, shortened, `C:\PROGRA~1\gex\gex-dev-kit.exe`},
+		{"com espaço sem caminho curto cita", `C:\Users\Dev Team\gex-dev-kit.exe`, failing, `"C:\Users\Dev Team\gex-dev-kit.exe"`},
+		{"caminho curto ainda com espaço cita", `C:\Users\Dev Team\gex-dev-kit.exe`, stillSpaced, `"C:\Users\Dev Team\gex-dev-kit.exe"`},
+		{"sem função de caminho curto cita", `C:\Users\Dev Team\gex-dev-kit.exe`, nil, `"C:\Users\Dev Team\gex-dev-kit.exe"`},
+	}
+	for _, tc := range cases {
+		if got := windowsCommandPath(tc.executable, tc.short); got != tc.want {
+			t.Fatalf("%s: obtido %s, esperado %s", tc.name, got, tc.want)
+		}
+	}
+}
+
+func TestBuildAddsAllAgentHandlers(t *testing.T) {
+	home := t.TempDir()
+	executable := filepath.Join(t.TempDir(), "gex-dev-kit")
+	if err := os.WriteFile(executable, []byte("binary"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	files, err := Build(home, executable, nil, Hooks())
+	if err != nil {
+		t.Fatal(err)
+	}
+	stable := StableBinary(home)
+
+	claude := catalogHookGroups(t, files, ".claude/settings.json")
+	if len(claude["PreToolUse"]) != 3 || len(claude["SessionStart"]) != 1 {
+		t.Fatalf("grupos Claude inesperados: %+v", claude)
+	}
+	commit := claude["PreToolUse"][0]
+	if commit.Matcher != "Bash" || commit.Hooks[0].Command != stable || !slices.Equal(commit.Hooks[0].Args, []string{"hook", "commit-msg"}) || commit.Hooks[0].OnFailure != "block" {
+		t.Fatalf("handler commit-msg Claude inesperado: %+v", commit)
+	}
+	sensitive := claude["PreToolUse"][1]
+	if sensitive.Matcher != "Bash|PowerShell|Read" || !slices.Equal(sensitive.Hooks[0].Args, []string{"hook", "sensitive-action"}) || sensitive.Hooks[0].OnFailure != "" {
+		t.Fatalf("handler sensitive-action Claude inesperado: %+v", sensitive)
+	}
+	session := claude["SessionStart"][0]
+	if session.Matcher != "startup|resume|clear|compact|fork" || !slices.Equal(session.Hooks[0].Args, []string{"hook", "session-start", "--agent", "claude"}) {
+		t.Fatalf("handler session-start Claude inesperado: %+v", session)
+	}
+
+	codex := catalogHookGroups(t, files, ".codex/hooks.json")
+	if len(codex["PreToolUse"]) != 1 || len(codex["SessionStart"]) != 1 || len(codex["PreToolUse"][0].Hooks) != 1 {
+		t.Fatalf("grupos Codex inesperados: %+v", codex)
+	}
+	if got := codex["PreToolUse"][0].Hooks[0].Command; got != quoteCommand(stable)+" hook commit-msg" {
+		t.Fatalf("comando Codex commit-msg inesperado: %s", got)
+	}
+	if got := codex["SessionStart"][0].Hooks[0].Command; got != quoteCommand(stable)+" hook session-start --agent codex" {
+		t.Fatalf("comando Codex session-start inesperado: %s", got)
+	}
+	if strings.Contains(string(lookup(t, files, ".codex/hooks.json").Data), "sensitive-action") {
+		t.Fatal("Codex recebeu hook sem suporte")
+	}
+}
+
+func TestSensitiveOnlyLeavesCodexConfigOut(t *testing.T) {
+	home := t.TempDir()
+	executable := filepath.Join(t.TempDir(), "gex-dev-kit")
+	if err := os.WriteFile(executable, []byte("binary"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	files, err := Build(home, executable, nil, []string{"gex-sensitive-action-warning"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	lookup(t, files, ".claude/settings.json")
+	for _, file := range files {
+		if file.Path == ".codex/hooks.json" {
+			t.Fatal("arquivo do Codex no plano sem hook suportado")
+		}
+	}
+}
+
+func TestBinaryRefreshedOnlyWithKitHandlerOrChangedBinary(t *testing.T) {
+	binaryPath := ".local/share/gex-dev-kit/bin/" + catalogBinaryName()
+	hasBinary := func(files []File) bool {
+		for _, file := range files {
+			if file.Path == binaryPath {
+				return true
+			}
+		}
+		return false
+	}
+	home := t.TempDir()
+	executable := filepath.Join(t.TempDir(), "gex-dev-kit")
+	if err := os.WriteFile(executable, []byte("binary-v2"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	files, err := Build(home, executable, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if hasBinary(files) {
+		t.Fatal("binário incluído sem hook, handler do kit ou diferença")
+	}
+	if err := os.MkdirAll(filepath.Dir(StableBinary(home)), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(StableBinary(home), []byte("binary-v1"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	files, err = Build(home, executable, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !hasBinary(files) {
+		t.Fatal("binário estável diferente não atualizado")
+	}
+	if err := os.WriteFile(StableBinary(home), []byte("binary-v2"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	encoded, err := json.Marshal(StableBinary(home))
+	if err != nil {
+		t.Fatal(err)
+	}
+	settings := []byte(`{"hooks":{"PreToolUse":[{"matcher":"Bash","hooks":[{"type":"command","command":` + string(encoded) + `,"args":["hook","pre-pr"]}]}]}}`)
+	if err := os.MkdirAll(filepath.Join(home, ".claude"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(home, ".claude", "settings.json"), settings, 0600); err != nil {
+		t.Fatal(err)
+	}
+	files, err = Build(home, executable, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !hasBinary(files) {
+		t.Fatal("handler do kit instalado sem atualização do executável")
 	}
 }
 
