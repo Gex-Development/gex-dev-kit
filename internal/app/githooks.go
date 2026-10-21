@@ -16,7 +16,11 @@ func PlanGitHooks(r GitHooksRequest, diffLimit int) (GitHooksPlan, error) {
 	if !filepath.IsAbs(r.Home) {
 		return GitHooksPlan{}, errors.New("HOME deve ser caminho absoluto")
 	}
-	req := githooks.Request{Hooks: r.Hooks, PreCommit: r.PreCommit, PrePush: r.PrePush, Binary: catalog.StableBinary(r.Home)}
+	hooksSemPrefixo := make([]string, 0, len(r.Hooks))
+	for _, name := range r.Hooks {
+		hooksSemPrefixo = append(hooksSemPrefixo, strings.TrimPrefix(name, "gex-"))
+	}
+	req := githooks.Request{Hooks: hooksSemPrefixo, PreCommit: r.PreCommit, PrePush: r.PrePush, Binary: catalog.StableBinary(r.Home)}
 	if err := githooks.Validate(req); err != nil {
 		return GitHooksPlan{}, err
 	}

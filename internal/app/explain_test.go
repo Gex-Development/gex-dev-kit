@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Gex-Development/gex-dev-kit/internal/githooks"
 	"github.com/Gex-Development/gex-dev-kit/internal/kit"
 )
 
@@ -85,5 +86,12 @@ func TestExplainConflictListsEveryFile(t *testing.T) {
 	got := Explain(fmt.Errorf("%w: a.md, b.md", kit.ErrConflict))
 	if !strings.Contains(got.Cause, "a.md, b.md") {
 		t.Fatalf("causa do conflito não lista os arquivos: %q", got.Cause)
+	}
+}
+
+func TestExplainUndocumentedCommand(t *testing.T) {
+	p := Explain(fmt.Errorf("%w: make test", githooks.ErrUndocumented))
+	if p.Title != "Comando não documentado" || !strings.Contains(p.Action, "precisa estar documentado") {
+		t.Fatalf("explicação: %+v", p)
 	}
 }

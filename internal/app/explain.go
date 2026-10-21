@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/Gex-Development/gex-dev-kit/internal/githooks"
 	"github.com/Gex-Development/gex-dev-kit/internal/kit"
 )
 
@@ -32,6 +33,8 @@ func Explain(err error) Problem {
 			Cause:  "`" + path + "` é link simbólico; o kit não segue links (proteção contra gravar fora do HOME).",
 			Action: "Troque por arquivo ou pasta comum, ou teste com `--home`.",
 		}
+	case errors.Is(err, githooks.ErrUndocumented):
+		return Problem{Title: "Comando não documentado", Cause: err.Error(), Action: "O comando precisa estar documentado no AGENTS.md, README, Makefile ou package.json do repositório."}
 	case strings.Contains(err.Error(), "absoluto"):
 		return Problem{Title: "Caminho inválido", Cause: err.Error(), Action: "Use caminho absoluto."}
 	}
