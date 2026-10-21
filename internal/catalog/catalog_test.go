@@ -123,6 +123,24 @@ func TestDependentSkillsNeedExplicitSelection(t *testing.T) {
 	}
 }
 
+func TestSelectionValidationRejectsCrossGroupMissingDependency(t *testing.T) {
+	if err := ValidateSelection([]string{"grill-with-docs", "domain-modeling"}, nil); err == nil || !strings.Contains(err.Error(), "grilling") {
+		t.Fatalf("skill dependente sem produtividade aceita: %v", err)
+	}
+	if err := ValidateSelection([]string{"grill-with-docs", "domain-modeling", "grilling"}, nil); err != nil {
+		t.Fatalf("dependências presentes rejeitadas: %v", err)
+	}
+}
+
+func TestEngineeringStepChecksOnlyDependenciesAvailableInThatStep(t *testing.T) {
+	if err := ValidateEngineeringSelection([]string{"grill-with-docs", "domain-modeling"}); err != nil {
+		t.Fatalf("grilling é escolhida na próxima etapa: %v", err)
+	}
+	if err := ValidateEngineeringSelection([]string{"improve-codebase-architecture", "domain-modeling"}); err == nil || !strings.Contains(err.Error(), "codebase-design") {
+		t.Fatalf("dependência disponível na etapa atual foi ignorada: %v", err)
+	}
+}
+
 func TestHookKeepsOtherHandlersInSameMatcher(t *testing.T) {
 	executable := filepath.Join(t.TempDir(), "gex-dev-kit")
 	original := []byte(`{"hooks":{"PreToolUse":[{"matcher":"Bash","hooks":[{"type":"command","command":"OWN"},{"type":"command","command":"echo own"},{"type":"command","command":"/elsewhere/command"}]}]}}`)

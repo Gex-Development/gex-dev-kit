@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -33,6 +34,7 @@ func (n *names) Set(value string) error {
 }
 
 const usage = "gex-dev-kit [install|doctor|rollback|rollback-agents|skills|hooks|hook commit-msg] [opções]\n\n" +
+	"Sem argumentos em terminal: painel interativo para instalar, diagnosticar e reverter.\n\n" +
 	"install         Instala Core GEX e atualiza agentes em versões fixadas, após prévia e confirmação\n" +
 	"doctor          Exibe estado dos arquivos e agentes gerenciados\n" +
 	"rollback        Restaura arquivos da instalação anterior\n" +
@@ -82,7 +84,31 @@ func run(args []string, in io.Reader, out, errOut io.Writer) int {
 			fmt.Fprint(out, usage)
 			return 0
 		}
-		return install(nil, in, out, errOut, true)
+		if os.Getenv("ACCESSIBLE") != "" || os.Getenv("TERM") == "dumb" {
+			return install(nil, in, out, errOut, true)
+		}
+		destination, err := homePath("")
+		if err != nil {
+			fmt.Fprintln(errOut, err)
+			return 1
+		}
+		choice, err := showHome(in, out, destination)
+		if err != nil {
+			fmt.Fprintln(errOut, "Painel:", err)
+			return 1
+		}
+		switch choice {
+		case "install":
+			return install(nil, in, out, errOut, true)
+		case "doctor":
+			return inspect("doctor", nil, in, out, errOut)
+		case "rollback":
+			return inspect("rollback", nil, in, out, errOut)
+		case "rollback-agents":
+			return rollbackAgents(nil, in, out, errOut)
+		default:
+			return 0
+		}
 	}
 	if len(args) > 1 && helpRequested(args[1:]) {
 		switch args[0] {
@@ -192,26 +218,54 @@ func install(args []string, in io.Reader, out, errOut io.Writer, guided bool) in
 		return invalid(errOut, "argumento inesperado: "+flags.Arg(0))
 	}
 	if guided {
-		options := make([]huh.Option[string], 0, len(catalog.Skills())+len(catalog.Hooks()))
+		var engineering, productivity []huh.Option[string]
 		for _, name := range catalog.Skills() {
-			options = append(options, huh.NewOption("Skill: "+name, "skill:"+name))
+			option := huh.NewOption(name, name)
+			if strings.Contains(catalog.MattSource(name), "/skills/productivity/") {
+				productivity = append(productivity, option)
+			} else {
+				engineering = append(engineering, option)
+			}
 		}
+		hookOptions := make([]huh.Option[string], 0, len(catalog.Hooks()))
 		for _, name := range catalog.Hooks() {
-			options = append(options, huh.NewOption("Hook: "+name, "hook:"+name))
+			hookOptions = append(hookOptions, huh.NewOption(name, name))
 		}
-		var choices []string
-		if len(options) > 0 {
-			if err := huh.NewMultiSelect[string]().Title("Core obrigatório. Escolha itens opcionais").Options(options...).Value(&choices).Run(); err != nil {
-				return formError(err, errOut)
-			}
+		var engineeringSkills, productivitySkills, chosenHooks []string
+		updateAgents := true
+		form := huh.NewForm(
+			huh.NewGroup(huh.NewMultiSelect[string]().
+				Title("Skills de engenharia").
+				Description("O Core GEX é obrigatório. Espaço seleciona skills; / filtra.").
+				Options(engineering...).Value(&engineeringSkills).Filterable(true).Height(9).Validate(catalog.ValidateEngineeringSelection)).
+				Title("01  /  ENGENHARIA"),
+			huh.NewGroup(huh.NewMultiSelect[string]().
+				Title("Skills de produtividade").
+				Description("Adicione somente o que usará no trabalho.").
+				Options(productivity...).Value(&productivitySkills).Filterable(true).Height(7).
+				Validate(func(chosen []string) error {
+					return catalog.ValidateSelection(slices.Concat(engineeringSkills, chosen), nil)
+				})).
+				Title("02  /  PRODUTIVIDADE"),
+			huh.NewGroup(huh.NewMultiSelect[string]().
+				Title("Hooks").
+				Description("Codex exigirá aprovação posterior em /hooks.").
+				Options(hookOptions...).Value(&chosenHooks).Height(3)).
+				Title("03  /  HOOKS"),
+			huh.NewGroup(huh.NewConfirm().
+				Title("Atualizar Claude Code e Codex?").
+				Description("Somente instaladores standalone elegíveis; veja prévia antes de aplicar.").
+				Affirmative("Atualizar").Negative("Agora não").Value(&updateAgents)).
+				Title("04  /  AGENTES"),
+		).WithInput(in).WithOutput(out).WithAccessible(os.Getenv("ACCESSIBLE") != "" || os.Getenv("TERM") == "dumb").
+			WithTheme(huh.ThemeFunc(gexFormTheme))
+		if err := form.Run(); err != nil {
+			return formError(err, errOut)
 		}
-		for _, choice := range choices {
-			if name, ok := strings.CutPrefix(choice, "skill:"); ok {
-				skills = append(skills, name)
-			} else if name, ok := strings.CutPrefix(choice, "hook:"); ok {
-				selectedHooks = append(selectedHooks, name)
-			}
-		}
+		skills = append(skills, engineeringSkills...)
+		skills = append(skills, productivitySkills...)
+		selectedHooks = append(selectedHooks, chosenHooks...)
+		skipAgentUpdate = !updateAgents
 	}
 	destination, err := homePath(home)
 	if err != nil {
@@ -233,7 +287,7 @@ func install(args []string, in io.Reader, out, errOut io.Writer, guided bool) in
 		fmt.Fprintln(errOut, "Prévia:", err)
 		return 1
 	}
-	var updates []agents.Change
+	var updates, agentChanges []agents.Change
 	blocked := false
 	if !skipAgentUpdate {
 		changes, err := agents.Preview(destination)
@@ -241,26 +295,24 @@ func install(args []string, in io.Reader, out, errOut io.Writer, guided bool) in
 			fmt.Fprintln(errOut, "Prévia dos agentes:", err)
 			return 1
 		}
-		fmt.Fprintln(out, "Agentes (versões fixadas):")
+		agentChanges = changes
 		for _, change := range changes {
-			current := change.Current
-			if current == "" {
-				current = "não gerenciado"
-			}
 			if change.Blocked {
 				blocked = true
-				fmt.Fprintf(out, "  %s bloqueado (%s → %s): %s\n  Ação manual: %s\n", change.Name, current, change.Target, safeAgentReason(change.Reason), change.Manual)
 			} else if change.Current != change.Target {
 				updates = append(updates, change)
-				fmt.Fprintf(out, "  %s %s → %s: %s\n", change.Name, current, change.Target, change.Command)
-			} else {
-				fmt.Fprintf(out, "  %s %s (sem mudança)\n", change.Name, current)
 			}
 		}
 	}
-	fmt.Fprintln(out, lipgloss.NewStyle().Bold(true).Render("Prévia de instalação:"))
-	for _, change := range plan.Changes {
-		fmt.Fprintf(out, "  %s %s\n", change.Action, change.Path)
+	fmt.Fprintln(out, lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#63B3FF")).Render("Prévia de instalação:"))
+	if interactive(in, out) && os.Getenv("ACCESSIBLE") == "" && os.Getenv("TERM") != "dumb" {
+		width, _, err := term.GetSize(out.(*os.File).Fd())
+		if err != nil {
+			width = 80
+		}
+		fmt.Fprintln(out, previewPanel(plan.Changes, agentChanges, width))
+	} else {
+		fmt.Fprintln(out, previewText(plan.Changes, agentChanges))
 	}
 	if len(plan.Changes) == 0 && len(updates) == 0 {
 		fmt.Fprintln(out, "Nada a alterar.")
@@ -359,6 +411,20 @@ func rollbackAgents(args []string, in io.Reader, out, errOut io.Writer) int {
 	}
 	fmt.Fprintln(out, "Versões anteriores dos agentes restauradas.")
 	return 0
+}
+
+func gexFormTheme(isDark bool) *huh.Styles {
+	styles := huh.ThemeCharm(isDark)
+	blue := lipgloss.LightDark(isDark)(lipgloss.Color("#1a5fc0"), lipgloss.Color("#7fc3ef"))
+	styles.Group.Title = styles.Group.Title.Foreground(blue)
+	styles.Focused.Title = styles.Focused.Title.Foreground(blue)
+	styles.Focused.MultiSelectSelector = styles.Focused.MultiSelectSelector.Foreground(blue)
+	styles.Focused.SelectedOption = styles.Focused.SelectedOption.Foreground(blue)
+	styles.Focused.SelectSelector = styles.Focused.SelectSelector.Foreground(blue)
+	styles.Focused.FocusedButton = styles.Focused.FocusedButton.Background(blue).Foreground(lipgloss.LightDark(isDark)(lipgloss.Color("#ffffff"), lipgloss.Color("#0b1526")))
+	styles.Focused.Next = styles.Focused.Next.Background(blue).Foreground(lipgloss.LightDark(isDark)(lipgloss.Color("#ffffff"), lipgloss.Color("#0b1526")))
+	styles.Blurred = styles.Focused
+	return styles
 }
 
 func formError(err error, errOut io.Writer) int {

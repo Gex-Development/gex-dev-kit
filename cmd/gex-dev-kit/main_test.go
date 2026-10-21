@@ -2,12 +2,14 @@ package main
 
 import (
 	"bytes"
+	"image/color"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/Gex-Development/gex-dev-kit/internal/kit"
 )
 
@@ -116,6 +118,50 @@ func TestDoctorTableFitsNarrowTerminal(t *testing.T) {
 	}
 	if screen.table.Rows()[0][1] != ".claude/CLAUDE.md" {
 		t.Fatalf("caminho desapareceu da tabela: %v", screen.table.Rows())
+	}
+}
+
+func TestDoctorWrapsLongDetailInNarrowTerminal(t *testing.T) {
+	model := newDoctorModel([]kit.Status{{Path: ".claude/CLAUDE.md", State: "alterado", Detail: strings.Repeat("texto longo ", 12)}})
+	updated, _ := model.Update(tea.WindowSizeMsg{Width: 40, Height: 16})
+	if width := lipgloss.Width(updated.View().Content); width > 40 {
+		t.Fatalf("detalhe do doctor excedeu 40 colunas: %d", width)
+	}
+}
+
+func TestDoctorShortListDoesNotFillScreenWithEmptyRows(t *testing.T) {
+	model := newDoctorModel([]kit.Status{{Path: ".claude/CLAUDE.md", State: "ok", Detail: "Íntegro."}})
+	updated, _ := model.Update(tea.WindowSizeMsg{Width: 80, Height: 30})
+	if height := lipgloss.Height(updated.View().Content); height > 10 {
+		t.Fatalf("uma linha ocupou tela com espaço vazio: %d linhas", height)
+	}
+}
+
+func TestDoctorFitsTinyTerminal(t *testing.T) {
+	for _, size := range []tea.WindowSizeMsg{{Width: 14, Height: 6}, {Width: 40, Height: 8}} {
+		model := newDoctorModel([]kit.Status{{Path: ".claude/CLAUDE.md", State: "alterado", Detail: strings.Repeat("informação importante ", 6)}})
+		updated, _ := model.Update(size)
+		screen := updated.View().Content
+		if lipgloss.Width(screen) > size.Width || lipgloss.Height(screen) > size.Height {
+			t.Fatalf("doctor ultrapassou %dx%d: %dx%d", size.Width, size.Height, lipgloss.Width(screen), lipgloss.Height(screen))
+		}
+	}
+}
+
+func TestTerminalAdaptsPaletteToLightBackground(t *testing.T) {
+	light := tea.BackgroundColorMsg{Color: color.White}
+	home := newHomeModel(t.TempDir())
+	homeLight, _ := home.Update(light)
+	if home.View().Content == homeLight.View().Content {
+		t.Fatal("painel manteve cores de fundo escuro no terminal claro")
+	}
+	doctor := newDoctorModel([]kit.Status{{Path: "Core", State: "ok", Detail: "Íntegro."}})
+	doctorLight, _ := doctor.Update(light)
+	if doctor.View().Content == doctorLight.View().Content {
+		t.Fatal("doctor manteve cores de fundo escuro no terminal claro")
+	}
+	if gexFormTheme(true).Focused.Title.Render("GEX") == gexFormTheme(false).Focused.Title.Render("GEX") {
+		t.Fatal("formulário manteve mesmo destaque em fundos claro e escuro")
 	}
 }
 

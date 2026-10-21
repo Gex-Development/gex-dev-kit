@@ -7,19 +7,21 @@ CLI para preparar Claude Code e Codex com instruções e skills globais de traba
 Repositório privado da organização: é preciso acesso à Gex-Development e autenticação no `gh`. Baixe o executável correspondente ao sistema na [release](https://github.com/Gex-Development/gex-dev-kit/releases). Os alvos publicados são `darwin_{arm64,amd64}`, `linux_{arm64,amd64}` (Ubuntu/Fedora) e `windows_{arm64,amd64}` (PowerShell). Confira `SHA256SUMS` antes de executar.
 
 ```sh
-gh release download v0.1.0 --repo Gex-Development/gex-dev-kit --pattern 'gex-dev-kit_v0.1.0_linux_amd64' --dir .
-chmod +x gex-dev-kit_v0.1.0_linux_amd64
-./gex-dev-kit_v0.1.0_linux_amd64
+gh release download v0.2.0 --repo Gex-Development/gex-dev-kit --dir .
+sha256sum -c SHA256SUMS
+chmod +x gex-dev-kit_v0.2.0_linux_amd64
+./gex-dev-kit_v0.2.0_linux_amd64
 ```
 
-No macOS, troque `linux_amd64` por `darwin_arm64` ou `darwin_amd64`. No PowerShell, baixe `gex-dev-kit_v0.1.0_windows_amd64.exe` (ou `windows_arm64.exe`) e execute `./gex-dev-kit_v0.1.0_windows_amd64.exe`. O executável abre escolha guiada em terminal interativo; fora dele, use `install` com opções explícitas.
+No macOS, confira checksums com `shasum -a 256 -c SHA256SUMS` e troque `linux_amd64` por `darwin_arm64` ou `darwin_amd64`. No PowerShell, baixe `gex-dev-kit_v0.2.0_windows_amd64.exe` (ou `windows_arm64.exe`), confira hash com `Get-FileHash` e execute `./gex-dev-kit_v0.2.0_windows_amd64.exe`. Em terminal interativo, abrir sem argumentos mostra painel GEX com status do Core, menu navegável e leitura animada do estado. A instalação guiada separa skills de engenharia, produtividade, hooks e atualização dos agentes; filtre com `/`, selecione com `x` ou espaço e confirme após prévia dos arquivos e versões. Fora de terminal, use `install` com opções explícitas. `ACCESSIBLE=1` ou `TERM=dumb` dispensa painel animado.
 
 ## Usar
 
 ```sh
-gex-dev-kit install --skill tdd --hook gex-conventional-commits
-gex-dev-kit doctor
-gex-dev-kit rollback
+./gex-dev-kit_v0.2.0_linux_amd64 skills
+./gex-dev-kit_v0.2.0_linux_amd64 install --skill tdd --hook gex-conventional-commits
+./gex-dev-kit_v0.2.0_linux_amd64 doctor
+./gex-dev-kit_v0.2.0_linux_amd64 rollback
 ```
 
 `install` mostra arquivos e versões afetadas, depois exige confirmação. `--yes` confirma em automação após prévia; `--skill` e `--hook` aceitam repetição. `skills`, `hooks` e `--help` listam opções. Sem seleção adicional, instala Core e tenta atualizar agentes elegíveis. `--home CAMINHO_ABSOLUTO` instala em HOME isolado para teste; `--skip-agent-update` evita rede e alterações nos binários nesse piloto. `doctor` mostra arquivos íntegros, alterações posteriores, versões e confiança pendente de hooks Codex. `rollback` restaura arquivos e modos anteriores; se algum alvo foi editado depois, aborta antes de restaurar qualquer arquivo. Histórico de arquivos do kit fica no perfil do usuário com acesso restrito (DPAPI no Windows).
@@ -34,10 +36,10 @@ As 17 skills Matt Pocock são cópias offline do commit [`5beb35b0`](https://git
 
 ```sh
 go test ./...
-./scripts/release.sh v0.1.0
-./scripts/smoke.sh ./dist/gex-dev-kit_v0.1.0_darwin_arm64
+./scripts/release.sh v0.2.0
+./scripts/smoke.sh ./dist/gex-dev-kit_v0.2.0_darwin_arm64
 ```
 
-O script compila seis binários e gera `dist/SHA256SUMS`. Publicação manual requer `./scripts/release.sh v0.1.0 --publish` e confirmação no terminal; usa Gum se estiver instalado, sem exigir Gum de quem instala. Mudanças seguem Conventional Commits. Sem CI remoto nesta fase: teste local e evidência de release não devem ser confundidos com proteção contínua de branches.
+O script compila seis binários e gera `dist/SHA256SUMS`. Publicação manual requer `./scripts/release.sh v0.2.0 --publish` e confirmação no terminal; usa Gum se estiver instalado, sem exigir Gum de quem instala. Mudanças seguem Conventional Commits. Sem CI remoto nesta fase: teste local e evidência de release não devem ser confundidos com proteção contínua de branches.
 
 Fontes de compatibilidade: [hooks Claude Code](https://code.claude.com/docs/en/hooks), [hooks Codex](https://developers.openai.com/codex/hooks), [instalação Claude Code](https://code.claude.com/docs/en/setup), [instalação Codex](https://developers.openai.com/codex/cli). Estado e decisões do kit: `kit-desenvolvimento-gex-acompanhamento.html` na documentação visual da equipe.

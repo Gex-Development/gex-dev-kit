@@ -94,13 +94,18 @@ func HookDescription(name string) string {
 	return ""
 }
 
-func Build(home, executable string, skills, hooks []string) ([]File, error) {
-	if home == "" || !filepath.IsAbs(home) {
-		return nil, errors.New("HOME deve ser um caminho absoluto explícito")
-	}
+func ValidateSelection(skills, hooks []string) error {
+	return validateSelection(skills, hooks, false)
+}
+
+func ValidateEngineeringSelection(skills []string) error {
+	return validateSelection(skills, nil, true)
+}
+
+func validateSelection(skills, hooks []string, deferProductivity bool) error {
 	for _, name := range skills {
 		if _, ok := skillDescriptions[name]; !ok {
-			return nil, fmt.Errorf("skill indisponível: %s", name)
+			return fmt.Errorf("skill indisponível: %s", name)
 		}
 	}
 	for name, dependencies := range skillDependencies {
@@ -108,15 +113,25 @@ func Build(home, executable string, skills, hooks []string) ([]File, error) {
 			continue
 		}
 		for _, dependency := range dependencies {
-			if !slices.Contains(skills, dependency) {
-				return nil, fmt.Errorf("%s requer selecionar %s", name, dependency)
+			if !slices.Contains(skills, dependency) && !(deferProductivity && skillGroup(dependency) == "productivity") {
+				return fmt.Errorf("%s requer selecionar %s", name, dependency)
 			}
 		}
 	}
 	for _, name := range hooks {
 		if name != "gex-conventional-commits" {
-			return nil, fmt.Errorf("hook indisponível: %s", name)
+			return fmt.Errorf("hook indisponível: %s", name)
 		}
+	}
+	return nil
+}
+
+func Build(home, executable string, skills, hooks []string) ([]File, error) {
+	if home == "" || !filepath.IsAbs(home) {
+		return nil, errors.New("HOME deve ser um caminho absoluto explícito")
+	}
+	if err := ValidateSelection(skills, hooks); err != nil {
+		return nil, err
 	}
 	files := make([]File, 0, 20)
 	core, err := content.ReadFile("assets/core/AGENTS.md")
