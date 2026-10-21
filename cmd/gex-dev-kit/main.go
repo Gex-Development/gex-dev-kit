@@ -39,8 +39,8 @@ const usage = "gex-dev-kit [install|doctor|rollback|rollback-agents|skills|hooks
 	"doctor          Exibe estado dos arquivos e agentes gerenciados\n" +
 	"rollback        Restaura arquivos da instalação anterior\n" +
 	"rollback-agents Restaura versões anteriores dos agentes, com confirmação\n" +
-	"skills          Lista skills opcionais\n" +
-	"hooks           Lista hooks opcionais\n" +
+	"skills          Lista Core, opções instaláveis e referências não instaláveis\n" +
+	"hooks           Lista hook global instalável e referências não instaláveis\n" +
 	"--version       Exibe versão\n\n" +
 	"Opções de install: --skill NOME (repetível), --hook NOME (repetível), --skip-agent-update, --yes, --home CAMINHO\n" +
 	"Opções de doctor/rollback: --home CAMINHO\n" +
@@ -59,9 +59,9 @@ func commandHelp(command string) string {
 	case "rollback-agents":
 		return "Uso: gex-dev-kit rollback-agents [--home CAMINHO] [--yes]\nRestaura versões anteriores dos agentes separadamente.\n"
 	case "skills":
-		return "Uso: gex-dev-kit skills\nLista skills opcionais.\n"
+		return "Uso: gex-dev-kit skills\nLista Core, especializações, skills Matt e referências não instaláveis.\n"
 	case "hooks":
-		return "Uso: gex-dev-kit hooks\nLista hooks opcionais.\n"
+		return "Uso: gex-dev-kit hooks\nLista hook global instalável e candidatos não instaláveis.\n"
 	case "hook":
 		return "Uso: gex-dev-kit hook commit-msg [CAMINHO]\nValida JSON do agente em stdin ou mensagem Git no arquivo informado.\n"
 	default:
@@ -84,15 +84,18 @@ func run(args []string, in io.Reader, out, errOut io.Writer) int {
 			fmt.Fprint(out, usage)
 			return 0
 		}
-		if os.Getenv("ACCESSIBLE") != "" || os.Getenv("TERM") == "dumb" {
-			return install(nil, in, out, errOut, true)
+		var choice string
+		var err error
+		if plainTerminal() {
+			choice, err = showAccessibleHome(in, out)
+		} else {
+			destination, homeErr := homePath("")
+			if homeErr != nil {
+				fmt.Fprintln(errOut, homeErr)
+				return 1
+			}
+			choice, err = showHome(in, out, destination)
 		}
-		destination, err := homePath("")
-		if err != nil {
-			fmt.Fprintln(errOut, err)
-			return 1
-		}
-		choice, err := showHome(in, out, destination)
 		if err != nil {
 			fmt.Fprintln(errOut, "Painel:", err)
 			return 1
@@ -132,16 +135,34 @@ func run(args []string, in io.Reader, out, errOut io.Writer) int {
 		if len(args) != 1 {
 			return invalid(errOut, "skills não aceita argumentos")
 		}
+		fmt.Fprintln(out, "Core GEX (obrigatório):")
+		for _, name := range catalog.CoreSkills() {
+			fmt.Fprintln(out, name)
+		}
+		fmt.Fprintln(out, "Especializações opcionais:")
+		for _, name := range catalog.SpecialtySkills() {
+			fmt.Fprintln(out, name)
+		}
+		fmt.Fprintln(out, "Skills Matt opcionais:")
 		for _, name := range catalog.Skills() {
 			fmt.Fprintln(out, name)
+		}
+		fmt.Fprintln(out, "Referências (não instaláveis):")
+		for _, entry := range catalog.ReferencedSkills() {
+			fmt.Fprintf(out, "%s [%s] — %s (%s)\n", entry.Name, entry.Status, entry.Reason, entry.Source)
 		}
 		return 0
 	case "hooks":
 		if len(args) != 1 {
 			return invalid(errOut, "hooks não aceita argumentos")
 		}
+		fmt.Fprintln(out, "Hook global opcional (instalável):")
 		for _, name := range catalog.Hooks() {
 			fmt.Fprintln(out, name)
+		}
+		fmt.Fprintln(out, "Referências (não instaláveis):")
+		for _, entry := range catalog.HookCandidates() {
+			fmt.Fprintf(out, "%s [%s] — %s (%s)\n", entry.Name, entry.Status, entry.Reason, entry.Source)
 		}
 		return 0
 	case "install":
@@ -178,6 +199,10 @@ func interactive(in io.Reader, out io.Writer) bool {
 	input, inputOK := in.(*os.File)
 	output, outputOK := out.(*os.File)
 	return inputOK && outputOK && term.IsTerminal(input.Fd()) && term.IsTerminal(output.Fd())
+}
+
+func plainTerminal() bool {
+	return os.Getenv("ACCESSIBLE") != "" || os.Getenv("TERM") == "dumb" || os.Getenv("NO_COLOR") != ""
 }
 
 func invalid(errOut io.Writer, message string) int {
@@ -218,6 +243,10 @@ func install(args []string, in io.Reader, out, errOut io.Writer, guided bool) in
 		return invalid(errOut, "argumento inesperado: "+flags.Arg(0))
 	}
 	if guided {
+		specialties := make([]huh.Option[string], 0, len(catalog.SpecialtySkills()))
+		for _, name := range catalog.SpecialtySkills() {
+			specialties = append(specialties, huh.NewOption(name+" · "+catalog.SpecialtyDescription(name), name))
+		}
 		var engineering, productivity []huh.Option[string]
 		for _, name := range catalog.Skills() {
 			option := huh.NewOption(name, name)
@@ -231,9 +260,11 @@ func install(args []string, in io.Reader, out, errOut io.Writer, guided bool) in
 		for _, name := range catalog.Hooks() {
 			hookOptions = append(hookOptions, huh.NewOption(name, name))
 		}
-		var engineeringSkills, productivitySkills, chosenHooks []string
+		var engineeringSkills, productivitySkills, specialistSkills, chosenHooks []string
 		updateAgents := true
 		form := huh.NewForm(
+			huh.NewGroup(huh.NewNote().Title("Core GEX obrigatório").Description(fmt.Sprintf("%d skills Core para Claude Code e Codex; nenhuma especialização é selecionada automaticamente.", len(catalog.CoreSkills()))).Next(true)).
+				Title("00  /  CORE"),
 			huh.NewGroup(huh.NewMultiSelect[string]().
 				Title("Skills de engenharia").
 				Description("O Core GEX é obrigatório. Espaço seleciona skills; / filtra.").
@@ -248,22 +279,32 @@ func install(args []string, in io.Reader, out, errOut io.Writer, guided bool) in
 				})).
 				Title("02  /  PRODUTIVIDADE"),
 			huh.NewGroup(huh.NewMultiSelect[string]().
+				Title("Especializações GEX").
+				Description("Opt-in. Acesso a gateways somente leitura; credenciais no ambiente ao usar.").
+				Options(specialties...).Value(&specialistSkills).Filterable(true).Height(7)).
+				Title("03  /  ESPECIALIZAÇÕES"),
+			huh.NewGroup(huh.NewMultiSelect[string]().
 				Title("Hooks").
 				Description("Codex exigirá aprovação posterior em /hooks.").
 				Options(hookOptions...).Value(&chosenHooks).Height(3)).
-				Title("03  /  HOOKS"),
+				Title("04  /  HOOK GLOBAL"),
 			huh.NewGroup(huh.NewConfirm().
 				Title("Atualizar Claude Code e Codex?").
 				Description("Somente instaladores standalone elegíveis; veja prévia antes de aplicar.").
 				Affirmative("Atualizar").Negative("Agora não").Value(&updateAgents)).
-				Title("04  /  AGENTES"),
-		).WithInput(in).WithOutput(out).WithAccessible(os.Getenv("ACCESSIBLE") != "" || os.Getenv("TERM") == "dumb").
-			WithTheme(huh.ThemeFunc(gexFormTheme))
+				Title("05  /  AGENTES"),
+		).WithInput(in).WithOutput(out).WithAccessible(plainTerminal())
+		if plainTerminal() {
+			form.WithTheme(huh.ThemeFunc(huh.ThemeBase))
+		} else {
+			form.WithTheme(huh.ThemeFunc(gexFormTheme))
+		}
 		if err := form.Run(); err != nil {
 			return formError(err, errOut)
 		}
 		skills = append(skills, engineeringSkills...)
 		skills = append(skills, productivitySkills...)
+		skills = append(skills, specialistSkills...)
 		selectedHooks = append(selectedHooks, chosenHooks...)
 		skipAgentUpdate = !updateAgents
 	}
@@ -271,6 +312,18 @@ func install(args []string, in io.Reader, out, errOut io.Writer, guided bool) in
 	if err != nil {
 		fmt.Fprintln(errOut, err)
 		return 1
+	}
+	if err := gatewayCredentialError(skills); err != nil {
+		fmt.Fprintln(errOut, err)
+		return 1
+	}
+	if guided && !plainTerminal() {
+		executable, err := os.Executable()
+		if err != nil {
+			fmt.Fprintln(errOut, "Não foi possível localizar executável:", err)
+			return 1
+		}
+		return guidedInstall(destination, executable, skills, selectedHooks, skipAgentUpdate, in, out, errOut)
 	}
 	executable, err := os.Executable()
 	if err != nil {
@@ -304,8 +357,13 @@ func install(args []string, in io.Reader, out, errOut io.Writer, guided bool) in
 			}
 		}
 	}
-	fmt.Fprintln(out, lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#63B3FF")).Render("Prévia de instalação:"))
-	if interactive(in, out) && os.Getenv("ACCESSIBLE") == "" && os.Getenv("TERM") != "dumb" {
+	styledPreview := interactive(in, out) && !plainTerminal()
+	if styledPreview {
+		fmt.Fprintln(out, lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#63B3FF")).Render("Prévia de instalação:"))
+	} else {
+		fmt.Fprintln(out, "Prévia de instalação:")
+	}
+	if styledPreview {
 		width, _, err := term.GetSize(out.(*os.File).Fd())
 		if err != nil {
 			width = 80
@@ -328,7 +386,13 @@ func install(args []string, in io.Reader, out, errOut io.Writer, guided bool) in
 			return 1
 		}
 		var confirmed bool
-		if err := huh.NewConfirm().Title("Aplicar alterações?").Affirmative("Sim").Negative("Não").Value(&confirmed).Run(); err != nil {
+		confirm := huh.NewConfirm().Title("Aplicar alterações?").Affirmative("Sim").Negative("Não").Value(&confirmed)
+		if plainTerminal() {
+			err = confirm.WithTheme(huh.ThemeFunc(huh.ThemeBase)).RunAccessible(out, in)
+		} else {
+			err = huh.NewForm(huh.NewGroup(confirm)).WithInput(in).WithOutput(out).WithTheme(huh.ThemeFunc(gexFormTheme)).Run()
+		}
+		if err != nil {
 			return formError(err, errOut)
 		}
 		if !confirmed {
@@ -359,6 +423,26 @@ func install(args []string, in io.Reader, out, errOut io.Writer, guided bool) in
 		return 1
 	}
 	return 0
+}
+
+func gatewayCredentialError(skills []string) error {
+	for _, skill := range skills {
+		var required []string
+		switch skill {
+		case "gex-pagamerican-api":
+			required = []string{"PAGAMERICAN_API_KEY"}
+		case "gex-buygoods-api":
+			required = []string{"BUYGOODS_ACCOUNT_ID", "BUYGOODS_API_TOKEN"}
+		case "gex-clickbank-api":
+			required = []string{"CLICKBANK_API_KEY", "CLICKBANK_ACCOUNT"}
+		}
+		for _, name := range required {
+			if os.Getenv(name) == "" {
+				return fmt.Errorf("%s exige %s no ambiente. Solicite acesso pelo canal corporativo aprovado; nenhum arquivo foi aplicado.", skill, name)
+			}
+		}
+	}
+	return nil
 }
 
 func safeAgentReason(reason string) string {
@@ -397,7 +481,13 @@ func rollbackAgents(args []string, in io.Reader, out, errOut io.Writer) int {
 			return 1
 		}
 		var confirmed bool
-		if err := huh.NewConfirm().Title("Restaurar versões anteriores dos agentes?").Affirmative("Sim").Negative("Não").Value(&confirmed).Run(); err != nil {
+		confirm := huh.NewConfirm().Title("Restaurar versões anteriores dos agentes?").Affirmative("Sim").Negative("Não").Value(&confirmed)
+		if plainTerminal() {
+			err = confirm.WithTheme(huh.ThemeFunc(huh.ThemeBase)).RunAccessible(out, in)
+		} else {
+			err = huh.NewForm(huh.NewGroup(confirm)).WithInput(in).WithOutput(out).WithTheme(huh.ThemeFunc(gexFormTheme)).Run()
+		}
+		if err != nil {
 			return formError(err, errOut)
 		}
 		if !confirmed {
@@ -496,7 +586,7 @@ func inspect(command string, args []string, in io.Reader, out, errOut io.Writer)
 			result = 1
 		}
 	}
-	if interactive(in, out) && os.Getenv("ACCESSIBLE") == "" && os.Getenv("TERM") != "dumb" {
+	if interactive(in, out) && !plainTerminal() {
 		if _, err := tea.NewProgram(newDoctorModel(statuses), tea.WithInput(in), tea.WithOutput(out)).Run(); err != nil {
 			fmt.Fprintln(errOut, "Doctor: interface indisponível:", err)
 			return 1

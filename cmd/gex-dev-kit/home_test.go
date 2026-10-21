@@ -8,6 +8,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/Gex-Development/gex-dev-kit/internal/kit"
 )
 
 func TestHomeSelectsDoctorWithoutInstalling(t *testing.T) {
@@ -57,5 +58,36 @@ func TestHomeReportsChangedCoreFromDisk(t *testing.T) {
 	updated, _ := newHomeModel(home).Update(status)
 	if !strings.Contains(updated.View().Content, "alterado") {
 		t.Fatalf("painel ocultou drift no Core: %s", updated.View().Content)
+	}
+}
+
+func TestHomeHelpAndScanErrorAreVisibleAndDismissible(t *testing.T) {
+	model := newHomeModel(t.TempDir())
+	updated, _ := model.Update(tea.WindowSizeMsg{Width: 40, Height: 14})
+	updated, _ = updated.Update(tea.KeyPressMsg{Code: '?', Text: "?"})
+	if view := updated.View().Content; !strings.Contains(view, "ATALHOS") || lipgloss.Width(view) > 40 || lipgloss.Height(view) > 14 {
+		t.Fatalf("ajuda deve caber no terminal: %q", view)
+	}
+	updated, _ = updated.Update(tea.KeyPressMsg{Code: tea.KeyEscape})
+	updated, _ = updated.Update(homeStatus{err: os.ErrPermission})
+	if view := updated.View().Content; !strings.Contains(view, "permission denied") || strings.Contains(view, "Lendo estado") {
+		t.Fatalf("erro da leitura precisa ser visível: %q", view)
+	}
+}
+
+func TestHomeReportsSevenCoreSkillsWithoutClaimingInstalled(t *testing.T) {
+	model := newHomeModel(t.TempDir())
+	updated, _ := model.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	updated, _ = updated.Update(homeStatus{statuses: []kit.Status{{State: "sem-historico"}}})
+	if view := updated.View().Content; !strings.Contains(view, "7 skills") || !strings.Contains(view, "não instalado") {
+		t.Fatalf("contagem/estado incorretos: %q", view)
+	}
+}
+
+func TestHomeDoesNotCallLegacyInstallCompleteWithoutSevenSkills(t *testing.T) {
+	model := newHomeModel(t.TempDir())
+	updated, _ := model.Update(homeStatus{statuses: []kit.Status{{Path: ".claude/CLAUDE.md", State: "ok"}}})
+	if view := updated.View().Content; strings.Contains(view, "Core: íntegro") || !strings.Contains(view, "0/7") {
+		t.Fatalf("instalação antiga não contém sete skills: %q", view)
 	}
 }

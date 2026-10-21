@@ -62,6 +62,38 @@ func TestNoArgsNonTTYShowsHelp(t *testing.T) {
 	}
 }
 
+func TestAccessibleHomeOffersActionsAndCanExit(t *testing.T) {
+	for _, choice := range []string{"q", "0", "cancel"} {
+		var out bytes.Buffer
+		selected, err := showAccessibleHome(strings.NewReader(choice+"\n"), &out)
+		if err != nil || selected != "exit" || !strings.Contains(out.String(), "Doctor") || !strings.Contains(out.String(), "Instalar Core") || strings.Contains(out.String(), "\x1b") {
+			t.Fatalf("escolha %q: ação=%q err=%v menu=%q", choice, selected, err, out.String())
+		}
+	}
+	var out bytes.Buffer
+	selected, err := showAccessibleHome(strings.NewReader("2\n"), &out)
+	if err != nil || selected != "doctor" {
+		t.Fatalf("ação Doctor: ação=%q err=%v menu=%q", selected, err, out.String())
+	}
+}
+
+func TestInstallPreviewHasNoANSIWithoutColor(t *testing.T) {
+	for _, env := range []string{"NO_COLOR", "TERM"} {
+		t.Run(env, func(t *testing.T) {
+			if env == "NO_COLOR" {
+				t.Setenv(env, "1")
+			} else {
+				t.Setenv(env, "dumb")
+			}
+			home := t.TempDir()
+			code, out, _ := invoke(t, "install", "--home", home, "--skip-agent-update")
+			if code != 1 || !strings.Contains(out, "Prévia de instalação:") || strings.Contains(out, "\x1b") {
+				t.Fatalf("prévia sem cor: exit=%d out=%q", code, out)
+			}
+		})
+	}
+}
+
 func TestHookBlocksInvalidCommitWithoutLeakingInput(t *testing.T) {
 	message := "mensagem confidencial fora do padrão"
 	var out, errors bytes.Buffer
@@ -224,5 +256,51 @@ func TestRollbackNoopDoesNotClaimRestoration(t *testing.T) {
 	code, out, errors := invoke(t, "rollback", "--home", home)
 	if code != 0 || errors != "" || strings.Contains(out, "Restaurado") {
 		t.Fatalf("rollback vazio: exit=%d out=%q err=%q", code, out, errors)
+	}
+}
+
+func TestCatalogCommandsDistinguishInstalledFromReferences(t *testing.T) {
+	code, skills, errors := invoke(t, "skills")
+	if code != 0 || errors != "" || !strings.Contains(skills, "Core GEX (obrigatório):") || !strings.Contains(skills, "Referências (não instaláveis):") || strings.Contains(skills, "\x1b") {
+		t.Fatalf("skills: exit=%d out=%q err=%q", code, skills, errors)
+	}
+	code, hooks, errors := invoke(t, "hooks")
+	if code != 0 || errors != "" || !strings.Contains(hooks, "gex-conventional-commits") || !strings.Contains(hooks, "claude/smart-commit [somente referência]") || !strings.Contains(hooks, "codex/secret-scanner [somente referência]") || strings.Contains(hooks, "\x1b") {
+		t.Fatalf("hooks: exit=%d out=%q err=%q", code, hooks, errors)
+	}
+}
+
+func TestGatewaySkillNeedsEnvironmentBeforeInstalling(t *testing.T) {
+	t.Setenv("PAGAMERICAN_API_KEY", "")
+	t.Setenv("BUYGOODS_ACCOUNT_ID", "")
+	t.Setenv("BUYGOODS_API_TOKEN", "")
+	t.Setenv("CLICKBANK_API_KEY", "")
+	t.Setenv("CLICKBANK_ACCOUNT", "")
+	for _, tc := range []struct{ skill, missing string }{
+		{"gex-pagamerican-api", "PAGAMERICAN_API_KEY"},
+		{"gex-buygoods-api", "BUYGOODS_ACCOUNT_ID"},
+		{"gex-clickbank-api", "CLICKBANK_API_KEY"},
+	} {
+		home := t.TempDir()
+		code, _, errors := invoke(t, "install", "--home", home, "--skip-agent-update", "--yes", "--skill", tc.skill)
+		if code == 0 || !strings.Contains(errors, tc.missing) || !strings.Contains(errors, "canal corporativo") {
+			t.Fatalf("%s sem credencial: exit=%d err=%q", tc.skill, code, errors)
+		}
+		if _, err := os.Stat(filepath.Join(home, ".claude", "CLAUDE.md")); !os.IsNotExist(err) {
+			t.Fatalf("%s alterou HOME sem credencial: %v", tc.skill, err)
+		}
+	}
+}
+
+func TestGatewayCredentialGateDoesNotPrintSecretOrRequireNetwork(t *testing.T) {
+	t.Setenv("BUYGOODS_ACCOUNT_ID", "secret-account")
+	t.Setenv("BUYGOODS_API_TOKEN", "")
+	err := gatewayCredentialError([]string{"gex-buygoods-api"})
+	if err == nil || !strings.Contains(err.Error(), "BUYGOODS_API_TOKEN") || strings.Contains(err.Error(), "secret-account") {
+		t.Fatalf("gate expôs valor ou omitiu variável faltante: %v", err)
+	}
+	t.Setenv("BUYGOODS_API_TOKEN", "secret-token")
+	if err := gatewayCredentialError([]string{"gex-buygoods-api", "gex-local-spark-tests"}); err != nil {
+		t.Fatalf("presença basta na instalação; não consultar rede: %v", err)
 	}
 }

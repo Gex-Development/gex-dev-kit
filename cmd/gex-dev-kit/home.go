@@ -1,13 +1,17 @@
 package main
 
 import (
+	"bufio"
+	"fmt"
 	"io"
+	"strconv"
 	"strings"
 
 	"charm.land/bubbles/v2/list"
 	"charm.land/bubbles/v2/spinner"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/Gex-Development/gex-dev-kit/internal/catalog"
 	"github.com/Gex-Development/gex-dev-kit/internal/kit"
 	"github.com/charmbracelet/x/ansi"
 )
@@ -20,31 +24,40 @@ func (a homeAction) Title() string       { return a.title }
 func (a homeAction) Description() string { return a.description }
 func (a homeAction) FilterValue() string { return a.title }
 
+var homeActions = []homeAction{
+	{"install", "Instalar Core", "Prévia e instalação guiada"},
+	{"doctor", "Doctor", "Inspecionar estado do kit"},
+	{"rollback", "Reverter Core", "Restaurar arquivos do kit"},
+	{"rollback-agents", "Reverter agentes", "Restaurar versões anteriores"},
+	{"exit", "Sair", "Fechar o Kit GEX"},
+}
+
 type homeStatus struct {
 	statuses []kit.Status
 	err      error
 }
 
 type homeModel struct {
-	home     string
-	choice   string
-	list     list.Model
-	delegate list.DefaultDelegate
-	spinner  spinner.Model
-	loading  bool
-	status   string
-	width    int
-	height   int
-	dark     bool
+	home       string
+	choice     string
+	list       list.Model
+	delegate   list.DefaultDelegate
+	spinner    spinner.Model
+	loading    bool
+	status     string
+	width      int
+	height     int
+	dark       bool
+	help       bool
+	checked    int
+	attention  int
+	activeCore int
 }
 
 func newHomeModel(home string) homeModel {
-	items := []list.Item{
-		homeAction{"install", "Instalar Core", "Prévia e instalação guiada"},
-		homeAction{"doctor", "Doctor", "Inspecionar estado do kit"},
-		homeAction{"rollback", "Reverter Core", "Restaurar arquivos do kit"},
-		homeAction{"rollback-agents", "Reverter agentes", "Restaurar versões anteriores"},
-		homeAction{"exit", "Sair", "Fechar o Kit GEX"},
+	items := make([]list.Item, len(homeActions))
+	for i, action := range homeActions {
+		items[i] = action
 	}
 	delegate := homeDelegate(true)
 	menu := list.New(items, delegate, 38, 10)
@@ -88,17 +101,17 @@ func (m homeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = max(1, msg.Width), max(1, msg.Height)
 		delegate := m.delegate
-		delegate.ShowDescription = m.height >= 16 && m.width >= 40
+		delegate.ShowDescription = m.height >= 25 && m.width >= 40
 		m.list.SetDelegate(delegate)
 		if !delegate.ShowDescription {
-			m.list.SetSize(m.width, max(1, m.height-3))
+			m.list.SetSize(m.width, max(1, m.height-5))
 		} else {
-			m.list.SetSize(max(1, min(m.width, 72)-2), max(2, min(10, m.height-8)))
+			m.list.SetSize(max(1, min(m.width, 76)-4), min(10, m.height-15))
 		}
 	case tea.BackgroundColorMsg:
 		m.dark = msg.IsDark()
 		m.delegate = homeDelegate(m.dark)
-		m.delegate.ShowDescription = m.height >= 16 && m.width >= 40
+		m.delegate.ShowDescription = m.height >= 25 && m.width >= 40
 		m.list.SetDelegate(m.delegate)
 		m.spinner.Style = lipgloss.NewStyle().Foreground(lipgloss.LightDark(m.dark)(lipgloss.Color("#1a5fc0"), lipgloss.Color("#7fc3ef")))
 	case homeStatus:
@@ -108,25 +121,34 @@ func (m homeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			break
 		}
 		m.status = "Core: íntegro"
-		if len(msg.statuses) == 0 {
-			m.status = "Core: nenhuma instalação registrada"
+		m.checked, m.attention = 0, 0
+		stateByPath := make(map[string]string, len(msg.statuses))
+		for _, status := range msg.statuses {
+			stateByPath[status.Path] = status.State
+		}
+		m.activeCore = 0
+		for _, name := range catalog.CoreSkills() {
+			if stateByPath[".claude/skills/"+name+"/SKILL.md"] == "ok" &&
+				stateByPath[".agents/skills/"+name+"/SKILL.md"] == "ok" {
+				m.activeCore++
+			}
 		}
 		for _, status := range msg.statuses {
 			switch status.State {
-			case "alterado":
-				m.status = "Core: alterado · execute doctor"
-				return m, nil
-			case "ausente", "incompleto":
-				m.status = "Core: " + status.State + " · execute doctor"
-			case "sem-historico":
-				if m.status == "Core: íntegro" {
-					m.status = "Core: nenhuma instalação registrada"
-				}
-			case "pendente":
-				if m.status == "Core: íntegro" {
+			case "ok", "pendente":
+				m.checked++
+				if status.State == "pendente" && m.attention == 0 {
 					m.status = "Core: pendente · confirme hook em /hooks"
 				}
+			case "sem-historico":
+				m.status = "Core: não instalado"
+			default:
+				m.attention++
+				m.status = "Core: " + status.State + " · execute doctor"
 			}
+		}
+		if m.status == "Core: íntegro" && m.activeCore != len(catalog.CoreSkills()) {
+			m.status = "Core: atualização disponível · execute install"
 		}
 	case spinner.TickMsg:
 		if m.loading {
@@ -136,10 +158,24 @@ func (m homeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case tea.KeyPressMsg:
 		switch msg.String() {
-		case "esc", "q", "ctrl+c":
+		case "?":
+			m.help = !m.help
+			return m, nil
+		case "esc":
+			if m.help {
+				m.help = false
+				return m, nil
+			}
+			m.choice = "exit"
+			return m, tea.Quit
+		case "q", "ctrl+c":
 			m.choice = "exit"
 			return m, tea.Quit
 		case "enter":
+			if m.help {
+				m.help = false
+				return m, nil
+			}
 			if selected, ok := m.list.SelectedItem().(homeAction); ok {
 				m.choice = selected.name
 				return m, tea.Quit
@@ -152,42 +188,91 @@ func (m homeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m homeModel) View() tea.View {
-	width := max(1, min(m.width, 72))
+	width := max(1, min(m.width, 76))
 	choose := lipgloss.LightDark(m.dark)
 	blue := lipgloss.NewStyle().Foreground(choose(lipgloss.Color("#1a5fc0"), lipgloss.Color("#7fc3ef"))).Bold(true)
 	muted := lipgloss.NewStyle().Foreground(choose(lipgloss.Color("#4b5669"), lipgloss.Color("#a1a1aa")))
-	heading := blue.Render("GEX / DEV KIT") + "  " + muted.Render(version)
+	heading := blue.Render("GEX  /  DEV KIT") + "   " + muted.Render(version)
 	label := m.status
 	if m.loading {
 		label = m.spinner.View() + " " + label
 	}
-	if m.height < 16 || m.width < 40 {
-		if m.height < 4 {
-			if selected, ok := m.list.SelectedItem().(homeAction); ok {
-				return tea.NewView(ansi.Truncate(selected.title, width, "…"))
-			}
-			return tea.NewView(ansi.Truncate(heading, width, "…"))
+	if m.height < 4 {
+		title := heading
+		if selected, ok := m.list.SelectedItem().(homeAction); ok {
+			title = selected.title
 		}
-		return tea.NewView(strings.Join([]string{
-			ansi.Truncate(heading, width, "…"),
-			ansi.Truncate(label, width, "…"),
-			strings.TrimSuffix(m.list.View(), "\n"),
-			ansi.Truncate(muted.Render("↑↓ navegar · Enter · q sair"), width, "…"),
-		}, "\n"))
+		view := tea.NewView(ansi.Truncate(title, width, "…"))
+		view.AltScreen = true
+		return view
 	}
-	panel := lipgloss.NewStyle().Width(max(1, width-2)).
-		Border(lipgloss.RoundedBorder()).BorderForeground(choose(lipgloss.Color("#1e6fd9"), lipgloss.Color("#7fc3ef"))).
+	if m.help {
+		lines := []string{
+			blue.Render("ATALHOS  /  GEX DEV KIT"),
+			"",
+			"↑ / ↓   Navegar pelas ações",
+			"Enter   Abrir ação selecionada",
+			"?       Mostrar ou fechar ajuda",
+			"Esc / q Sair sem alterar arquivos",
+			"",
+			"Instalar: Core obrigatório; opções opt-in.",
+			"Doctor: conferir integridade e agentes.",
+			"",
+			muted.Render("Esc ou Enter para voltar"),
+		}
+		view := tea.NewView(homeFrame(lines, width, m.height))
+		view.AltScreen = true
+		return view
+	}
+	if m.height < 25 || m.width < 40 {
+		lines := []string{
+			heading,
+			label,
+			fmt.Sprintf("Core %d/%d skills · %d verificados · %d atenção", m.activeCore, len(catalog.CoreSkills()), m.checked, m.attention),
+			strings.TrimSuffix(m.list.View(), "\n"),
+			muted.Render("↑↓ navegar · Enter abrir · ? ajuda · q sair"),
+		}
+		view := tea.NewView(homeFrame(lines, width, m.height))
+		view.AltScreen = true
+		return view
+	}
+	core := lipgloss.NewStyle().Width(max(1, width-4)).Padding(0, 1).
+		Border(lipgloss.RoundedBorder()).BorderForeground(choose(lipgloss.Color("#1e6fd9"), lipgloss.Color("#38bdf8"))).
+		Render(strings.Join([]string{
+			blue.Render("CORE GEX  /  OBRIGATÓRIO"),
+			fmt.Sprintf("%d skills para Claude Code + Codex", len(catalog.CoreSkills())),
+			fmt.Sprintf("%d/%d skills íntegras", m.activeCore, len(catalog.CoreSkills())),
+			label,
+			muted.Render(fmt.Sprintf("%d arquivos verificados · %d atenção", m.checked, m.attention)),
+		}, "\n"))
+	menu := lipgloss.NewStyle().Width(max(1, width-4)).Padding(0, 1).
+		Border(lipgloss.RoundedBorder()).BorderForeground(choose(lipgloss.Color("#d0d7e1"), lipgloss.Color("#26272d"))).
 		Render(m.list.View())
-	content := strings.Join([]string{
-		ansi.Truncate(heading, width, "…"),
-		blue.Render("│ CORE OBRIGATÓRIO"),
-		ansi.Truncate("│ "+label, width, "…"),
-		ansi.Truncate(muted.Render("  SKILLS opcionais  ·  HOOK opcional"), width, "…"),
-		blue.Render("ESCOLHA UMA AÇÃO"),
-		panel,
-		ansi.Truncate(muted.Render("Enter selecionar · ↑↓ navegar · q sair"), width, "…"),
-	}, "\n")
-	return tea.NewView(content)
+	lines := []string{
+		heading,
+		muted.Render("INSTALAR  /  VERIFICAR  /  REVERTER"),
+		"",
+		core,
+		muted.Render(fmt.Sprintf("OPCIONAIS  %d Matt · %d especializações · %d hook global", len(catalog.Skills()), len(catalog.SpecialtySkills()), len(catalog.Hooks()))),
+		"",
+		menu,
+		muted.Render("↑↓ navegar  ·  Enter abrir  ·  ? atalhos  ·  q sair"),
+	}
+	view := tea.NewView(homeFrame(lines, width, m.height))
+	view.AltScreen = true
+	return view
+}
+
+func homeFrame(lines []string, width, height int) string {
+	content := strings.Join(lines, "\n")
+	rows := strings.Split(content, "\n")
+	if len(rows) > height {
+		rows = rows[:height]
+	}
+	for i, line := range rows {
+		rows[i] = ansi.Truncate(line, width, "…")
+	}
+	return strings.Join(rows, "\n")
 }
 
 func showHome(in io.Reader, out io.Writer, home string) (string, error) {
@@ -196,4 +281,29 @@ func showHome(in io.Reader, out io.Writer, home string) (string, error) {
 		return "", err
 	}
 	return model.(homeModel).choice, nil
+}
+
+func showAccessibleHome(in io.Reader, out io.Writer) (string, error) {
+	scanner := bufio.NewScanner(in)
+	for {
+		fmt.Fprintf(out, "GEX / DEV KIT\nCore obrigatório: %d skills. Matt e especializações opcionais; hook global só por escolha.\nEscolha uma ação:\n", len(catalog.CoreSkills()))
+		for i, action := range homeActions {
+			fmt.Fprintf(out, "%d. %s — %s\n", i+1, action.title, action.description)
+		}
+		fmt.Fprint(out, "Ação (0/q/cancel para sair): ")
+		if !scanner.Scan() {
+			if err := scanner.Err(); err != nil {
+				return "", err
+			}
+			return "exit", nil
+		}
+		choice := strings.ToLower(strings.TrimSpace(scanner.Text()))
+		if choice == "0" || choice == "q" || choice == "cancel" {
+			return "exit", nil
+		}
+		if index, err := strconv.Atoi(choice); err == nil && index > 0 && index <= len(homeActions) {
+			return homeActions[index-1].name, nil
+		}
+		fmt.Fprintln(out, "Ação inválida.")
+	}
 }
