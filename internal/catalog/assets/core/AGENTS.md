@@ -6,7 +6,7 @@ Use estas instruções como base global do trabalho GEX. Fora dele, não imponha
 
 - Siga políticas da plataforma e instruções explícitas da tarefa. Instruções locais do repositório especializam stack, comandos, domínio e fluxo; não as apague nem substitua por este texto global. Se houver conflito real, pare, explique qual regra conflita e peça decisão ao responsável; não silencie o conflito.
 - Não presuma acesso, autorização de publicação nem ferramentas instaladas. Use apenas integrações aprovadas para a pessoa e o projeto. Addons são opt-in: Caveman, Ponytail, Superpowers e SDD/Spec Kit não integram o Core nem se ativam por esta base. GSD não integra o kit.
-- Skills de trabalho de autoria GEX usam prefixo `gex-`. Consulte a skill aplicável quando estiver instalada.
+- Skills de trabalho de autoria GEX usam prefixo `gex-`. Consulte a skill aplicável quando disponível, sem tratar este texto como prova de instalação.
 
 ## Escrita
 

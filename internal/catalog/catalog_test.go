@@ -67,7 +67,7 @@ func TestCoreAlwaysIncludesSevenSkillsInBothAgents(t *testing.T) {
 		}
 	}
 	for _, file := range files {
-		if strings.Contains(file.Path, "/tdd/") || strings.Contains(file.Path, "/gex-buygoods-api/") || strings.Contains(file.Path, "/gex-pagamerican-api/") || strings.Contains(file.Path, "/gex-clickbank-api/") || strings.Contains(file.Path, "/gex-local-spark-tests/") || strings.Contains(file.Path, "hooks.json") || strings.Contains(file.Path, "settings.json") {
+		if strings.Contains(file.Path, "/tdd/") || strings.Contains(file.Path, "hooks.json") || strings.Contains(file.Path, "settings.json") || slices.ContainsFunc(SpecialtySkills(), func(name string) bool { return strings.Contains(file.Path, "/"+name+"/") }) {
 			t.Fatalf("opcional instalado sem seleção: %s", file.Path)
 		}
 	}
@@ -75,19 +75,26 @@ func TestCoreAlwaysIncludesSevenSkillsInBothAgents(t *testing.T) {
 
 func TestSelectedSpecialtyCopiesCompletePackOnlyWhenSelected(t *testing.T) {
 	packs := map[string]string{
-		"gex-buygoods-api":      "scripts/metadata.py",
-		"gex-clickbank-api":     "scripts/quickstats.py",
-		"gex-local-spark-tests": "",
-		"gex-pagamerican-api":   "scripts/metadata.py",
+		"gex-buygoods-api":             "scripts/metadata.py",
+		"gex-canonical-prod-readiness": "",
+		"gex-clickbank-api":            "scripts/quickstats.py",
+		"gex-design-system":            "",
+		"gex-gateway-audit":            "",
+		"gex-hub-design-system":        "",
+		"gex-hub-gold-refresh-prod":    "",
+		"gex-local-spark-tests":        "",
+		"gex-pagamerican-api":          "scripts/metadata.py",
+		"gex-pr-review":                "",
 	}
-	if !slices.Equal(SpecialtySkills(), []string{"gex-buygoods-api", "gex-clickbank-api", "gex-local-spark-tests", "gex-pagamerican-api"}) {
+	if !slices.Equal(SpecialtySkills(), []string{"gex-buygoods-api", "gex-canonical-prod-readiness", "gex-clickbank-api", "gex-design-system", "gex-gateway-audit", "gex-hub-design-system", "gex-hub-gold-refresh-prod", "gex-local-spark-tests", "gex-pagamerican-api", "gex-pr-review"}) {
 		t.Fatalf("especializações inesperadas: %v", SpecialtySkills())
 	}
 	for name, script := range packs {
 		if SpecialtyDescription(name) == "" || SkillDescription(name) == "" {
 			t.Fatalf("especialização sem descrição: %s", name)
 		}
-		files, err := Build(t.TempDir(), "", []string{name}, nil)
+		specialty, _ := SpecialtyByName(name)
+		files, err := Build(t.TempDir(), "", append([]string{name}, specialty.Requires...), nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -102,7 +109,7 @@ func TestSelectedSpecialtyCopiesCompletePackOnlyWhenSelected(t *testing.T) {
 		}
 		for _, file := range files {
 			for other := range packs {
-				if other != name && strings.Contains(file.Path, "/"+other+"/") {
+				if other != name && !slices.Contains(specialty.Requires, other) && strings.Contains(file.Path, "/"+other+"/") {
 					t.Fatalf("especialização não escolhida: %s", file.Path)
 				}
 			}
@@ -278,6 +285,73 @@ func TestBuildRejectsSymlinkedSettings(t *testing.T) {
 	}
 	if _, err := Build(home, "", nil, nil); err == nil {
 		t.Fatal("link simbólico aceito")
+	}
+}
+
+func TestRetroIsInstallableOnlyWithWritingForAgents(t *testing.T) {
+	if len(Skills()) != 18 || !slices.Contains(Skills(), "retro") {
+		t.Fatalf("catálogo Matt inesperado: %d skills", len(Skills()))
+	}
+	if !strings.Contains(SkillDescription("retro"), "invocação explícita") {
+		t.Fatalf("descrição de retro sem aviso de logs: %s", SkillDescription("retro"))
+	}
+	if err := ValidateSelection([]string{"retro"}, nil); err == nil || !strings.Contains(err.Error(), "writing-for-agents") {
+		t.Fatalf("retro aceita sem writing-for-agents: %v", err)
+	}
+	if err := ValidateEngineeringSelection([]string{"retro"}); err != nil {
+		t.Fatalf("retro rejeitada na etapa de engenharia: %v", err)
+	}
+	files, err := Build(t.TempDir(), "", []string{"retro", "writing-for-agents"}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lookup(t, files, ".claude/skills/retro/SKILL.md")
+	lookup(t, files, ".agents/skills/retro/agents/openai.yaml")
+}
+
+func TestReferencedSkillsListsElevenEntriesAtPinnedRevision(t *testing.T) {
+	refs := ReferencedSkills()
+	if len(refs) != 11 {
+		t.Fatalf("referências inesperadas: %d", len(refs))
+	}
+	for _, name := range []string{"wizard", "to-spec", "to-tickets", "triage", "wayfinder", "implement"} {
+		var found bool
+		for _, ref := range refs {
+			if ref.Name == name {
+				found = true
+				if !strings.HasPrefix(ref.Source, "https://github.com/mattpocock/skills/tree/"+MattRevision+"/skills/engineering/") {
+					t.Fatalf("referência sem commit fixado: %s", ref.Source)
+				}
+			}
+		}
+		if !found {
+			t.Fatalf("referência ausente: %s", name)
+		}
+	}
+}
+
+func TestStableBinaryAndBinaryFileUseStablePath(t *testing.T) {
+	home := t.TempDir()
+	executable := filepath.Join(t.TempDir(), "gex-dev-kit")
+	if err := os.WriteFile(executable, []byte("binary"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	file, err := BinaryFile(executable)
+	if err != nil {
+		t.Fatal(err)
+	}
+	name := catalogBinaryName()
+	if file.Path != ".local/share/gex-dev-kit/bin/"+name || file.Mode != 0755 || string(file.Data) != "binary" {
+		t.Fatalf("binário estável inesperado: %+v", file)
+	}
+	if StableBinary(home) != filepath.Join(home, ".local", "share", "gex-dev-kit", "bin", name) {
+		t.Fatalf("caminho estável inesperado: %s", StableBinary(home))
+	}
+	if _, err := BinaryFile(""); err == nil {
+		t.Fatal("executável vazio aceito")
+	}
+	if _, err := BinaryFile(filepath.Join(t.TempDir(), "ausente")); err == nil {
+		t.Fatal("executável inexistente aceito")
 	}
 }
 

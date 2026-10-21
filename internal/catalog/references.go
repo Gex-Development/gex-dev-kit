@@ -13,6 +13,12 @@ func ReferencedSkills() []CatalogReference {
 		{"setup-matt-pocock-skills", "somente referência", "Configura tracker, labels e instruções do projeto; exige decisão e autorização por repositório.", matt + "setup-matt-pocock-skills"},
 		{"implement-spec", "somente referência", "Depende de spec, tickets, tracker e fluxo de PR do autor; não adaptada ao GEX.", matt + "implement-spec"},
 		{"ask-matt", "somente referência", "Roteador pessoal presume catálogo e comandos completos do autor.", matt + "ask-matt"},
+		{"wizard", "somente referência", "Gera script que grava segredos em .env e no GitHub; invocável pelo modelo sem pedido.", matt + "wizard"},
+		{"to-spec", "somente referência", "Publica spec no tracker configurado por repositório.", matt + "to-spec"},
+		{"to-tickets", "somente referência", "Cria issues e labels no tracker configurado por repositório.", matt + "to-tickets"},
+		{"triage", "somente referência", "Age no tracker e marca comentários como gerados por IA, em conflito com a regra de autoria GEX.", matt + "triage"},
+		{"wayfinder", "somente referência", "Publica no tracker e faz push de branches sem pedido.", matt + "wayfinder"},
+		{"implement", "somente referência", "Faz commit automaticamente ao final.", matt + "implement"},
 		{"impeccable", "por função", "Skill externa de UI envolve launcher, hooks e telemetria opt-out; não instalada.", "https://github.com/pbakaus/impeccable/tree/dad8dbb3aac21ad1fa236c110315ef4abece23e8"},
 		{"security-audit", "por função", "Auditoria externa exige pedido explícito e sandbox isolado; não instalada.", "https://github.com/cloudflare/security-audit-skill/tree/c1c8a8c1471069fb0e188eeaff69b8e8db6564a8/skills/security-audit"},
 	}

@@ -31,13 +31,6 @@ var coreSkills = []string{
 	"gex-preparar-pr", "gex-regras-de-negocio", "gex-revisar-pr", "gex-verificar-mudanca",
 }
 
-var specialtyDescriptions = map[string]string{
-	"gex-buygoods-api":      "Autoria GEX; fonte: BuyGoods Public API v2 (admin3.buygoods.com/public/v2). Consulta somente leitura de orders e transactions; autorização e credenciais em runtime.",
-	"gex-clickbank-api":     "Autoria GEX; fonte: documentação oficial ClickBank APIs (support.clickbank.com). Consulta estatísticas agregadas somente leitura; autorização e credenciais em runtime.",
-	"gex-local-spark-tests": "Autoria GEX; fonte: workflow canonical-ci.yml do projeto gex-infra-aws. Roteiro local de testes PySpark/Iceberg.",
-	"gex-pagamerican-api":   "Autoria GEX; fonte: PagAmerican Data API v1 (external-api-service.pagamerican.app/api/v1). Consulta metadados por dia somente leitura; autorização e credenciais em runtime.",
-}
-
 func MattSource(name string) string {
 	if _, ok := skillDescriptions[name]; !ok {
 		return ""
@@ -64,6 +57,7 @@ var skillDescriptions = map[string]string{
 	"domain-modeling":               "Glossário e decisões de domínio.",
 	"improve-codebase-architecture": "Análise de arquitetura e relatório HTML.",
 	"research":                      "Pesquisa técnica com fontes registradas.",
+	"retro":                         "Retrospectiva de sessão; lê logs locais desta máquina só por invocação explícita e só sugere mudanças.",
 	"grill-with-docs":               "Entrevista com documentação de domínio.",
 	"grilling":                      "Entrevista para decisões de produto e arquitetura.",
 	"grill-me":                      "Atalho para entrevistas com grilling.",
@@ -78,6 +72,7 @@ var skillDependencies = map[string][]string{
 	"grill-me":                      {"grilling"},
 	"grill-with-docs":               {"grilling", "domain-modeling"},
 	"improve-codebase-architecture": {"codebase-design", "grilling", "domain-modeling"},
+	"retro":                         {"writing-for-agents"},
 }
 
 func Skills() []string {
@@ -92,22 +87,26 @@ func Skills() []string {
 func CoreSkills() []string { return slices.Clone(coreSkills) }
 
 func SpecialtySkills() []string {
-	names := make([]string, 0, len(specialtyDescriptions))
-	for name := range specialtyDescriptions {
-		names = append(names, name)
+	specialties := Specialties()
+	names := make([]string, 0, len(specialties))
+	for _, specialty := range specialties {
+		names = append(names, specialty.Name)
 	}
 	slices.Sort(names)
 	return names
 }
 
-func SpecialtyDescription(name string) string { return specialtyDescriptions[name] }
+func SpecialtyDescription(name string) string {
+	specialty, _ := SpecialtyByName(name)
+	return specialty.Description
+}
 
 func SkillDescription(name string) string {
 	description := skillDescriptions[name]
 	if description == "" {
-		return SpecialtyDescription(name)
+		description = SpecialtyDescription(name)
 	}
-	if dependencies := skillDependencies[name]; len(dependencies) != 0 {
+	if dependencies := catalogRequirements(name); len(dependencies) != 0 {
 		description += " Requer seleção conjunta: " + strings.Join(dependencies, ", ") + "."
 	}
 	return description
@@ -133,16 +132,13 @@ func ValidateEngineeringSelection(skills []string) error {
 func validateSelection(skills, hooks []string, deferProductivity bool) error {
 	for _, name := range skills {
 		if _, matt := skillDescriptions[name]; !matt {
-			if _, specialty := specialtyDescriptions[name]; !specialty {
+			if _, specialty := SpecialtyByName(name); !specialty {
 				return fmt.Errorf("skill indisponível: %s", name)
 			}
 		}
 	}
-	for name, dependencies := range skillDependencies {
-		if !slices.Contains(skills, name) {
-			continue
-		}
-		for _, dependency := range dependencies {
+	for _, name := range skills {
+		for _, dependency := range catalogRequirements(name) {
 			if !slices.Contains(skills, dependency) && !(deferProductivity && skillGroup(dependency) == "productivity") {
 				return fmt.Errorf("%s requer selecionar %s", name, dependency)
 			}
@@ -194,7 +190,7 @@ func Build(home, executable string, skills, hooks []string) ([]File, error) {
 			continue
 		}
 		seen[name] = true
-		if _, specialty := specialtyDescriptions[name]; specialty {
+		if _, specialty := SpecialtyByName(name); specialty {
 			if err := appendPack(&files, "assets/specialties/"+name, name); err != nil {
 				return nil, err
 			}
@@ -228,19 +224,12 @@ func Build(home, executable string, skills, hooks []string) ([]File, error) {
 		}
 	}
 	if len(hooks) != 0 {
-		if executable == "" {
-			return nil, errors.New("executável obrigatório para hook")
-		}
-		binary, err := os.ReadFile(executable)
+		binary, err := BinaryFile(executable)
 		if err != nil {
-			return nil, fmt.Errorf("não foi possível ler executável: %w", err)
+			return nil, err
 		}
-		name := "gex-dev-kit"
-		if runtime.GOOS == "windows" {
-			name += ".exe"
-		}
-		stable := filepath.Join(home, ".local", "share", "gex-dev-kit", "bin", name)
-		files = append(files, File{Path: filepath.ToSlash(filepath.Join(".local", "share", "gex-dev-kit", "bin", name)), Data: binary, Mode: 0755})
+		stable := StableBinary(home)
+		files = append(files, binary)
 		for _, dest := range []string{".claude/settings.json", ".codex/hooks.json"} {
 			previous, err := readHome(home, dest)
 			if err != nil {
@@ -277,6 +266,36 @@ func appendPack(files *[]File, base, name string) error {
 		}
 		return nil
 	})
+}
+
+func StableBinary(home string) string {
+	return filepath.Join(home, ".local", "share", "gex-dev-kit", "bin", catalogBinaryName())
+}
+
+func BinaryFile(executable string) (File, error) {
+	if executable == "" {
+		return File{}, errors.New("executável obrigatório para hook")
+	}
+	binary, err := os.ReadFile(executable)
+	if err != nil {
+		return File{}, fmt.Errorf("não foi possível ler executável: %w", err)
+	}
+	return File{Path: path.Join(".local", "share", "gex-dev-kit", "bin", catalogBinaryName()), Data: binary, Mode: 0755}, nil
+}
+
+func catalogBinaryName() string {
+	if runtime.GOOS == "windows" {
+		return "gex-dev-kit.exe"
+	}
+	return "gex-dev-kit"
+}
+
+func catalogRequirements(name string) []string {
+	requires := slices.Clone(skillDependencies[name])
+	if specialty, ok := SpecialtyByName(name); ok {
+		requires = append(requires, specialty.Requires...)
+	}
+	return requires
 }
 
 func readHome(home, relative string) ([]byte, error) {
