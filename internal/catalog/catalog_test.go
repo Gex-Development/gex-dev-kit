@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -42,6 +43,112 @@ func TestCorePreservesGlobalInstructionsAndDoesNotInstallOptional(t *testing.T) 
 		if strings.Contains(file.Path, "/tdd/") || strings.Contains(file.Path, "hooks.json") || strings.Contains(file.Path, "settings.json") {
 			t.Fatalf("opcional instalado sem seleção: %s", file.Path)
 		}
+	}
+}
+
+func TestCoreAlwaysIncludesSevenSkillsInBothAgents(t *testing.T) {
+	want := []string{
+		"gex-abrir-issue", "gex-auto-revisao", "gex-fluxo-desenvolvimento",
+		"gex-preparar-pr", "gex-regras-de-negocio", "gex-revisar-pr", "gex-verificar-mudanca",
+	}
+	if !slices.Equal(CoreSkills(), want) {
+		t.Fatalf("lista Core inesperada: %v", CoreSkills())
+	}
+	files, err := Build(t.TempDir(), "", nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range want {
+		for _, prefix := range []string{".claude/skills/", ".agents/skills/"} {
+			file := lookup(t, files, prefix+name+"/SKILL.md")
+			if !strings.Contains(string(file.Data), "name: "+name) {
+				t.Fatalf("skill Core incompleta: %s", file.Path)
+			}
+		}
+	}
+	for _, file := range files {
+		if strings.Contains(file.Path, "/tdd/") || strings.Contains(file.Path, "/gex-buygoods-api/") || strings.Contains(file.Path, "/gex-pagamerican-api/") || strings.Contains(file.Path, "/gex-clickbank-api/") || strings.Contains(file.Path, "/gex-local-spark-tests/") || strings.Contains(file.Path, "hooks.json") || strings.Contains(file.Path, "settings.json") {
+			t.Fatalf("opcional instalado sem seleção: %s", file.Path)
+		}
+	}
+}
+
+func TestSelectedSpecialtyCopiesCompletePackOnlyWhenSelected(t *testing.T) {
+	packs := map[string]string{
+		"gex-buygoods-api":      "scripts/metadata.py",
+		"gex-clickbank-api":     "scripts/quickstats.py",
+		"gex-local-spark-tests": "",
+		"gex-pagamerican-api":   "scripts/metadata.py",
+	}
+	if !slices.Equal(SpecialtySkills(), []string{"gex-buygoods-api", "gex-clickbank-api", "gex-local-spark-tests", "gex-pagamerican-api"}) {
+		t.Fatalf("especializações inesperadas: %v", SpecialtySkills())
+	}
+	for name, script := range packs {
+		if SpecialtyDescription(name) == "" || SkillDescription(name) == "" {
+			t.Fatalf("especialização sem descrição: %s", name)
+		}
+		files, err := Build(t.TempDir(), "", []string{name}, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, prefix := range []string{".claude/skills/", ".agents/skills/"} {
+			skill := lookup(t, files, prefix+name+"/SKILL.md")
+			if !strings.Contains(string(skill.Data), "name: "+name) {
+				t.Fatalf("especialização incompleta: %s", skill.Path)
+			}
+			if script != "" && len(lookup(t, files, prefix+name+"/"+script).Data) == 0 {
+				t.Fatalf("script obrigatório ausente: %s", name)
+			}
+		}
+		for _, file := range files {
+			for other := range packs {
+				if other != name && strings.Contains(file.Path, "/"+other+"/") {
+					t.Fatalf("especialização não escolhida: %s", file.Path)
+				}
+			}
+		}
+	}
+}
+
+func TestUnauditedHookCandidatesStayUnavailable(t *testing.T) {
+	for _, name := range []string{"smart-commit", "tdd-gate", "gex-pre-push", "gex-sensitive-action-warning"} {
+		if err := ValidateSelection(nil, []string{name}); err == nil {
+			t.Fatalf("hook sem instalador validado aceito: %s", name)
+		}
+	}
+}
+
+func TestReferenceCatalogDoesNotPromiseInstallation(t *testing.T) {
+	for _, entry := range append(ReferencedSkills(), HookCandidates()...) {
+		if entry.Name == "" || entry.Status == "" || entry.Reason == "" || entry.Source == "" {
+			t.Fatalf("referência incompleta: %+v", entry)
+		}
+		if entry.Status != "por função" && entry.Status != "somente referência" {
+			t.Fatalf("status não instalável inesperado: %+v", entry)
+		}
+		if err := ValidateSelection([]string{entry.Name}, nil); err == nil {
+			t.Fatalf("referência aceita como skill instalável: %s", entry.Name)
+		}
+		if err := ValidateSelection(nil, []string{entry.Name}); err == nil {
+			t.Fatalf("referência aceita como hook instalável: %s", entry.Name)
+		}
+	}
+}
+
+func TestAllThirdPartyHookTemplatesListedWithoutInstallability(t *testing.T) {
+	count := map[string]int{}
+	for _, entry := range HookCandidates() {
+		for _, prefix := range []string{"claude/", "codex/"} {
+			if strings.HasPrefix(entry.Name, prefix) {
+				count[prefix]++
+				if !strings.Contains(entry.Source, "/tree/") || entry.Status != "somente referência" {
+					t.Fatalf("template sem fonte fixada ou status correto: %+v", entry)
+				}
+			}
+		}
+	}
+	if count["claude/"] != 13 || count["codex/"] != 12 {
+		t.Fatalf("inventário incompleto: %v", count)
 	}
 }
 
@@ -180,12 +287,12 @@ func TestCoreRepeatedBuildDoesNotDuplicate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, path := range []string{".claude/CLAUDE.md", ".codex/AGENTS.md"} {
-		file := lookup(t, first, path)
+	for _, file := range first {
+		path := file.Path
 		if err := os.MkdirAll(filepath.Dir(filepath.Join(home, path)), 0700); err != nil {
 			t.Fatal(err)
 		}
-		if err := os.WriteFile(filepath.Join(home, path), file.Data, 0600); err != nil {
+		if err := os.WriteFile(filepath.Join(home, path), file.Data, file.Mode); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -193,9 +300,12 @@ func TestCoreRepeatedBuildDoesNotDuplicate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, path := range []string{".claude/CLAUDE.md", ".codex/AGENTS.md"} {
-		if string(lookup(t, second, path).Data) != string(lookup(t, first, path).Data) {
-			t.Fatalf("duplicação em %s", path)
+	if len(second) != len(first) {
+		t.Fatalf("manifest mudou sem seleção: %d != %d", len(second), len(first))
+	}
+	for _, file := range first {
+		if !bytes.Equal(lookup(t, second, file.Path).Data, file.Data) {
+			t.Fatalf("duplicação em %s", file.Path)
 		}
 	}
 }

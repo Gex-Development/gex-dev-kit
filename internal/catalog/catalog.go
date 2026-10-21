@@ -15,7 +15,7 @@ import (
 	"strings"
 )
 
-//go:embed assets/core assets/matt
+//go:embed assets/core assets/matt assets/specialties
 var content embed.FS
 
 type File struct {
@@ -25,6 +25,18 @@ type File struct {
 }
 
 const MattRevision = "5beb35b040e3de97e54fa9e386d7e42d15c295c2"
+
+var coreSkills = []string{
+	"gex-abrir-issue", "gex-auto-revisao", "gex-fluxo-desenvolvimento",
+	"gex-preparar-pr", "gex-regras-de-negocio", "gex-revisar-pr", "gex-verificar-mudanca",
+}
+
+var specialtyDescriptions = map[string]string{
+	"gex-buygoods-api":      "Autoria GEX; fonte: BuyGoods Public API v2 (admin3.buygoods.com/public/v2). Consulta somente leitura de orders e transactions; autorização e credenciais em runtime.",
+	"gex-clickbank-api":     "Autoria GEX; fonte: documentação oficial ClickBank APIs (support.clickbank.com). Consulta estatísticas agregadas somente leitura; autorização e credenciais em runtime.",
+	"gex-local-spark-tests": "Autoria GEX; fonte: workflow canonical-ci.yml do projeto gex-infra-aws. Roteiro local de testes PySpark/Iceberg.",
+	"gex-pagamerican-api":   "Autoria GEX; fonte: PagAmerican Data API v1 (external-api-service.pagamerican.app/api/v1). Consulta metadados por dia somente leitura; autorização e credenciais em runtime.",
+}
 
 func MattSource(name string) string {
 	if _, ok := skillDescriptions[name]; !ok {
@@ -77,8 +89,24 @@ func Skills() []string {
 	return names
 }
 
+func CoreSkills() []string { return slices.Clone(coreSkills) }
+
+func SpecialtySkills() []string {
+	names := make([]string, 0, len(specialtyDescriptions))
+	for name := range specialtyDescriptions {
+		names = append(names, name)
+	}
+	slices.Sort(names)
+	return names
+}
+
+func SpecialtyDescription(name string) string { return specialtyDescriptions[name] }
+
 func SkillDescription(name string) string {
 	description := skillDescriptions[name]
+	if description == "" {
+		return SpecialtyDescription(name)
+	}
 	if dependencies := skillDependencies[name]; len(dependencies) != 0 {
 		description += " Requer seleção conjunta: " + strings.Join(dependencies, ", ") + "."
 	}
@@ -104,8 +132,10 @@ func ValidateEngineeringSelection(skills []string) error {
 
 func validateSelection(skills, hooks []string, deferProductivity bool) error {
 	for _, name := range skills {
-		if _, ok := skillDescriptions[name]; !ok {
-			return fmt.Errorf("skill indisponível: %s", name)
+		if _, matt := skillDescriptions[name]; !matt {
+			if _, specialty := specialtyDescriptions[name]; !specialty {
+				return fmt.Errorf("skill indisponível: %s", name)
+			}
 		}
 	}
 	for name, dependencies := range skillDependencies {
@@ -149,6 +179,11 @@ func Build(home, executable string, skills, hooks []string) ([]File, error) {
 		}
 		files = append(files, File{Path: dest, Data: merged, Mode: 0600})
 	}
+	for _, name := range coreSkills {
+		if err := appendPack(&files, "assets/core/skills/"+name, name); err != nil {
+			return nil, err
+		}
+	}
 	seen := make(map[string]bool)
 	license, err := content.ReadFile("assets/matt/LICENSE")
 	if err != nil {
@@ -159,6 +194,12 @@ func Build(home, executable string, skills, hooks []string) ([]File, error) {
 			continue
 		}
 		seen[name] = true
+		if _, specialty := specialtyDescriptions[name]; specialty {
+			if err := appendPack(&files, "assets/specialties/"+name, name); err != nil {
+				return nil, err
+			}
+			continue
+		}
 		base := "assets/matt/skills/" + skillGroup(name) + "/" + name
 		if err := fs.WalkDir(content, base, func(asset string, entry fs.DirEntry, walkErr error) error {
 			if walkErr != nil {
@@ -213,6 +254,29 @@ func Build(home, executable string, skills, hooks []string) ([]File, error) {
 		}
 	}
 	return files, nil
+}
+
+func appendPack(files *[]File, base, name string) error {
+	if _, err := content.ReadFile(base + "/SKILL.md"); err != nil {
+		return fmt.Errorf("skill %s sem SKILL.md: %w", name, err)
+	}
+	return fs.WalkDir(content, base, func(asset string, entry fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if entry.IsDir() {
+			return nil
+		}
+		data, err := content.ReadFile(asset)
+		if err != nil {
+			return err
+		}
+		rel := strings.TrimPrefix(asset, base+"/")
+		for _, dest := range []string{".claude/skills/", ".agents/skills/"} {
+			*files = append(*files, File{Path: dest + name + "/" + rel, Data: data, Mode: 0644})
+		}
+		return nil
+	})
 }
 
 func readHome(home, relative string) ([]byte, error) {
