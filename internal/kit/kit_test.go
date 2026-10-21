@@ -628,3 +628,146 @@ func TestPlanContentsMarksBinaryFiles(t *testing.T) {
 		}
 	}
 }
+
+const kitTestBinPath = ".local/share/gex-dev-kit/bin/gex-dev-kit"
+
+func kitTestBinary(seed byte) []byte {
+	data := make([]byte, 2<<20)
+	for i := range data {
+		data[i] = seed + byte(i*31)
+	}
+	return data
+}
+
+func kitTestBlobNames(t *testing.T, home string) []string {
+	t.Helper()
+	entries, err := os.ReadDir(filepath.Join(home, filepath.FromSlash(blobDir)))
+	if os.IsNotExist(err) {
+		return nil
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+	var names []string
+	for _, e := range entries {
+		names = append(names, e.Name())
+	}
+	return names
+}
+
+func kitTestHistory(t *testing.T, home string) history {
+	t.Helper()
+	root, err := openHome(home)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer root.Close()
+	h, err := readHistory(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return h
+}
+
+func kitTestWriteLegacy(t *testing.T, home, text string) {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Join(home, filepath.FromSlash(historyDir)), 0700); err != nil {
+		t.Fatal(err)
+	}
+	sealed, err := protectHistory([]byte(text))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(home, filepath.FromSlash(historyState)), sealed, 0600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestRepeatedBinaryInstallKeepsStateSmallAndDeduplicatesBlobs(t *testing.T) {
+	home := t.TempDir()
+	a, b := kitTestBinary(1), kitTestBinary(2)
+	for _, bin := range [][]byte{a, b, a, b} {
+		install(t, home, catalog.File{Path: kitTestBinPath, Data: bin, Mode: 0755})
+	}
+	state, err := os.ReadFile(filepath.Join(home, filepath.FromSlash(historyState)))
+	if err != nil || len(state) >= 64<<10 {
+		t.Fatalf("state.json com %d bytes após trocas do executável: %v", len(state), err)
+	}
+	if names := kitTestBlobNames(t, home); len(names) != 2 {
+		t.Fatalf("blobs esperados 2 (deduplicados por hash), obtidos %d: %v", len(names), names)
+	}
+}
+
+func TestSixInstallsPruneOldestBlobsAndKeepDoctorVisibility(t *testing.T) {
+	home := t.TempDir()
+	kitTestWrite(t, filepath.Join(home, "a.txt"), "original", 0600)
+	install(t, home, file("a.txt", "v1", 0600), file("only1.txt", "x", 0600))
+	for i := 2; i <= 6; i++ {
+		install(t, home, file("a.txt", "v"+string(rune('0'+i)), 0600))
+	}
+	names := kitTestBlobNames(t, home)
+	if len(names) != 5 {
+		t.Fatalf("esperados 5 blobs das gravações 2 a 6, obtidos %d: %v", len(names), names)
+	}
+	for _, name := range names {
+		if name == digest([]byte("original")) {
+			t.Fatal("blob da 1ª gravação não foi podado")
+		}
+	}
+	h := kitTestHistory(t, home)
+	if len(h.Records) != 6 || !h.Records[0].Pruned || h.Records[0].Entries[0].BeforeHash != digest([]byte("original")) {
+		t.Fatalf("hash da 1ª gravação não preservado: %+v", h.Records[0])
+	}
+	statuses, err := Doctor(home)
+	if s, ok := kitTestStatus(statuses, "only1.txt"); err != nil || !ok || s.State != "ok" {
+		t.Fatalf("doctor não enxerga arquivo da 1ª gravação: %+v %v", statuses, err)
+	}
+}
+
+func TestRollbackRefusesPrunedRecordWithoutTouchingFiles(t *testing.T) {
+	home := t.TempDir()
+	kitTestWrite(t, filepath.Join(home, "a.txt"), "original", 0600)
+	install(t, home, file("a.txt", "v1", 0600), file("only1.txt", "x", 0600))
+	for i := 2; i <= 6; i++ {
+		install(t, home, file("a.txt", "v"+string(rune('0'+i)), 0600))
+	}
+	for i := 0; i < 5; i++ {
+		if _, err := Rollback(home); err != nil {
+			t.Fatalf("rollback %d das 5 gravações mais recentes: %v", i+1, err)
+		}
+	}
+	if _, err := RollbackPreview(home); !errors.Is(err, ErrPruned) {
+		t.Fatalf("prévia da gravação podada sem ErrPruned: %v", err)
+	}
+	if _, err := Rollback(home); !errors.Is(err, ErrPruned) {
+		t.Fatalf("rollback da gravação podada sem ErrPruned: %v", err)
+	}
+	got, err := os.ReadFile(filepath.Join(home, "a.txt"))
+	if err != nil || string(got) != "v1" {
+		t.Fatalf("arquivo alterado pela recusa: %q %v", got, err)
+	}
+}
+
+func TestLegacyV02HistoryRollsBackAfterMigration(t *testing.T) {
+	home := t.TempDir()
+	kitTestWrite(t, filepath.Join(home, "a.txt"), "new", 0600)
+	kitTestWriteLegacy(t, home, `{"records":[{"id":"legado","entries":[{"path":"a.txt","before":"b2xk","before_mode":384,"existed":true,"after":"bmV3","after_mode":384}]}]}`)
+	install(t, home, file("b.txt", "novo", 0600))
+	h := kitTestHistory(t, home)
+	if len(h.Records) != 2 || h.Records[0].Entries[0].BeforeHash != digest([]byte("old")) {
+		t.Fatalf("migração não converteu o registro v0.2.0: %+v", h.Records)
+	}
+	if _, err := os.Stat(filepath.Join(home, filepath.FromSlash(blobPath(digest([]byte("old")))))); err != nil {
+		t.Fatalf("blob do conteúdo legado não foi gravado: %v", err)
+	}
+	if id, err := Rollback(home); err != nil || id == "legado" {
+		t.Fatalf("primeiro rollback deveria reverter b.txt: %q %v", id, err)
+	}
+	if id, err := Rollback(home); err != nil || id != "legado" {
+		t.Fatalf("segundo rollback deveria reverter o registro legado: %q %v", id, err)
+	}
+	got, err := os.ReadFile(filepath.Join(home, "a.txt"))
+	if err != nil || string(got) != "old" {
+		t.Fatalf("conteúdo legado não restaurado: %q %v", got, err)
+	}
+}

@@ -48,12 +48,18 @@ type Status struct {
 }
 
 type entry struct {
-	Path       string      `json:"path"`
-	Before     []byte      `json:"before,omitempty"`
-	BeforeMode fs.FileMode `json:"before_mode,omitempty"`
-	Existed    bool        `json:"existed"`
-	After      []byte      `json:"after"`
-	AfterMode  fs.FileMode `json:"after_mode"`
+	Path         string      `json:"path"`
+	Existed      bool        `json:"existed"`
+	BeforeMode   fs.FileMode `json:"before_mode,omitempty"`
+	BeforeHash   string      `json:"before_hash,omitempty"`
+	BeforeSize   int         `json:"before_size,omitempty"`
+	AfterMode    fs.FileMode `json:"after_mode"`
+	AfterHash    string      `json:"after_hash,omitempty"`
+	AfterSize    int         `json:"after_size,omitempty"`
+	LegacyBefore []byte      `json:"before,omitempty"`
+	LegacyAfter  []byte      `json:"after,omitempty"`
+	Before       []byte      `json:"-"`
+	After        []byte      `json:"-"`
 }
 
 type record struct {
@@ -62,6 +68,7 @@ type record struct {
 	Pending     bool    `json:"pending,omitempty"`
 	RollingBack bool    `json:"rolling_back,omitempty"`
 	RolledBack  bool    `json:"rolled_back,omitempty"`
+	Pruned      bool    `json:"pruned,omitempty"`
 }
 
 type history struct {
@@ -223,7 +230,7 @@ func Preview(home string, files []catalog.File) (Plan, error) {
 			continue
 		}
 		saved := before
-		plan.entries = append(plan.entries, entry{Path: file.Path, Before: saved, BeforeMode: mode, Existed: existed, After: after, AfterMode: desiredMode})
+		plan.entries = append(plan.entries, blobNewEntry(file.Path, saved, mode, existed, after, desiredMode))
 		change := Change{Path: file.Path, Action: "criar", AfterHash: digest(after)}
 		if existed {
 			change.Action = "atualizar"
@@ -235,11 +242,11 @@ func Preview(home string, files []catalog.File) (Plan, error) {
 }
 
 func matchesBefore(e entry, data []byte, mode fs.FileMode, exists bool) bool {
-	return exists == e.Existed && (!exists || digest(data) == digest(e.Before) && sameMode(mode, e.BeforeMode))
+	return exists == e.Existed && (!exists || digest(data) == e.BeforeHash && sameMode(mode, e.BeforeMode))
 }
 
 func matchesAfter(e entry, data []byte, mode fs.FileMode, exists bool) bool {
-	return exists && digest(data) == digest(e.After) && sameMode(mode, e.AfterMode)
+	return exists && digest(data) == e.AfterHash && sameMode(mode, e.AfterMode)
 }
 
 func rollbackMatches(e entry, data []byte, mode fs.FileMode, exists bool, interrupted bool) bool {
@@ -273,6 +280,7 @@ func readHistory(root *os.Root) (history, error) {
 	if err := json.Unmarshal(data, &h); err != nil {
 		return history{}, err
 	}
+	blobMigrate(&h)
 	return h, nil
 }
 
@@ -350,6 +358,15 @@ func saveHistory(root *os.Root, h history) error {
 	}
 	if info == nil || !privateMode(info.Mode(), 0700) {
 		return errors.New("histórico sem permissão privada")
+	}
+	for _, r := range h.Records {
+		for _, e := range r.Entries {
+			if e.Existed && e.Before != nil {
+				if err := blobPut(root, e.Before); err != nil {
+					return err
+				}
+			}
+		}
 	}
 	data, err := json.Marshal(h)
 	if err != nil {
@@ -447,6 +464,9 @@ func Apply(plan Plan) (string, error) {
 	if err := saveHistory(root, h); err != nil {
 		return "", fmt.Errorf("instalação concluída, histórico pendente; execute rollback: %w", err)
 	}
+	if err := blobRetain(root, &h); err != nil {
+		return "", fmt.Errorf("instalação concluída; limpeza do histórico falhou: %w", err)
+	}
 	return id, nil
 }
 
@@ -502,11 +522,18 @@ func RollbackPreview(home string) (RollbackPlan, error) {
 		if err != nil {
 			return RollbackPlan{}, err
 		}
-		item := RollbackEntry{Path: e.Path, Action: "restaurar", Current: data, Restore: e.Before, Binary: isStableBinary(e.Path) || binaryContent(data) || binaryContent(e.Before)}
+		item := RollbackEntry{Path: e.Path, Action: "restaurar", Current: data, Binary: isStableBinary(e.Path) || binaryContent(data)}
 		if matchesBefore(e, data, mode, exists) {
 			item.Action = "inalterado"
 		} else if !e.Existed {
-			item.Action, item.Restore = "remover", nil
+			item.Action = "remover"
+		} else {
+			before, err := blobEntryBefore(root, e)
+			if err != nil {
+				return RollbackPlan{}, fmt.Errorf("%s: %w", e.Path, err)
+			}
+			item.Restore = before
+			item.Binary = item.Binary || binaryContent(before)
 		}
 		plan.Entries = append(plan.Entries, item)
 	}
@@ -539,6 +566,10 @@ func Rollback(home string) (string, error) {
 	if len(conflicts) > 0 {
 		return "", fmt.Errorf("%w: %s", ErrConflict, strings.Join(conflicts, ", "))
 	}
+	restores, err := blobRestoreSet(root, *r)
+	if err != nil {
+		return "", err
+	}
 	r.RollingBack = true
 	if err := saveHistory(root, h); err != nil {
 		return "", err
@@ -552,7 +583,7 @@ func Rollback(home string) (string, error) {
 			continue
 		}
 		if e.Existed {
-			if err := replace(root, e.Path, e.Before, e.BeforeMode); err != nil {
+			if err := replace(root, e.Path, restores[e.Path], e.BeforeMode); err != nil {
 				return "", err
 			}
 		} else if err := root.Remove(e.Path); err != nil {
@@ -561,10 +592,14 @@ func Rollback(home string) (string, error) {
 	}
 	r.RolledBack = true
 	r.RollingBack = false
+	id := r.ID
 	if err := saveHistory(root, h); err != nil {
 		return "", err
 	}
-	return r.ID, nil
+	if err := blobRetain(root, &h); err != nil {
+		return "", fmt.Errorf("rollback concluído; limpeza do histórico falhou: %w", err)
+	}
+	return id, nil
 }
 
 func Doctor(home string) ([]Status, error) {
@@ -616,7 +651,7 @@ func Doctor(home string) ([]Status, error) {
 		if !exists {
 			s.State = "ausente"
 			s.Detail = "Arquivo instalado ausente."
-		} else if digest(data) != digest(e.After) || !sameMode(mode, e.AfterMode) {
+		} else if digest(data) != e.AfterHash || !sameMode(mode, e.AfterMode) {
 			s.State = "alterado"
 			s.Detail = "Arquivo foi alterado."
 		}
