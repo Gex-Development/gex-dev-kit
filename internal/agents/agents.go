@@ -2,6 +2,7 @@ package agents
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -20,6 +21,17 @@ const (
 	ClaudeVersion = "2.1.306"
 	CodexVersion  = "0.163.0"
 )
+
+const (
+	installTimeout = 10 * time.Minute
+	waitDelay      = 5 * time.Second
+)
+
+var probeTimeout = 5 * time.Second
+
+var errCommandTimeout = errors.New("tempo esgotado")
+
+var errOutputOpen = errors.New("processo filho manteve a saída aberta após o fim do comando")
 
 type Change struct {
 	Name    string
@@ -215,8 +227,16 @@ func installCommand(p product, version string) string {
 	}
 	return "curl -fsSL https://chatgpt.com/codex/install.sh | CODEX_NON_INTERACTIVE=1 sh -s -- --release " + version
 }
+func probeReason(err error) string {
+	if errors.Is(err, errCommandTimeout) {
+		return "não verificado (tempo esgotado)"
+	}
+	return err.Error()
+}
 func observedVersion(home string, p product, path string) (string, error) {
-	output, err := runCommand(home, path, nil, "--version")
+	ctx, cancel := context.WithTimeout(context.Background(), probeTimeout)
+	defer cancel()
+	output, err := runCommand(ctx, home, path, nil, "--version")
 	if err != nil {
 		return "", fmt.Errorf("%s --version: %w", p.name, err)
 	}
@@ -234,17 +254,19 @@ func observedVersion(home string, p product, path string) (string, error) {
 	return match[1], nil
 }
 
-var windowsUserPathReady = func(home, bin string) bool {
-	output, err := runCommand(home, "powershell.exe", nil, "-NoProfile", "-NonInteractive", "-Command", "[Environment]::GetEnvironmentVariable('Path','User')")
+var windowsUserPathReady = func(home, bin string) (bool, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), probeTimeout)
+	defer cancel()
+	output, err := runCommand(ctx, home, "powershell.exe", nil, "-NoProfile", "-NonInteractive", "-Command", "[Environment]::GetEnvironmentVariable('Path','User')")
 	if err != nil {
-		return false
+		return false, err
 	}
 	for _, entry := range filepath.SplitList(strings.TrimSpace(output)) {
 		if samePath(entry, bin) {
-			return true
+			return true, nil
 		}
 	}
-	return false
+	return false, nil
 }
 
 func Preview(home string) ([]Change, error) {
@@ -297,7 +319,7 @@ func Preview(home string) ([]Change, error) {
 				version, e := observedVersion(home, p, target)
 				if e != nil {
 					c.Blocked = true
-					c.Reason = e.Error()
+					c.Reason = probeReason(e)
 				} else if version != r.Current {
 					c.Blocked = true
 					c.Reason = "versão instalada " + version + " difere do histórico " + r.Current + " (possível atualização automática)"
@@ -316,9 +338,16 @@ func Preview(home string) ([]Change, error) {
 				c.Reason = ""
 			}
 		}
-		if runtime.GOOS == "windows" && p.name == "codex" && !c.Blocked && !windowsUserPathReady(home, filepath.Dir(target)) {
-			c.Blocked = true
-			c.Reason = "Codex alteraria PATH do usuário; inclua ~/.local/bin no PATH de usuário antes de instalar"
+		if runtime.GOOS == "windows" && p.name == "codex" && !c.Blocked {
+			ready, probeErr := windowsUserPathReady(home, filepath.Dir(target))
+			switch {
+			case errors.Is(probeErr, errCommandTimeout):
+				c.Blocked = true
+				c.Reason = probeReason(probeErr)
+			case probeErr != nil || !ready:
+				c.Blocked = true
+				c.Reason = "Codex alteraria PATH do usuário; inclua ~/.local/bin no PATH de usuário antes de instalar"
+			}
 		}
 		changes = append(changes, c)
 	}
@@ -337,7 +366,28 @@ func requireLock(home string) (func(), error) {
 	if err := os.Mkdir(lock, 0700); err != nil {
 		return nil, fmt.Errorf("outra atualização ou lock pendente: %w", err)
 	}
-	return func() { _ = os.Remove(lock) }, nil
+	unlock := func() {
+		_ = os.Remove(filepath.Join(lock, "owner.json"))
+		_ = os.Remove(lock)
+	}
+	if err := writeLockOwner(lock); err != nil {
+		unlock()
+		return nil, err
+	}
+	return unlock, nil
+}
+
+type lockOwner struct {
+	PID     int    `json:"pid"`
+	Started string `json:"started"`
+}
+
+func writeLockOwner(lock string) error {
+	b, err := json.Marshal(lockOwner{PID: os.Getpid(), Started: time.Now().Format(time.RFC3339)})
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(filepath.Join(lock, "owner.json"), b, 0600)
 }
 func Apply(home string, changes []Change) error {
 	if err := validHome(home); err != nil {
@@ -446,15 +496,43 @@ func safeEnvironment(home string) []string {
 	return env
 }
 
-var runCommand = func(home, path string, input []byte, args ...string) (string, error) {
-	cmd := exec.Command(path, args...)
+var runCommand = func(ctx context.Context, home, path string, input []byte, args ...string) (string, error) {
+	cmd := exec.CommandContext(ctx, path, args...)
 	cmd.Env = safeEnvironment(home)
 	cmd.Stdin = bytes.NewReader(input)
-	out, err := cmd.Output()
+	cmd.WaitDelay = waitDelay
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	group, err := procNewGroup(cmd)
 	if err != nil {
 		return "", err
 	}
-	return string(out), nil
+	defer group.close()
+	cmd.Cancel = func() error { return group.kill(cmd) }
+	if err = runGroup(cmd, group); err != nil {
+		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			return "", errCommandTimeout
+		}
+		if errors.Is(err, exec.ErrWaitDelay) {
+			return "", errOutputOpen
+		}
+		return "", err
+	}
+	return out.String(), nil
+}
+
+func runGroup(cmd *exec.Cmd, group *procGroup) error {
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	if err := group.adopt(cmd); err != nil {
+		_ = cmd.Process.Kill()
+		_ = cmd.Wait()
+		return err
+	}
+	err := cmd.Wait()
+	_ = group.kill(cmd)
+	return err
 }
 
 func install(home string, p product, version string) error {
@@ -507,7 +585,9 @@ func install(home string, p product, version string) error {
 			args = []string{"-s", "--", "--release", version}
 		}
 	}
-	if _, err = runCommand(home, path, input, args...); err != nil {
+	ctx, cancel := context.WithTimeout(context.Background(), installTimeout)
+	defer cancel()
+	if _, err = runCommand(ctx, home, path, input, args...); err != nil {
 		return fmt.Errorf("instalador oficial: %w", err)
 	}
 	actual, err := observedVersion(home, p, binPath(home, p.name))
