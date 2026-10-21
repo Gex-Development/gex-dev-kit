@@ -96,8 +96,9 @@ func TestInstallPreviewHasNoANSIWithoutColor(t *testing.T) {
 
 func TestHookBlocksInvalidCommitWithoutLeakingInput(t *testing.T) {
 	message := "mensagem confidencial fora do padrão"
+	event := `{"tool_name":"Bash","tool_input":{"command":"git commit -m '` + message + `'"}}`
 	var out, errors bytes.Buffer
-	code := run([]string{"hook", "commit-msg"}, strings.NewReader(message), &out, &errors)
+	code := run([]string{"hook", "commit-msg"}, strings.NewReader(event), &out, &errors)
 	if code != 2 || strings.Contains(errors.String(), message) || out.Len() != 0 {
 		t.Fatalf("hook: exit=%d out=%q err=%q", code, out.String(), errors.String())
 	}
