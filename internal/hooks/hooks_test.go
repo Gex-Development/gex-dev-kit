@@ -1,12 +1,12 @@
 package hooks
 
 import (
-	"encoding/json"
 	"strings"
 	"testing"
 )
 
 func TestCheckGitMessage(t *testing.T) {
+	bom := string(rune(0xFEFF))
 	cases := []struct {
 		name, message string
 		valid         bool
@@ -20,6 +20,16 @@ func TestCheckGitMessage(t *testing.T) {
 		{"primeira linha inválida", "texto solto\n\nfix: correto", false},
 		{"merge incompleto", "Merge ", false},
 		{"revert incompleto", "Revert \"", false},
+		{"fixup com assunto", "fixup! fix: correto", true},
+		{"squash com assunto", "squash! feat: x", true},
+		{"amend com assunto", "amend! docs: x", true},
+		{"fixup sem assunto", "fixup! ", false},
+		{"template com comentário", "fix: x\n\n# Please enter the commit message\n# comentário\n", true},
+		{"linha de tesoura", "feat: x\n# ------------------------ >8 ------------------------\n# diff\n", true},
+		{"linha vazia inicial", "\n\nfeat: x", true},
+		{"crlf", "fix: x\r\n\r\ncorpo", true},
+		{"bom", bom + "fix: x", true},
+		{"comentário com ponto e vírgula", "; coment\nfix: x", false},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -31,56 +41,30 @@ func TestCheckGitMessage(t *testing.T) {
 	}
 }
 
-func TestCheckAgentCommit(t *testing.T) {
+func TestCleanGitMessageLikeGit(t *testing.T) {
 	cases := []struct {
-		name, command string
-		valid         bool
+		name, message, commentChar, want string
 	}{
-		{"mensagem curta", `git commit -m "feat: adiciona CLI"`, true},
-		{"opção longa", `git commit --message="fix(api)!: corrige erro"`, true},
-		{"opção combinada", `git commit -am 'docs: atualiza guia'`, true},
-		{"diretório git", `git -C pasta commit -m 'test: cobre caso'`, true},
-		{"mensagem e corpo", `git commit -m 'feat: cabeçalho' -m 'Corpo livre sem formato'`, true},
-		{"corpo com heredoc inexistente", `git commit -m 'fix: válido' -m 'qualquer texto'`, true},
-		{"git status", `git status`, true},
-		{"pathspec após mensagem", `git commit -m 'fix: arquivo' -- src/main.go`, true},
-		{"echo menciona commit", `echo "git commit -m ruim"`, true},
-		{"comando após add", `git add . && git commit -m 'fix: correto'`, true},
-		{"env executa commit inválido", `env git commit -m 'mensagem livre'`, false},
-		{"env com variável executa commit", `env LC_ALL=C git commit -m 'fix: válido'`, true},
-		{"sh executa commit inválido", `sh -c 'git commit -m "mensagem livre"'`, false},
-		{"bash executa commit válido", `bash -c 'git commit -m "feat: válido"'`, true},
-		{"env com shell aninhado", `env LC_ALL=C bash -c 'git commit -m "mensagem livre"'`, false},
-		{"shell ecoa texto inerte", `sh -c 'echo "git commit -m ruim"'`, true},
-		{"wrapper opaco com commit", `python -c 'import os; os.system("git commit -m ruim")'`, false},
-		{"comando após ponto e vírgula", `git status; git commit -m 'sem padrão'`, false},
-		{"literal inválida", `git commit -m 'corrige bug'`, false},
-		{"tipo inválido", `git commit --message 'fix!: '`, false},
-		{"duas mensagens e título inválido", `git commit -m 'texto livre' -m 'fix: corpo'`, false},
-		{"arquivo externo", `git commit -F mensagem.txt`, false},
-		{"editor", `git commit`, false},
-		{"editar mensagem", `git commit -e -m 'fix: correto'`, false},
-		{"mensagem dinâmica", `git commit -m "$(cat msg)"`, false},
-		{"subcomando dinâmico", `git $(printf commit) -m 'fix: correto'`, false},
-		{"commit dentro de substituição", `echo "$(git commit -m 'sem padrão')"`, false},
-		{"commit após shell continuado", "git \\\ncommit -m 'sem padrão'", false},
-		{"arquivo abreviado", `git commit -m 'fix: correto' -F nota.txt`, false},
-		{"editor combinado", `git commit -aem 'fix: correto'`, false},
-		{"mensagem interpolada", `git commit -m "fix: $TITULO"`, false},
-		{"reaproveitar commit", `git commit -C HEAD`, false},
-		{"amend sem edição", `git commit --amend --no-edit`, true},
-		{"amend com mensagem", `git commit --amend -m 'fix: revisa'`, true},
-		{"amend sem no-edit", `git commit --amend`, false},
+		{"remove comentários", "fix: a\n# dica\n# outra\n", "#", "fix: a\n"},
+		{"corta na tesoura", "fix: a\n# ------------------------ >8 ------------------------\n# diff\nxyz", "#", "fix: a"},
+		{"remove linhas vazias iniciais", "\n\nfeat: x\n", "#", "feat: x\n"},
+		{"comentário personalizado", "; coment\nfeat: x\n# nao é comentário", ";", "feat: x\n# nao é comentário"},
+		{"auto trata como cerquilha", "fix: a\n# dica\n", "auto", "fix: a\n"},
+		{"vazio usa cerquilha", "fix: a\n# dica\n", "", "fix: a\n"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			encoded, _ := json.Marshal(tc.command)
-			payload := `{"tool_name":"Bash","tool_input":{"command":` + string(encoded) + `}}`
-			err := CheckAgentCommit(strings.NewReader(payload))
-			if (err == nil) != tc.valid {
-				t.Fatalf("comando válido=%v, erro=%v", tc.valid, err)
+			if got := CleanGitMessage(tc.message, tc.commentChar); got != tc.want {
+				t.Fatalf("limpeza = %q, esperado %q", got, tc.want)
 			}
 		})
+	}
+}
+
+func TestCheckGitMessageAfterCleanWithSemicolon(t *testing.T) {
+	cleaned := CleanGitMessage("; Please write a message\nfeat: x\n", ";")
+	if err := CheckGitMessage(cleaned); err != nil {
+		t.Fatalf("mensagem limpa com ponto e vírgula recusada: %v", err)
 	}
 }
 
@@ -90,19 +74,26 @@ func TestCheckAgentCommitRejectsNilInput(t *testing.T) {
 	}
 }
 
-func TestCheckAgentCommitRejectsMalformedInputWithoutLeaking(t *testing.T) {
+func TestCheckAgentCommitMalformedInput(t *testing.T) {
 	secret := "SENHA-NAO-REPETIR"
-	cases := []string{
+	allowed := []string{
 		`{`,
 		`{"tool_input":{"command":42}}`,
-		`{"tool_name":"Bash","tool_input":{"command":"git commit -m '` + secret + `'"}}`,
 		`{"tool_input":{"command":"git commit -m 'fix: correto'"},"tool_name":"Write"}`,
-		`{"tool_input":{"command":"git commit -m 'fix: correto'"},"tool_name":"Bash","extra":"` + strings.Repeat("x", 65536) + `"}`,
 	}
-	for _, input := range cases {
+	for _, input := range allowed {
+		if err := CheckAgentCommit(strings.NewReader(input)); err != nil {
+			t.Fatalf("entrada ilegível sem as palavras de commit bloqueada: %v", err)
+		}
+	}
+	blocked := []string{
+		`{"tool_name":"Bash","tool_input":{"command":"git commit -m '` + secret + `"`,
+		`{"tool_name":"Bash","tool_input":{"command":"git commit -m '` + secret + `'"}}`,
+	}
+	for _, input := range blocked {
 		err := CheckAgentCommit(strings.NewReader(input))
 		if err == nil {
-			t.Fatalf("entrada inválida aceita")
+			t.Fatalf("commit fora do padrão aceito")
 		}
 		if strings.Contains(err.Error(), secret) {
 			t.Fatal("erro divulgou conteúdo do comando")
@@ -113,11 +104,20 @@ func TestCheckAgentCommitRejectsMalformedInputWithoutLeaking(t *testing.T) {
 func TestCheckAgentCommitInputLimit(t *testing.T) {
 	prefix := `{"tool_name":"Bash","tool_input":{"command":"git status","padding":"`
 	suffix := `"}}`
-	payload := prefix + strings.Repeat("x", maxInput-len(prefix)-len(suffix)) + suffix
+	payload := prefix + strings.Repeat("x", MaxInput-len(prefix)-len(suffix)) + suffix
 	if err := CheckAgentCommit(strings.NewReader(payload)); err != nil {
 		t.Fatalf("entrada no limite rejeitada: %v", err)
 	}
-	if err := CheckAgentCommit(strings.NewReader(payload + " ")); err == nil {
-		t.Fatal("entrada acima do limite aceita")
+	if err := CheckAgentCommit(strings.NewReader(payload + " ")); err != nil {
+		t.Fatalf("entrada acima do limite sem as palavras de commit bloqueada: %v", err)
+	}
+}
+
+func TestCheckAgentCommitOversizeWithCommitWords(t *testing.T) {
+	prefix := `{"tool_name":"Bash","tool_input":{"command":"git commit -m 'fix: correto'","padding":"`
+	suffix := `"}}`
+	payload := prefix + strings.Repeat("x", MaxInput) + suffix
+	if err := CheckAgentCommit(strings.NewReader(payload)); err == nil {
+		t.Fatal("entrada acima do teto com as palavras de commit aceita")
 	}
 }
