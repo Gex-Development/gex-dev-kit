@@ -26,6 +26,10 @@ if [[ $doctor_status -gt 1 || $doctor_output == *'alterado '* || $doctor_output 
 fi
 test -f "$home/.claude/skills/tdd/SKILL.md"
 test -f "$home/.agents/skills/tdd/SKILL.md"
+for skill in gex-abrir-issue gex-preparar-pr gex-revisar-pr gex-auto-revisao gex-fluxo-desenvolvimento gex-verificar-mudanca gex-regras-de-negocio; do
+  test -s "$home/.claude/skills/$skill/SKILL.md"
+  test -s "$home/.agents/skills/$skill/SKILL.md"
+done
 test -x "$home/.local/share/gex-dev-kit/bin/gex-dev-kit"
 printf '%s' '{"tool_name":"Bash","tool_input":{"command":"git commit -m '\''fix: correto'\''"}}' | "$binary" hook commit-msg
 if printf '%s' '{"tool_name":"Bash","tool_input":{"command":"git commit -m '\''mensagem ruim'\''"}}' | "$binary" hook commit-msg; then
@@ -37,5 +41,9 @@ cmp "$work/claude-before" "$home/.claude/settings.json"
 cmp "$work/codex-before" "$home/.codex/hooks.json"
 test ! -e "$home/.claude/skills/tdd/SKILL.md"
 test ! -e "$home/.agents/skills/tdd/SKILL.md"
+for skill in gex-abrir-issue gex-preparar-pr gex-revisar-pr gex-auto-revisao gex-fluxo-desenvolvimento gex-verificar-mudanca gex-regras-de-negocio; do
+  test ! -e "$home/.claude/skills/$skill/SKILL.md"
+  test ! -e "$home/.agents/skills/$skill/SKILL.md"
+done
 test ! -e "$home/.local/share/gex-dev-kit/bin/gex-dev-kit"
 printf 'Smoke isolado: Core, skill, hook, doctor e rollback conferidos.\n'
