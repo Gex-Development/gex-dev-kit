@@ -25,13 +25,7 @@ const (
 
 var archRoots = []string{"internal/ui", "cmd", "internal/app"}
 
-var archLegacy = []string{
-	"cmd/gex-dev-kit/main.go",
-	"cmd/gex-dev-kit/home.go",
-	"cmd/gex-dev-kit/installer_ui.go",
-	"cmd/gex-dev-kit/doctor.go",
-	"cmd/gex-dev-kit/preview.go",
-}
+var archLegacy = []string{}
 
 var archHexLiteral = regexp.MustCompile(`#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})([^0-9a-zA-Z]|$)`)
 
