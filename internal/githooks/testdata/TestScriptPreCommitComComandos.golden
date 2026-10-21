@@ -1,0 +1,18 @@
+#!/bin/sh
+set -e
+bin='/exemplo/.local/share/gex-dev-kit/bin/gex-dev-kit'
+if [ ! -x "$bin" ]; then
+  echo 'gex-dev-kit: executável do HOME ausente; hook pre-commit ignorado' >&2
+  exit 0
+fi
+"$bin" hook pre-commit
+if command -v 'make' >/dev/null 2>&1; then
+  make test
+else
+  echo 'gex-dev-kit: make não encontrado; comando pulado: make test' >&2
+fi
+if command -v 'npm' >/dev/null 2>&1; then
+  npm run lint
+else
+  echo 'gex-dev-kit: npm não encontrado; comando pulado: npm run lint' >&2
+fi

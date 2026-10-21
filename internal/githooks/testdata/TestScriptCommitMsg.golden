@@ -1,0 +1,7 @@
+#!/bin/sh
+bin='/exemplo/.local/share/gex-dev-kit/bin/gex-dev-kit'
+if [ -x "$bin" ]; then
+  exec "$bin" hook commit-msg "$1"
+fi
+echo 'gex-dev-kit: executável do HOME ausente; hook commit-msg ignorado' >&2
+exit 0
