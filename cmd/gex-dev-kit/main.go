@@ -142,7 +142,7 @@ func runHomeTUI(s session) int {
 	perfil := s.env.ColorProfile()
 	r := screens.Runner{In: s.env.InFile, Out: s.env.OutFile, Environ: s.env.Environ, Profile: perfil, Signals: sinais}
 	home := homeDoUsuario(s)
-	c := screens.Common{Version: version, Home: home, UserHome: userHome(), Profile: perfil, Motion: s.env.Motion(s.opts.NoAnim)}
+	c := tuiCommon(s, home)
 	d := screens.HomeDeps{
 		Core:   func() (app.CoreStatus, error) { return app.Core(home) },
 		Agents: func() ([]app.AgentChange, error) { return agents.Preview(home) },
@@ -160,7 +160,7 @@ func acaoDaHome(s session, escolha string) int {
 	case "install":
 		return cmdInstall(s)
 	case "catalog":
-		return telaFalhou(s.errOut, screens.RunCatalog(screens.Runner{In: s.env.InFile, Out: s.env.OutFile, Environ: s.env.Environ, Profile: s.env.ColorProfile()}, screens.Common{Version: version, Home: homeDoUsuario(s), UserHome: userHome(), Profile: s.env.ColorProfile(), Motion: s.env.Motion(s.opts.NoAnim)}))
+		return telaFalhou(s.errOut, screens.RunCatalog(screens.Runner{In: s.env.InFile, Out: s.env.OutFile, Environ: s.env.Environ, Profile: s.env.ColorProfile()}, tuiCommon(s, homeDoUsuario(s))))
 	case "doctor":
 		return cmdDoctor(s)
 	case "rollback":
@@ -177,6 +177,10 @@ func acaoDaHome(s session, escolha string) int {
 		fmt.Fprint(s.out, usage)
 	}
 	return 0
+}
+
+func tuiCommon(s session, home string) screens.Common {
+	return screens.Common{Version: version, Home: home, UserHome: userHome(), Dark: true, Profile: s.env.ColorProfile(), Motion: s.env.Motion(s.opts.NoAnim)}
 }
 
 func homeDoUsuario(s session) string {

@@ -34,6 +34,8 @@ PRIVATE_ROOT = '/' + 'private' + '/'
 FOLDERS_ROOT = '/var/folders/'
 TOKENS = [Path(REAL_HOME).name, USERS_ROOT, FOLDERS_ROOT, PRIVATE_ROOT, 'scratch' + 'pad']
 TERMINAL_QUERY = re.compile(rb'\x1b\[[<=>?][\x20-\x3f]*[\x40-\x7e]')
+BACKGROUND_QUERY = re.compile(rb'\x1b\]11;\?(?:\x07|\x1b\\)')
+BACKGROUND_REPLY = b'\x1b]11;rgb:0b0b/1111/2020\x1b\\'
 PALETTE = {
     'default': '#dbe5f3', 'black': '#152039', 'red': '#f87171',
     'green': '#64d2a0', 'brown': '#ffd166', 'blue': '#73b9ff',
@@ -153,6 +155,13 @@ def feed(raw):
     return screen
 
 
+def answer_background_query(master, data):
+    matches = BACKGROUND_QUERY.findall(data)
+    for _ in matches:
+        os.write(master, BACKGROUND_REPLY)
+    return BACKGROUND_QUERY.sub(b'', data)
+
+
 def read_for(master, seconds):
     chunks = []
     end = time.monotonic() + seconds
@@ -165,7 +174,7 @@ def read_for(master, seconds):
                 break
             if not data:
                 break
-            chunks.append(data)
+            chunks.append(answer_background_query(master, data))
     return b''.join(chunks)
 
 
