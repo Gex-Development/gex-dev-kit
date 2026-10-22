@@ -589,8 +589,8 @@ func (m githooksModel) previewText() string {
 	var paths []string
 	for _, list := range [][]githooksFileChange{githooksFiles(p.HomeChanges), githooksFiles(p.RepoChanges)} {
 		for _, c := range list {
-			changes = append(changes, components.Change{Action: c.action, Path: c.path})
-			paths = append(paths, c.path)
+			changes = append(changes, components.Change{Action: c.action, Path: maskHome(c.path, m.c.UserHome)})
+			paths = append(paths, maskHome(c.path, m.c.UserHome))
 		}
 	}
 	groups := []components.ChangeGroup{{Title: "Scripts", Changes: scripts}, {Title: "Arquivos", Changes: changes}}
@@ -602,7 +602,7 @@ func (m githooksModel) previewText() string {
 		m.t.Strong.Render("Origem dos comandos"),
 	}
 	for _, s := range p.Sources {
-		parts = append(parts, fmt.Sprintf("%s  ←  %s:%d", s.Command, s.File, s.Line))
+		parts = append(parts, fmt.Sprintf("%s  ←  %s:%d", s.Command, maskHome(s.File, m.c.UserHome), s.Line))
 	}
 	return strings.Join(parts, "\n")
 }

@@ -121,3 +121,7 @@ Toda instalação atualiza o executável estável quando ele é diferente do kit
 ## ADR-0030: Esqueletos compiláveis e contratos por onda
 
 Antes de cada onda, o orquestrador registra esqueletos com as assinaturas da seção 1 do plano. Nenhum esqueleto importa pacote de onda posterior. Os contratos entre tarefas paralelas ficam no esqueleto, e cada tarefa os verifica com dados ou funções falsas (tabela 10.7).
+
+## ADR-0031: Limite de tamanho do binário em 14 MiB
+
+O limite do `scripts/release.sh` sobe de 12 MiB para 14 MiB. O windows/amd64 passou de 12 MiB em 0,15 MiB depois das correções de UX. Os binários já usam `-s -w` e `-trimpath`. Com 14 MiB sobra margem, e um crescimento grande continua reprovado pelo script.

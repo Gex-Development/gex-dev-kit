@@ -446,7 +446,7 @@ func (m homeModel) agentItem(name, title string) components.ChecklistItem {
 	if !ok {
 		return components.ChecklistItem{Label: title + " · sem dados", State: theme.StateInfo}
 	}
-	return components.ChecklistItem{Label: title + " · " + homeAgentText(change), State: homeAgentState(change)}
+	return components.ChecklistItem{Label: title + " · " + homeAgentText(change, m.common.UserHome), State: homeAgentState(change)}
 }
 
 func homeAgentChange(changes []app.AgentChange, name string) (app.AgentChange, bool) {
@@ -458,16 +458,16 @@ func homeAgentChange(changes []app.AgentChange, name string) (app.AgentChange, b
 	return app.AgentChange{}, false
 }
 
-func homeAgentText(change app.AgentChange) string {
+func homeAgentText(change app.AgentChange, userHome string) string {
 	switch {
 	case change.Blocked:
-		return change.Reason
+		return maskHome(change.Reason, userHome)
 	case change.Current == "":
 		return "não instalado pelo kit"
 	case change.Current != change.Target:
-		return change.Current + " → " + change.Target
+		return maskHome(change.Current, userHome) + " → " + maskHome(change.Target, userHome)
 	}
-	return change.Current
+	return maskHome(change.Current, userHome)
 }
 
 func homeAgentState(change app.AgentChange) theme.State {

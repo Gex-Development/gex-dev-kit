@@ -33,11 +33,7 @@ USERS_ROOT = '/' + 'Users' + '/'
 PRIVATE_ROOT = '/' + 'private' + '/'
 FOLDERS_ROOT = '/var/folders/'
 TOKENS = [Path(REAL_HOME).name, USERS_ROOT, FOLDERS_ROOT, PRIVATE_ROOT, 'scratch' + 'pad']
-MASKS = [
-    re.compile(re.escape(PRIVATE_ROOT) + r'[^\s]*'),
-    re.compile(re.escape(FOLDERS_ROOT) + r'[^\s]*'),
-    re.compile(re.escape(USERS_ROOT) + r'[^\s]*'),
-]
+TERMINAL_QUERY = re.compile(rb'\x1b\[[<=>?][\x20-\x3f]*[\x40-\x7e]')
 PALETTE = {
     'default': '#dbe5f3', 'black': '#152039', 'red': '#f87171',
     'green': '#64d2a0', 'brown': '#ffd166', 'blue': '#73b9ff',
@@ -47,7 +43,7 @@ PALETTE = {
     'brightblue': '#9ad3ff', 'brightmagenta': '#dbc4ff',
     'brightcyan': '#b2edf3', 'brightwhite': '#ffffff',
 }
-STATS = {'raw_hits': 0, 'frames': 0}
+STATS = {'frames': 0}
 
 
 def load_font(size):
@@ -82,34 +78,21 @@ def count_tokens(text, home):
     return sum(text.count(token) for token in [*TOKENS, REAL_HOME, str(home)])
 
 
-def mask_line(line, home):
-    masked = line.replace(str(home), '~')
-    for rx in MASKS:
-        masked = rx.sub('~', masked)
-    return masked
+def redact(text, home):
+    for token in [*TOKENS, REAL_HOME, str(home)]:
+        text = text.replace(token, '[REDIGIDO]')
+    return text
 
 
-def scrub(screen, home):
+def check_privacy(screen, home):
     rows = []
-    raw_text = []
     for y in range(ROWS):
         cells = [screen.buffer[y][x] for x in range(COLS)]
         text = ''.join(cell.data for cell in cells).rstrip()
-        raw_text.append(text)
+        if count_tokens(text, home):
+            raise PrivacyError(f'Portão de privacidade falhou na linha {y + 1}: {redact(text, home)}')
         rows.append((text, cells))
-    raw_hits = count_tokens('\n'.join(raw_text), home)
-    scrubbed = []
-    for text, cells in rows:
-        masked = mask_line(text, home)
-        if masked != text:
-            scrubbed.append((masked, None))
-        else:
-            scrubbed.append((text, cells))
-    cleaned_text = '\n'.join(text for text, _ in scrubbed)
-    left = count_tokens(cleaned_text, home)
-    if left:
-        raise PrivacyError(f'Portão de privacidade falhou: {left} ocorrência(s) após máscara.')
-    return scrubbed, raw_hits
+    return rows
 
 
 class PrivacyError(RuntimeError):
@@ -135,12 +118,7 @@ def render(rows, name, title, command, footer):
     draw.text((44, height - 50), footer, font=small, fill='#879bb4')
     top = 120
     left = 40
-    for y, (text, cells) in enumerate(rows):
-        if cells is None:
-            for x, char in enumerate(text):
-                if char != ' ':
-                    draw.text((left + x * CELL_W, top + y * CELL_H), char, font=text_font, fill=PALETTE['default'])
-            continue
+    for y, (_, cells) in enumerate(rows):
         for x, cell in enumerate(cells):
             if cell.reverse and cell.data != ' ':
                 draw.rectangle((left + x * CELL_W - 1, top + y * CELL_H, left + (x + 1) * CELL_W, top + (y + 1) * CELL_H), fill='#345475')
@@ -162,17 +140,16 @@ def colour_of(fg):
 
 
 def emit(name, screen, home, title, command):
-    rows, raw_hits = scrub(screen, home)
-    STATS['raw_hits'] += raw_hits
+    rows = check_privacy(screen, home)
     STATS['frames'] += 1
     text = [t for t, _ in rows if t.strip()]
     target = render(rows, name, title, command, 'EXECUÇÃO REAL  ·  HOME ISOLADO  ·  v0.3.0')
-    print(f'{target.name}: vazamentos brutos mascarados={raw_hits}; primeira linha: {text[0] if text else ""}')
+    print(f'{target.name}: sem vazamentos; primeira linha: {text[0] if text else ""}')
 
 
 def feed(raw):
     screen = pyte.Screen(COLS, ROWS)
-    pyte.ByteStream(screen).feed(raw)
+    pyte.ByteStream(screen).feed(TERMINAL_QUERY.sub(b'', raw))
     return screen
 
 
@@ -308,7 +285,7 @@ def main():
             raise
         except Exception as error:
             failures.append(f'{label}: {error}')
-    print(f'quadros: {STATS["frames"]}; vazamentos brutos mascarados no total: {STATS["raw_hits"]}')
+    print(f'quadros: {STATS["frames"]}; vazamentos: 0')
     for failure in failures:
         print('falha:', failure)
     return 1 if failures else 0

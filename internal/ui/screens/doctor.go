@@ -61,7 +61,7 @@ func newDoctorModel(c Common, report app.Report) doctorModel {
 		detail:  viewport.New(viewport.WithWidth(80), viewport.WithHeight(1)),
 	}
 	m.theme = doctorTheme(c.Dark, c.Profile)
-	m.table = components.NewTable(m.theme, doctorColumns(), doctorRows(report.Items), 2)
+	m.table = components.NewTable(m.theme, doctorColumns(), doctorRows(report.Items, c.UserHome), 2)
 	m.table = m.table.Resize(m.size.Width, m.tableRows(m.size.Height-doctorChromeRows))
 	m.refreshDetail()
 	return m
@@ -75,10 +75,10 @@ func doctorColumns() []components.Column {
 	return []components.Column{{Title: "Estado", Width: doctorStateColumn}, {Title: "Arquivo", Width: doctorPathColumn}}
 }
 
-func doctorRows(items []app.Status) [][]string {
+func doctorRows(items []app.Status, userHome string) [][]string {
 	rows := make([][]string, 0, len(items))
 	for _, item := range items {
-		rows = append(rows, []string{item.State, item.Path})
+		rows = append(rows, []string{item.State, homeLabel(item.Path, userHome)})
 	}
 	return rows
 }
@@ -201,7 +201,7 @@ func (m doctorModel) body(bodyHeight int) string {
 	w := m.size.Width
 	lines := []string{layout.Fit(m.summary(), w, 1)}
 	for _, warning := range m.report.Warnings[:m.warningRows(bodyHeight)] {
-		lines = append(lines, layout.Fit(components.StatusBadge(m.theme, theme.StateInfo, homeLabel(warning.Path, m.c.UserHome)+" · "+warning.Detail), w, 1))
+		lines = append(lines, layout.Fit(components.StatusBadge(m.theme, theme.StateInfo, homeLabel(warning.Path, m.c.UserHome)+" · "+maskHome(warning.Detail, m.c.UserHome)), w, 1))
 	}
 	lines = append(lines, m.table.View())
 	lines = append(lines, layout.Fit(m.detailHeader(), w, 1))

@@ -2,7 +2,7 @@ GEX / DEV KIT · Instalação                                                 0.
 --------------------------------------------------------------------------------
 
 Core instalado. Histórico: h-demo
-Comando equivalente: gex-dev-kit install --home /home/demo --skill gex-x --skip…
+Comando equivalente: gex-dev-kit install --home ~ --skill gex-x --skip-agent-up…
 
 Enter ou q para sair
                                                                                 

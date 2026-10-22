@@ -44,16 +44,20 @@ func ExitCode(err error) (int, bool) {
 	return 128, true
 }
 
-func homeLabel(path, userHome string) string {
-	if path == "" || userHome == "" {
-		return path
-	}
+func homeCandidates(userHome string) []string {
 	candidates := []string{filepath.Clean(userHome)}
 	if resolved, err := filepath.EvalSymlinks(userHome); err == nil && resolved != candidates[0] {
 		candidates = append(candidates, resolved)
 	}
+	return candidates
+}
+
+func homeLabel(path, userHome string) string {
+	if path == "" || userHome == "" {
+		return path
+	}
 	cleaned := filepath.Clean(path)
-	for _, home := range candidates {
+	for _, home := range homeCandidates(userHome) {
 		if cleaned == home {
 			return "~"
 		}
@@ -63,3 +67,38 @@ func homeLabel(path, userHome string) string {
 	}
 	return path
 }
+
+func maskHome(text, userHome string) string {
+	if userHome == "" {
+		return text
+	}
+	for _, home := range homeCandidates(userHome) {
+		if home == "." || home == string(filepath.Separator) {
+			continue
+		}
+		text = maskHomeText(text, home)
+	}
+	return text
+}
+
+func maskHomeText(text, home string) string {
+	var out strings.Builder
+	rest := text
+	for {
+		i := strings.Index(rest, home)
+		if i < 0 {
+			out.WriteString(rest)
+			return out.String()
+		}
+		end := i + len(home)
+		out.WriteString(rest[:i])
+		if end == len(rest) || strings.IndexByte(homeBoundaries, rest[end]) >= 0 {
+			out.WriteString("~")
+		} else {
+			out.WriteString(home)
+		}
+		rest = rest[end:]
+	}
+}
+
+const homeBoundaries = "/\\ \t\n'\"`:;,)]}"

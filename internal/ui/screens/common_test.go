@@ -28,6 +28,26 @@ func TestHomeLabelCollapsesUserHomeAndResolvedForm(t *testing.T) {
 	}
 }
 
+func TestMaskHomeTrocaHomeDoUsuarioNoTexto(t *testing.T) {
+	const home = "/home/demo"
+	cases := map[string]string{
+		"bloqueado em /home/demo/.local/bin/claude": "bloqueado em ~/.local/bin/claude",
+		"/home/demo":                  "~",
+		"x '/home/demo' y":            "x '~' y",
+		"/home/demo/a e /home/demo/b": "~/a e ~/b",
+		"/home/demo2/x":               "/home/demo2/x",
+		"/outro/lugar":                "/outro/lugar",
+	}
+	for input, want := range cases {
+		if got := maskHome(input, home); got != want {
+			t.Fatalf("maskHome(%q) = %q; esperado %q", input, got, want)
+		}
+	}
+	if got := maskHome("/home/demo/x", ""); got != "/home/demo/x" {
+		t.Fatalf("sem HOME do usuário o texto não deveria mudar: %q", got)
+	}
+}
+
 func TestExitCodeMapsSignals(t *testing.T) {
 	cases := map[os.Signal]int{os.Interrupt: 130, syscall.SIGTERM: 143, syscall.SIGHUP: 129}
 	for signal, want := range cases {

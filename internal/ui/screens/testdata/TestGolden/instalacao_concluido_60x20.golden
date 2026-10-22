@@ -2,7 +2,7 @@ GEX / DEV KIT · Instalação                             0.3.0
 ------------------------------------------------------------
 
 Core instalado. Histórico: h-demo
-Comando equivalente: gex-dev-kit install --home /home/demo …
+Comando equivalente: gex-dev-kit install --home ~ --skill g…
 
 Enter ou q para sair
                                                             

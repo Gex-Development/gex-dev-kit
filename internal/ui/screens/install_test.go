@@ -100,6 +100,19 @@ func TestInstallPlanningErrorStopsBeforeConfirmation(t *testing.T) {
 	}
 }
 
+func TestInstallFinalSummaryShowsTildeForUserHome(t *testing.T) {
+	m := newInstallModel(installTestCommon(), InstallDeps{}, installTestRequest(), nil, nil)
+	m.result = app.Result{AgentsUpdated: true}
+	summary := m.summary()
+	if !strings.Contains(summary, "--home ~") || strings.Contains(summary, "/home/demo") {
+		t.Fatalf("comando equivalente deveria usar --home ~ sem o caminho do HOME: %q", summary)
+	}
+	m.req.Home = "/home/outro"
+	if summary := m.summary(); !strings.Contains(summary, "--home /home/outro") {
+		t.Fatalf("HOME alvo diferente deveria aparecer como caminho real: %q", summary)
+	}
+}
+
 func TestInstallConfirmationRequiresExplicitYesAndSurfacesApplyError(t *testing.T) {
 	var model tea.Model = newInstallModel(installTestCommon(), InstallDeps{
 		Apply: func(app.Plan, func(app.Step)) (app.Result, error) {

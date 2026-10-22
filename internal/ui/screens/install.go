@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -411,8 +412,17 @@ func installStepLine(s app.Step) string {
 
 func (m installModel) summary() string {
 	lines := installSummaryLines(m.result)
-	lines = append(lines, "Comando equivalente: "+app.EquivalentCommand(m.req))
+	lines = append(lines, "Comando equivalente: "+installEquivalentCommand(m.req, m.c.UserHome))
 	return strings.Join(lines, "\n")
+}
+
+func installEquivalentCommand(req app.Request, userHome string) string {
+	if req.Home == "" || userHome == "" || filepath.Clean(req.Home) != filepath.Clean(userHome) {
+		return app.EquivalentCommand(req)
+	}
+	shown := req
+	shown.Home = ""
+	return strings.Replace(app.EquivalentCommand(shown), "gex-dev-kit install", "gex-dev-kit install --home ~", 1)
 }
 
 func installSummaryLines(r app.Result) []string {
@@ -540,10 +550,10 @@ func (m installModel) agentLines() string {
 		}
 		switch {
 		case a.Blocked:
-			lines = append(lines, m.theme.Error.Render(fmt.Sprintf("bloqueado · %s (%s → %s): %s", a.Name, current, a.Target, a.Reason)))
-			lines = append(lines, m.theme.Secondary.Render("Ação manual: "+a.Manual))
+			lines = append(lines, m.theme.Error.Render(maskHome(fmt.Sprintf("bloqueado · %s (%s → %s): %s", a.Name, current, a.Target, a.Reason), m.c.UserHome)))
+			lines = append(lines, m.theme.Secondary.Render(maskHome("Ação manual: "+a.Manual, m.c.UserHome)))
 		case a.Current != a.Target:
-			lines = append(lines, m.theme.Info.Render(fmt.Sprintf("atualizar · %s %s → %s", a.Name, current, a.Target)))
+			lines = append(lines, m.theme.Info.Render(maskHome(fmt.Sprintf("atualizar · %s %s → %s", a.Name, current, a.Target), m.c.UserHome)))
 		}
 	}
 	if len(lines) == 0 {

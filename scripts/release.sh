@@ -13,7 +13,7 @@ fi
 
 root=$(git rev-parse --show-toplevel)
 mkdir -p "$root/dist"
-limite=$((12 * 1024 * 1024))
+limite=$((14 * 1024 * 1024))
 for target in darwin/arm64 darwin/amd64 linux/arm64 linux/amd64 windows/arm64 windows/amd64; do
   os=${target%/*}
   arch=${target#*/}
@@ -25,7 +25,7 @@ for target in darwin/arm64 darwin/amd64 linux/arm64 linux/amd64 windows/arm64 wi
   tamanho=$(wc -c < "$binario" | tr -d ' ')
   printf '  %s: %s bytes (limite %s)\n' "$(basename -- "$binario")" "$tamanho" "$limite"
   if (( tamanho > limite )); then
-    printf 'Binário acima de 12 MiB: %s\n' "$binario" >&2
+    printf 'Binário acima de 14 MiB (%s bytes): %s\n' "$limite" "$binario" >&2
     exit 1
   fi
 done

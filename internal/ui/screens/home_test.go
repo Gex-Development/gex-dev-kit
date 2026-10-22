@@ -134,6 +134,21 @@ func TestHomeKeepsActionsWithinCompactTerminal(t *testing.T) {
 	}
 }
 
+func TestHomeAgentPathsShowTildeNotUserHome(t *testing.T) {
+	agents := []app.AgentChange{{Name: "claude", Current: "/home/demo/.local/bin/claude", Target: "1.0", Blocked: true, Reason: "bloqueado em /home/demo/.local/bin/claude"}}
+	model := homeSend(newHomeModel(homeTestCommon(), homeFakeDeps(app.CoreStatus{}, agents)),
+		tea.WindowSizeMsg{Width: 120, Height: 40},
+		homeAgentsMsg{changes: agents},
+	)
+	view := model.View().Content
+	if strings.Contains(view, "/home/demo") {
+		t.Fatalf("a home vazou o caminho do HOME do usuário: %s", view)
+	}
+	if !strings.Contains(view, "~/.local/bin/claude") {
+		t.Fatalf("a home deveria mostrar ~/.local/bin/claude: %s", view)
+	}
+}
+
 func TestHomeReportsChangedCoreFromDisk(t *testing.T) {
 	model := homeSend(newHomeModel(homeTestCommon(), homeFakeDeps(app.CoreStatus{}, nil)),
 		tea.WindowSizeMsg{Width: 80, Height: 24},
@@ -376,7 +391,7 @@ func TestHomeAgentTextAndStateCoverEveryCase(t *testing.T) {
 		{"bloqueado", app.AgentChange{Current: "2.1.306", Target: "2.1.306", Blocked: true, Reason: "PATH ambíguo"}, "PATH ambíguo", theme.StateWarn},
 	}
 	for _, tc := range cases {
-		if text := homeAgentText(tc.change); text != tc.text {
+		if text := homeAgentText(tc.change, ""); text != tc.text {
 			t.Fatalf("%s: texto %q, esperado %q", tc.name, text, tc.text)
 		}
 		if state := homeAgentState(tc.change); state != tc.state {

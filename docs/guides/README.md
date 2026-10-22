@@ -32,15 +32,15 @@ Esta pasta guarda o roteiro em vídeo, as capturas reais da CLI e a página do g
    python3 docs/guides/scripts/capture_cli.py dist/gex-dev-kit_v0.3.0_darwin_arm64 --workdir CAMINHO_DE_TRABALHO
    ```
 
-   O script cria dois HOME descartáveis dentro de `CAMINHO_DE_TRABALHO`. Ele não usa o HOME real. Antes de gravar cada PNG, ele procura nomes de usuário, caminhos do sistema e o nome do diretório de trabalho na tela. Se achar algo, ele para com erro.
+   O script cria dois HOME descartáveis dentro de `CAMINHO_DE_TRABALHO`. Ele não usa o HOME real. Antes de gravar cada PNG, ele procura nomes de usuário, caminhos do sistema e o nome do diretório de trabalho na tela. Se achar algo, ele para com erro e mostra a linha com os trechos trocados por `[REDIGIDO]`.
 
 3. Confira a composição e renderize o vídeo:
 
    ```bash
-   cd docs/guides/composition
-   npx --yes hyperframes@0.8.181 check
-   npx --yes hyperframes@0.8.181 render --quality looks --output ../guia.mp4
+   bash docs/guides/scripts/render.sh
    ```
+
+   O script roda `check` e depois `render`, e grava `docs/guides/guia.mp4`. Por padrão usa `npx --yes hyperframes@0.8.181`. Para outro binário, defina `HYPERFRAMES`, por exemplo `HYPERFRAMES=/caminho/hyperframes bash docs/guides/scripts/render.sh`.
 
 ## Tempo aproximado
 
@@ -50,5 +50,5 @@ Esta pasta guarda o roteiro em vídeo, as capturas reais da CLI e a página do g
 
 ## Limites conhecidos
 
-- A tela inicial e a tela final mostram o caminho do HOME como `~`. O script faz essa troca porque a CLI imprime o caminho absoluto nessas telas. Veja o relatório da versão para o detalhe.
-- O comando equivalente da tela final aparece como `--home ~`, porque a CLI o imprime assim.
+- A TUI mostra o HOME do usuário como `~` na tela inicial, nas linhas dos agentes e na tela final. O comando equivalente da tela final aparece como `--home ~` quando o destino é o HOME do usuário. O comando executado não muda.
+- O script não faz mais máscara de substituição: qualquer caminho bruto na tela interrompe a captura.
