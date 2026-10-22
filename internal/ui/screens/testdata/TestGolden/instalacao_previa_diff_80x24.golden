@@ -1,0 +1,24 @@
+GEX / DEV KIT · Instalação                                                 0.3.0
+--------------------------------------------------------------------------------
+2 arquivo(s) · 0 agente(s) a atualizar
+Alterações                                                                      
+criar .claude/CLAUDE.md · novo, 2 linhas                                        
++# Regras                                                                       
++linha                                                                          
+atualizar .claude/settings.json · 1 linha                                       
+ {                                                                              
++  "env": {"API_TOKEN": "•••"}                                                  
+ }                                                                              
+1 valor mascarado por parecerem segredo                                         
+                                                                                
+~                                                                               
+╰── .claude                                                                     
+    ├── CLAUDE.md                                                               
+    ╰── skills                                                                  
+        ╰── gex-x                                                               
+            ╰── SKILL.md                                                        
+                                                                                
+                                                                                
+                                                                                
+                                                                                
+↑/k subir • ↓/j descer • enter escolher • esc voltar • q sair • ? ajuda …       

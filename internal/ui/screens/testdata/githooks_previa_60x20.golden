@@ -1,0 +1,20 @@
+Git hooks · Passo 4 de 4 · Prévia                      0.3.0
+------------------------------------------------------------
+Scripts                                                     
+criar hooks/pre-commit                                      
++#!/bin/sh                                                  
++set -e                                                     
++make test                                                  
++                                                           
+                                                            
+Arquivos                                                    
+criar bin/gex-dev-kit                                       
+                                                            
+Arquivos                                                    
+╰── bin                                                     
+                                                            
+                                                            
+                                                            
+                                                            
+                                                            
+↑/k subir • ↓/j descer • enter escolher • esc voltar …      

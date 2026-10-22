@@ -1,0 +1,20 @@
+gex-dev-kit ds · Medidas                               0.3.0
+────────────────────────────────────────────────────────────
+▸ Páginas              Demo                                 
+  Identidade         ┌───────┬─────┬──────┬──────┬─────────┐
+  Bordas e cor       │ Caso  │ len │ ans… │ lip… │ Trunca… │
+  Layout             ├───────┼─────┼──────┼──────┼─────────┤
+│ Medidas            │ ASCII │ 4   │ 4    │ 4    │ cafe    │
+  Terminal           │ NFC   │ 5   │ 4    │ 4    │ café    │
+  Programa           │ NFD   │ 6   │ 4    │ 4    │ café    │
+  Movimento          │ CJK   │ 6   │ 4    │ 4    │ 漢字    │
+  Feedback           │ emoji │ 7   │ 5    │ 5    │ 🙂 ok   │
+  Navegação          └───────┴─────┴──────┴──────┴─────────┘
+  Dados              ansi.Hardwrap: 4 linhas                
+  Formulários        texto longo com ace                    
+  Acessível          ntos (café), CJK (                     
+  Bubbles            漢字) e emoji 🙂 pa                    
+  Testes             ra quebra de linha                     
+  Cobertura Charm    ansi.Strip de texto com estilo: negrito
+                                                            
+↑/k subir • ↓/j descer • enter escolher • esc voltar …      

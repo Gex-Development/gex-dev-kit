@@ -1,0 +1,20 @@
+gex-dev-kit ds · Programa                              0.3.0
+────────────────────────────────────────────────────────────
+▸ Páginas              Demo                                 
+  Identidade         Programa: recursos de runtime do bubble
+  Bordas e cor       tea                                    
+  Layout             modo: inline                           
+  Medidas            tamanho: 60×20                         
+  Terminal           janela com foco: não                   
+│ Programa           cliques: 0 · último evento de mouse: — 
+  Movimento          ticks de 1 s (tea.Tick): 0             
+  Feedback           Batch: —                               
+  Navegação          Sequence: —                            
+  Dados              linhas impressas com tea.Println: 0    
+  Formulários        quadros de movimento: 0                
+  Acessível          ctrl+z suspende (ativo)                
+  Bubbles            tecla e gera um erro tipado            
+  Testes             teclas: a alt screen · p println (só in
+  Cobertura Charm    line) · 1 batch · 2 sequence · e erro  
+                                                            
+↑/k subir • ↓/j descer • enter escolher • esc voltar …      

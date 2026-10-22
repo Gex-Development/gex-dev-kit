@@ -1,0 +1,20 @@
+gex-dev-kit ds · Cobertura Charm                       0.3.0
+────────────────────────────────────────────────────────────
+▸ Páginas              Demo                                 
+  Identidade         Mapa de cobertura: 49 entradas         
+  Bordas e cor       ┌────────┬────────┬─────────┬─────────┐
+  Layout             │ Lib    │ Recur… │ Tela    │ Página  │
+  Medidas            ├────────┼────────┼─────────┼─────────┤
+  Terminal           │ bubble │ tea.Mo │ home.go │ Identid │
+  Programa           │ tea    │ del,   │         │ ade     │
+  Movimento          │        │ Update │         │         │
+  Feedback           │        │ e View │         │         │
+  Navegação          │ bubble │ tea.Ti │ home.go │ Movimen │
+  Dados              │ tea    │ ck     │         │ to      │
+  Formulários        │ bubble │ Window │ home.go │ Layout  │
+  Acessível          │ tea    │ SizeMs │         │         │
+  Bubbles            │        │ g      │         │         │
+  Testes             │ bubble │ alt    │ install │ Program │
+│ Cobertura Charm    │ tea    │ screen │ .go     │ a       │
+                                                            
+↑/k subir • ↓/j descer • enter escolher • esc voltar …      
