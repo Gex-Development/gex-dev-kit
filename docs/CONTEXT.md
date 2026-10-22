@@ -73,7 +73,7 @@ _Avoid_: ativação
 ### Operação
 
 **Repositório GEX**:
-Repositório com remote numa organização GEX (Gex-Development, Gex-Integrations, gex-data-architecture-org, gex-data-architecture ou outra listada pelo usuário), ou com `git config gex.policy true`.
+Repositório com algum remote numa organização GEX (Gex-Development, Gex-Integrations, gex-data-architecture-org, gex-data-architecture ou outra listada pelo usuário), ou com `git config gex.policy true`.
 _Avoid_: projeto da empresa
 
 **Escopo GEX**:
