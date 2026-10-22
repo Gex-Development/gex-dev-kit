@@ -54,6 +54,13 @@ func TestExplainTranslatesKitSentinels(t *testing.T) {
 			"Troque por arquivo ou pasta comum, ou teste com `--home`.",
 		},
 		{
+			"limite do histórico",
+			fmt.Errorf("%w; restaure manualmente", kit.ErrPruned),
+			"Limite do histórico",
+			"O rollback só alcança as 5 gravações mais recentes; o conteúdo desta gravação já saiu do histórico.",
+			"Restaure manualmente a partir de uma cópia ou reinstale com `install`.",
+		},
+		{
 			"caminho relativo",
 			errors.New("HOME deve ser absoluto e normalizado"),
 			"Caminho inválido",

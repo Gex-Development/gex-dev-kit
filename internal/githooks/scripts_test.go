@@ -134,6 +134,24 @@ func TestScriptsNaoTemComentarios(t *testing.T) {
 	}
 }
 
+func TestCommandGuardEscolhePrograma(t *testing.T) {
+	cases := []struct {
+		comando  string
+		programa string
+	}{
+		{"CI=1 make test", "make"},
+		{"env FOO=1 go test ./...", "go"},
+		{"make test", "make"},
+		{"time nice make test", "make"},
+	}
+	for _, c := range cases {
+		want := "if command -v '" + c.programa + "' >/dev/null 2>&1; then"
+		if got := commandGuard(c.comando)[0]; got != want {
+			t.Fatalf("commandGuard(%q) = %q, esperado %q", c.comando, got, want)
+		}
+	}
+}
+
 func TestShellQuoteEscapaAspas(t *testing.T) {
 	cases := map[string]string{
 		"make test": "'make test'",

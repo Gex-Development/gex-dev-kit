@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/fs"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 	"unicode/utf8"
@@ -159,8 +160,24 @@ func preCommitScript(binary string, commands []string) string {
 	return joinLines(lines...)
 }
 
+var (
+	commandWrappers   = map[string]bool{"env": true, "command": true, "nice": true, "time": true}
+	commandAssignment = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*=`)
+)
+
+func commandProgram(command string) string {
+	fields := strings.Fields(command)
+	for _, field := range fields {
+		if commandWrappers[field] || commandAssignment.MatchString(field) {
+			continue
+		}
+		return field
+	}
+	return fields[0]
+}
+
 func commandGuard(command string) []string {
-	name := strings.Fields(command)[0]
+	name := commandProgram(command)
 	return []string{
 		"if command -v " + shellQuote(name) + " >/dev/null 2>&1; then",
 		"  " + command,

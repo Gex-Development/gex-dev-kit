@@ -153,3 +153,44 @@ func TestApplyGitHooksWithoutRepoRefuses(t *testing.T) {
 		t.Fatal("prévia sem repositório não pode gravar")
 	}
 }
+
+func TestPlanGitHooksAtualizaHookDoKitComNovoComando(t *testing.T) {
+	repo := gitHooksRepo(t)
+	writeAppTestFile(t, filepath.Join(repo, "README.md"), "Rode `true` e `false`.\n")
+	r := gitHooksRequest(t, repo)
+	r.Hooks = []string{"pre-commit"}
+	r.PrePush = nil
+	r.PreCommit = []string{"true"}
+	plan, err := PlanGitHooks(r, 0)
+	if err != nil {
+		t.Fatalf("primeira prévia falhou: %v", err)
+	}
+	if _, err := ApplyGitHooks(plan); err != nil {
+		t.Fatalf("primeira gravação falhou: %v", err)
+	}
+	r.PreCommit = []string{"true", "false"}
+	plan, err = PlanGitHooks(r, 0)
+	if err != nil {
+		t.Fatalf("replanejar hook do kit falhou: %v", err)
+	}
+	if len(plan.RepoChanges) != 1 || plan.RepoChanges[0].Path != "hooks/pre-commit" {
+		t.Fatalf("atualização do hook do kit não planejada: %+v", plan.RepoChanges)
+	}
+}
+
+func TestApplyGitHooksDesfazHomeQuandoRepositorioFalha(t *testing.T) {
+	repo := gitHooksRepo(t)
+	r := gitHooksRequest(t, repo)
+	plan, err := PlanGitHooks(r, 0)
+	if err != nil {
+		t.Fatalf("prévia falhou: %v", err)
+	}
+	writeAppTestFile(t, filepath.Join(plan.Repo.CommonDir, "hooks", "pre-push"), "alterado depois da prévia\n")
+	_, err = ApplyGitHooks(plan)
+	if !errors.Is(err, kit.ErrChanged) {
+		t.Fatalf("gravação do repositório deveria falhar com ErrChanged: %v", err)
+	}
+	if _, err := os.Stat(catalog.StableBinary(r.Home)); !os.IsNotExist(err) {
+		t.Fatalf("executável do HOME deveria voltar ao estado anterior: %v", err)
+	}
+}

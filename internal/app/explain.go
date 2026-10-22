@@ -26,6 +26,12 @@ func Explain(err error) Problem {
 		return Problem{Title: "Histórico ocupado", Cause: "Outra execução do kit pode estar ativa.", Action: "Aguarde. Se nada estiver rodando, veja `doctor` para o PID e o caminho do lock."}
 	case errors.Is(err, kit.ErrIncomplete):
 		return Problem{Title: "Instalação incompleta", Cause: err.Error(), Action: "Rode `gex-dev-kit rollback`."}
+	case errors.Is(err, kit.ErrPruned):
+		return Problem{
+			Title:  "Limite do histórico",
+			Cause:  "O rollback só alcança as 5 gravações mais recentes; o conteúdo desta gravação já saiu do histórico.",
+			Action: "Restaure manualmente a partir de uma cópia ou reinstale com `install`.",
+		}
 	case errors.Is(err, kit.ErrSymlink):
 		path := strings.TrimPrefix(err.Error(), kit.ErrSymlink.Error()+": ")
 		return Problem{

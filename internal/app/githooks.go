@@ -3,6 +3,7 @@ package app
 import (
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -59,7 +60,7 @@ func planGitHooksRepo(plan GitHooksPlan, req githooks.Request, diffLimit int) (G
 	if err != nil {
 		return GitHooksPlan{}, err
 	}
-	managed, err := gitHookManaged(repo.CommonDir, plan.Scripts)
+	managed, err := gitHookManaged(repo.CommonDir)
 	if err != nil {
 		return GitHooksPlan{}, err
 	}
@@ -110,7 +111,7 @@ func gitHookSources(root string, req githooks.Request) ([]githooks.Source, error
 	return out, nil
 }
 
-func gitHookManaged(commonDir string, scripts map[string]string) (map[string]string, error) {
+func gitHookManaged(commonDir string) (map[string]string, error) {
 	statuses, err := kit.Doctor(commonDir)
 	if err != nil {
 		return nil, err
@@ -121,9 +122,11 @@ func gitHookManaged(commonDir string, scripts map[string]string) (map[string]str
 		if !ok || s.State != "ok" {
 			continue
 		}
-		if script, known := scripts[name]; known {
-			managed[name] = script
+		data, err := os.ReadFile(filepath.Join(commonDir, "hooks", name))
+		if err != nil {
+			return nil, err
 		}
+		managed[name] = string(data)
 	}
 	return managed, nil
 }
@@ -137,7 +140,11 @@ func ApplyGitHooks(p GitHooksPlan) (Result, error) {
 	}
 	id, err := kit.Apply(p.repo)
 	if err != nil {
-		return Result{}, fmt.Errorf("Git hooks do repositório: %w", err)
+		repoErr := fmt.Errorf("Git hooks do repositório: %w", err)
+		if _, rbErr := kit.Rollback(p.Request.Home); rbErr != nil {
+			return Result{}, errors.Join(repoErr, fmt.Errorf("desfazer o executável no HOME: %w", rbErr))
+		}
+		return Result{}, repoErr
 	}
 	return Result{HistoryID: id}, nil
 }
