@@ -15,14 +15,10 @@ const (
 	sensitiveRuleTooBig          = "entrada acima de 8 MiB ou ilegível"
 )
 
-var sensitiveWrappers = map[string]bool{
-	"env": true, "sudo": true, "command": true, "exec": true, "nohup": true,
-	"time": true, "nice": true, "timeout": true, "xargs": true,
-}
-
-var sensitiveOptionArgs = map[string]bool{
-	"-u": true, "-g": true, "-C": true, "-U": true, "-n": true, "-I": true,
-	"-d": true, "-P": true, "-L": true, "-s": true, "-k": true,
+var sensitiveDangerousTargets = map[string]bool{
+	"/": true, "~": true, "*": true, ".": true, "..": true,
+	"~/": true, "./": true, "../": true, "/*": true, "./*": true, "~/*": true,
+	"$HOME": true, "$HOME/": true, "${HOME}": true, "${HOME}/": true,
 }
 
 var sensitivePublishRules = []string{
@@ -107,21 +103,7 @@ func sensitiveExpand(script Script) []Command {
 		cmds = append(cmds, cmd)
 		cmds = append(cmds, Effective(cmd)...)
 	}
-	if script.Dynamic {
-		for i := range cmds {
-			cmds[i].Words = sensitiveMarkDynamic(cmds[i].Words)
-		}
-	}
 	return cmds
-}
-
-func sensitiveMarkDynamic(words []Word) []Word {
-	marked := make([]Word, len(words))
-	for i, w := range words {
-		w.Dynamic = true
-		marked[i] = w
-	}
-	return marked
 }
 
 func sensitiveDirs(cwd string, cmds []Command) []string {
@@ -146,7 +128,10 @@ func sensitiveHasPRCreate(cmds []Command) bool {
 func sensitiveCandidates(cmds []Command) [][]string {
 	var out [][]string
 	for _, cmd := range cmds {
-		out = append(out, sensitiveValues(cmd.Words), sensitiveValues(sensitiveUnwrap(cmd.Words)))
+		out = append(out, sensitiveValues(cmd.Words))
+		for _, effective := range Effective(cmd) {
+			out = append(out, sensitiveValues(effective.Words))
+		}
 	}
 	return out
 }
@@ -159,30 +144,9 @@ func sensitiveValues(words []Word) []string {
 	return values
 }
 
-func sensitiveUnwrap(words []Word) []Word {
-	for len(words) > 0 && sensitiveWrappers[words[0].Value] {
-		name := words[0].Value
-		words = words[1:]
-		for len(words) > 0 {
-			value := words[0].Value
-			if sensitiveOptionArgs[value] && len(words) > 1 {
-				words = words[2:]
-			} else if strings.HasPrefix(value, "-") || (name == "env" && strings.Contains(value, "=")) {
-				words = words[1:]
-			} else {
-				break
-			}
-		}
-		if name == "timeout" && len(words) > 0 {
-			words = words[1:]
-		}
-	}
-	return words
-}
-
 func sensitiveMatch(words []Word, prePRInstalled bool) (string, string, bool) {
-	for _, args := range [][]string{sensitiveValues(words), sensitiveValues(sensitiveUnwrap(words))} {
-		if category, rule, ok := sensitiveStatic(args, prePRInstalled); ok {
+	for _, cmd := range append([]Command{{Words: words}}, Effective(Command{Words: words})...) {
+		if category, rule, ok := sensitiveStatic(sensitiveValues(cmd.Words), prePRInstalled); ok {
 			return category, rule, true
 		}
 	}
@@ -282,7 +246,13 @@ func sensitiveDynamic(words []Word) bool {
 	if !sensitiveHasDynamic(words) {
 		return false
 	}
+	if strings.EqualFold(words[0].Value, "eval") {
+		return true
+	}
 	for _, w := range words {
+		if !w.Dynamic {
+			continue
+		}
 		for _, token := range sensitiveTokens(w.Value) {
 			if sensitiveKeywords[strings.ToLower(token)] || sensitiveSecretName(token) || sensitiveDotEnvName(token) {
 				return true
@@ -370,7 +340,7 @@ func sensitiveRecursiveRemove(args []string) bool {
 		case strings.HasPrefix(arg, "--"):
 		case strings.HasPrefix(arg, "-") && strings.ContainsAny(arg, "rR"):
 			recursive = true
-		case arg == "/" || arg == "~" || arg == "*" || arg == "." || arg == "..":
+		case sensitiveDangerousTargets[arg]:
 			dangerous = true
 		}
 	}

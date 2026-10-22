@@ -60,6 +60,14 @@ func TestSensitiveClassifiesDestructiveCommands(t *testing.T) {
 		{[]string{"rm", "-R", "*"}, "destrutiva"},
 		{[]string{"rm", "--recursive", "."}, "destrutiva"},
 		{[]string{"rm", "-rf", ".."}, "destrutiva"},
+		{[]string{"rm", "-rf", "~/"}, "destrutiva"},
+		{[]string{"rm", "-rf", "./"}, "destrutiva"},
+		{[]string{"rm", "-rf", "../"}, "destrutiva"},
+		{[]string{"rm", "-rf", "/*"}, "destrutiva"},
+		{[]string{"rm", "-rf", "./*"}, "destrutiva"},
+		{[]string{"rm", "-rf", "~/*"}, "destrutiva"},
+		{[]string{"rm", "-rf", "$HOME"}, "destrutiva"},
+		{[]string{"rm", "-rf", "$HOME/"}, "destrutiva"},
 		{[]string{"git", "push", "--force"}, "destrutiva"},
 		{[]string{"git", "push", "-f", "origin", "main"}, "destrutiva"},
 		{[]string{"git", "push", "origin", "+main"}, "destrutiva"},
@@ -182,7 +190,62 @@ func TestSensitiveUnwrapsPrefixesBeforeClassifying(t *testing.T) {
 		{[]string{"env", "X=1", "git", "push", "--force"}, "destrutiva"},
 		{[]string{"timeout", "10", "git", "push", "origin", "main"}, "publicação externa"},
 		{[]string{"xargs", "-n", "1", "npm", "publish"}, "publicação externa"},
+		{[]string{"sudo", "-n", "git", "push", "--force"}, "destrutiva"},
+		{[]string{"sudo", "-E", "git", "push", "--force"}, "destrutiva"},
+		{[]string{"sudo", "-H", "-i", "git", "push", "--force"}, "destrutiva"},
+		{[]string{"nice", "-n", "5", "git", "push", "--force"}, "destrutiva"},
+		{[]string{"timeout", "-k", "5", "10", "git", "push", "--force"}, "destrutiva"},
+		{[]string{"timeout", "-s", "KILL", "10", "git", "push", "--force"}, "destrutiva"},
+		{[]string{"env", "-u", "HOME", "git", "push", "--force"}, "destrutiva"},
+		{[]string{"stdbuf", "-o", "L", "git", "push", "--force"}, "destrutiva"},
 	})
+}
+
+func TestSensitiveReanalyzesEvalLiteral(t *testing.T) {
+	sensitiveRunCases(t, []sensitiveCase{
+		{[]string{"eval", "git push --force"}, "destrutiva"},
+		{[]string{"eval", "rm -rf /"}, "destrutiva"},
+		{[]string{"eval", "echo ok"}, ""},
+	})
+}
+
+func TestSensitiveAnalyzesShellStdinHeredoc(t *testing.T) {
+	cwd := t.TempDir()
+	inScope := func([]string) bool { return true }
+	cases := []struct {
+		command  string
+		category string
+	}{
+		{"bash <<'EOF'\ngit push --force\nEOF", "destrutiva"},
+		{"sh <<EOF\ngit push origin main\nEOF", "publicação externa"},
+		{"cat <<'EOF'\ngit push --force\nEOF", ""},
+	}
+	for _, c := range cases {
+		got := CheckSensitive(AgentInput{Tool: "Bash", Command: c.command, Cwd: cwd, Parsed: true}, inScope, nil)
+		if got.Category != c.category || got.Ask != (c.category != "") {
+			t.Fatalf("%q: esperava categoria %q, veio %+v", c.command, c.category, got)
+		}
+	}
+}
+
+func TestSensitiveDynamicMarkStaysOnItsCommand(t *testing.T) {
+	cwd := t.TempDir()
+	inScope := func([]string) bool { return true }
+	cases := []struct {
+		command string
+		ask     bool
+	}{
+		{`cd "$REPO" && git status`, false},
+		{`git log --since=$D`, false},
+		{`git push $REMOTE --force`, true},
+		{`echo $(cat .env)`, true},
+	}
+	for _, c := range cases {
+		got := CheckSensitive(AgentInput{Tool: "Bash", Command: c.command, Cwd: cwd, Parsed: true}, inScope, nil)
+		if got.Ask != c.ask {
+			t.Fatalf("%s: pergunta=%v, esperado %v (%+v)", c.command, got.Ask, c.ask, got)
+		}
+	}
 }
 
 func TestSensitiveDynamicWordsWithListedTokens(t *testing.T) {
@@ -333,15 +396,6 @@ func TestSensitiveCheckPrePRLookupRunsOnlyForPRCreate(t *testing.T) {
 	notInstalled := func() bool { return false }
 	if got := sensitiveCheck(AgentInput{Tool: "Bash", Command: "gh pr create --fill", Cwd: cwd, Parsed: true}, inScope, notInstalled, prCreate); !got.Ask {
 		t.Fatalf("sem hook pré-PR, gh pr create deve perguntar: %+v", got)
-	}
-}
-
-func TestSensitiveScriptDynamicMarksWords(t *testing.T) {
-	cwd := t.TempDir()
-	script := Script{Dynamic: true, Commands: []Command{sensitiveCmd("echo", "printenv")}}
-	got := sensitiveCheck(AgentInput{Tool: "Bash", Command: "echo $(printenv)", Cwd: cwd, Parsed: true}, func([]string) bool { return true }, nil, sensitiveParse(script, nil))
-	if !got.Ask || got.Category != "comando dinâmico" {
-		t.Fatalf("script dinâmico com palavra sensível deve perguntar: %+v", got)
 	}
 }
 

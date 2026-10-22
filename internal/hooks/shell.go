@@ -31,6 +31,7 @@ type shellHeredoc struct {
 	delim  string
 	quoted bool
 	strip  bool
+	shell  bool
 }
 
 type shellParser struct {
@@ -309,12 +310,15 @@ func (p *shellParser) expansion(inQuotes bool) error {
 		p.pos = end + 1
 		return nil
 	case next == '{':
-		end := strings.IndexByte(p.src[p.pos:], '}')
-		if end < 0 {
-			return errShellSyntax
+		end, err := shellMatchBrace(p.src, p.pos+1)
+		if err != nil {
+			return err
 		}
-		p.dynamicRaw(p.src[p.pos : p.pos+end+1])
-		p.pos += end + 1
+		if err := p.substitutionsIn(p.src[p.pos+2 : end]); err != nil {
+			return err
+		}
+		p.dynamicRaw(p.src[p.pos : end+1])
+		p.pos = end + 1
 		return nil
 	case next == '_' || shellIsLetter(next):
 		end := p.pos + 1
@@ -474,6 +478,7 @@ func (p *shellParser) redirect() error {
 		if err != nil {
 			return err
 		}
+		h.shell = p.stdinShell()
 		p.heredocs = append(p.heredocs, h)
 		return nil
 	}
@@ -519,8 +524,14 @@ func (p *shellParser) heredocDelim(strip bool) (shellHeredoc, error) {
 func (p *shellParser) readHeredocs() error {
 	for _, h := range p.heredocs {
 		bodyEnd, next := shellHeredocEnd(p.src, p.pos, h)
-		if !h.quoted {
-			if err := p.substitutionsIn(p.src[p.pos:bodyEnd]); err != nil {
+		body := p.src[p.pos:bodyEnd]
+		switch {
+		case h.shell:
+			if err := p.appendSub(body); err != nil {
+				return err
+			}
+		case !h.quoted:
+			if err := p.substitutionsIn(body); err != nil {
 				return err
 			}
 		}
@@ -528,6 +539,40 @@ func (p *shellParser) readHeredocs() error {
 	}
 	p.heredocs = nil
 	return nil
+}
+
+func (p *shellParser) stdinShell() bool {
+	if len(p.words) == 0 || p.words[0].Dynamic || !commitShellNames[p.words[0].Value] {
+		return false
+	}
+	return !shellHasCFlag(p.words[1:])
+}
+
+func shellHasCFlag(args []Word) bool {
+	for _, w := range args {
+		if strings.HasPrefix(w.Value, "-") && !strings.HasPrefix(w.Value, "--") && strings.HasSuffix(w.Value, "c") {
+			return true
+		}
+	}
+	return false
+}
+
+func shellMatchBrace(text string, open int) (int, error) {
+	depth := 0
+	for i := open; i < len(text); i++ {
+		switch text[i] {
+		case '\\':
+			i++
+		case '{':
+			depth++
+		case '}':
+			depth--
+			if depth == 0 {
+				return i, nil
+			}
+		}
+	}
+	return 0, errShellSyntax
 }
 
 func shellHeredocEnd(src string, start int, h shellHeredoc) (int, int) {

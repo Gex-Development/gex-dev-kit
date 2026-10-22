@@ -22,7 +22,23 @@ var errCommitMissingInput = errors.New("entrada do hook ausente")
 
 var commitInterpreters = map[string]bool{"eval": true, "python": true, "python3": true, "node": true, "perl": true, "ruby": true, "php": true, "xargs": true, "osascript": true}
 
-var commitWrapperArgs = map[string]bool{"-u": true, "-g": true, "-C": true, "-n": true, "-P": true, "-L": true, "-d": true, "-s": true, "-E": true, "-a": true, "-I": true, "-k": true}
+type wrapperSpec struct {
+	valued   map[string]bool
+	duration bool
+}
+
+var wrapperSpecs = map[string]wrapperSpec{
+	"env":     {valued: wrapperFlags("-u", "-C", "-S", "--chdir", "--unset")},
+	"sudo":    {valued: wrapperFlags("-u", "-g", "-C", "-D", "-p", "-h", "-U", "-r", "-t")},
+	"command": {},
+	"exec":    {valued: wrapperFlags("-a")},
+	"nohup":   {},
+	"time":    {valued: wrapperFlags("-f", "-o")},
+	"nice":    {valued: wrapperFlags("-n")},
+	"timeout": {valued: wrapperFlags("-k", "-s"), duration: true},
+	"stdbuf":  {valued: wrapperFlags("-i", "-o", "-e")},
+	"xargs":   {valued: wrapperFlags("-a", "-d", "-E", "-I", "-L", "-n", "-P", "-s")},
+}
 
 var commitShellNames = map[string]bool{"sh": true, "bash": true, "zsh": true, "dash": true}
 
@@ -248,12 +264,7 @@ func commitOpaque(c Command) bool {
 	if !commitShellNames[name] {
 		return false
 	}
-	for _, w := range c.Words[1:] {
-		if strings.HasPrefix(w.Value, "-") && !strings.HasPrefix(w.Value, "--") && strings.HasSuffix(w.Value, "c") {
-			return true
-		}
-	}
-	return false
+	return shellHasCFlag(c.Words[1:])
 }
 
 func Effective(c Command) []Command {
@@ -265,31 +276,42 @@ func commitEffective(c Command, depth int) []Command {
 		return []Command{c}
 	}
 	name := c.Words[0].Value
-	args := c.Words[1:]
-	var rest []Word
-	switch {
-	case name == "env":
-		rest = commitSkipEnv(args)
-	case name == "sudo" || name == "command" || name == "exec" || name == "nohup" || name == "time" || name == "nice" || name == "timeout" || name == "xargs":
-		rest = commitSkipWrapper(name, args)
-	case commitShellNames[name]:
+	if commitShellNames[name] {
 		return commitShellC(c, depth)
-	default:
+	}
+	if name == "eval" {
+		return commitEval(c, depth)
+	}
+	if _, ok := wrapperSpecs[name]; !ok {
 		return []Command{c}
 	}
+	rest := wrapperRest(name, c.Words[1:])
 	if len(rest) == 0 {
 		return []Command{c}
 	}
 	return commitEffective(Command{Words: rest, Dir: c.Dir}, depth+1)
 }
 
-func commitSkipEnv(args []Word) []Word {
+func wrapperFlags(flags ...string) map[string]bool {
+	set := make(map[string]bool, len(flags))
+	for _, flag := range flags {
+		set[flag] = true
+	}
+	return set
+}
+
+func wrapperRest(name string, args []Word) []Word {
+	spec := wrapperSpecs[name]
+	duration := spec.duration
 	for i := 0; i < len(args); i++ {
 		v := args[i].Value
 		switch {
-		case v == "-u" || v == "-C" || v == "--chdir":
+		case spec.valued[v]:
 			i++
-		case strings.HasPrefix(v, "-") || strings.Contains(v, "="):
+		case strings.HasPrefix(v, "-") && len(v) > 1:
+		case name == "env" && strings.Contains(v, "="):
+		case duration:
+			duration = false
 		default:
 			return args[i:]
 		}
@@ -297,23 +319,30 @@ func commitSkipEnv(args []Word) []Word {
 	return nil
 }
 
-func commitSkipWrapper(name string, args []Word) []Word {
-	skippedDuration := name != "timeout"
-	for i := 0; i < len(args); i++ {
-		v := args[i].Value
-		if strings.HasPrefix(v, "-") && len(v) > 1 {
-			if commitWrapperArgs[v] {
-				i++
-			}
-			continue
+func commitEval(c Command, depth int) []Command {
+	parts := make([]string, 0, len(c.Words)-1)
+	for _, w := range c.Words[1:] {
+		if w.Dynamic {
+			return []Command{c}
 		}
-		if !skippedDuration {
-			skippedDuration = true
-			continue
-		}
-		return args[i:]
+		parts = append(parts, w.Value)
 	}
-	return nil
+	if len(parts) == 0 {
+		return []Command{c}
+	}
+	return commitSubScript(strings.Join(parts, " "), c, depth)
+}
+
+func commitSubScript(src string, c Command, depth int) []Command {
+	script, err := shellParse(src, depth+1)
+	if err != nil {
+		return []Command{c}
+	}
+	var out []Command
+	for _, sub := range script.Commands {
+		out = append(out, commitEffective(sub, depth+1)...)
+	}
+	return out
 }
 
 func commitShellC(c Command, depth int) []Command {
@@ -324,15 +353,7 @@ func commitShellC(c Command, depth int) []Command {
 			if i+1 >= len(args) || args[i+1].Dynamic {
 				return []Command{c}
 			}
-			script, err := shellParse(args[i+1].Value, depth+1)
-			if err != nil {
-				return []Command{c}
-			}
-			var out []Command
-			for _, sub := range script.Commands {
-				out = append(out, commitEffective(sub, depth+1)...)
-			}
-			return out
+			return commitSubScript(args[i+1].Value, c, depth)
 		}
 	}
 	return []Command{c}
