@@ -18,6 +18,11 @@ import (
 //go:embed assets/core assets/matt assets/specialties
 var content embed.FS
 
+var (
+	ErrUnknownSkill = errors.New("skill indisponível")
+	ErrUnknownHook  = errors.New("hook indisponível")
+)
+
 type File struct {
 	Path string
 	Data []byte
@@ -142,7 +147,7 @@ func validateSelection(skills, hooks []string, deferProductivity bool) error {
 	for _, name := range skills {
 		if _, matt := skillDescriptions[name]; !matt {
 			if _, specialty := SpecialtyByName(name); !specialty {
-				return fmt.Errorf("skill indisponível: %s", name)
+				return fmt.Errorf("%w: %s", ErrUnknownSkill, name)
 			}
 		}
 	}
@@ -155,7 +160,7 @@ func validateSelection(skills, hooks []string, deferProductivity bool) error {
 	}
 	for _, name := range hooks {
 		if !slices.Contains(Hooks(), name) {
-			return fmt.Errorf("hook indisponível: %s", name)
+			return fmt.Errorf("%w: %s", ErrUnknownHook, name)
 		}
 	}
 	return nil

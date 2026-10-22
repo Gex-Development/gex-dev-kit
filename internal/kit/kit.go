@@ -663,7 +663,7 @@ func Doctor(home string) ([]Status, error) {
 	}
 	sort.Slice(status, func(i, j int) bool { return status[i].Path < status[j].Path })
 	if len(status) == 0 {
-		status = append(status, Status{Path: historyState, State: "sem-historico", Detail: "Nenhuma instalação ativa."})
+		status = append(status, Status{Path: historyState, State: "sem-historico", Detail: "Nenhuma instalação registrada."})
 	}
 	return status, nil
 }

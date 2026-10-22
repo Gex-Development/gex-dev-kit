@@ -240,6 +240,25 @@ func TestAddonsUnknownNameIsUsageError(t *testing.T) {
 	}
 }
 
+func TestAddonsUnknownNameListsValidosESugere(t *testing.T) {
+	s, _, errOut := readTestSession(options{Args: []string{"cavemn"}}, deps{})
+	if code := cmdAddons(s); code != 2 {
+		t.Fatalf("addon inexistente: exit=%d; quero 2", code)
+	}
+	want := "addon desconhecido: cavemn\nAddons: caveman, ponytail, superpowers, spec-kit. Você quis dizer caveman?\n"
+	if errOut.String() != want {
+		t.Fatalf("saída de addon desconhecido = %q; quero %q", errOut.String(), want)
+	}
+}
+
+func TestAddonsDesconhecidoSemParecidoNaoSugere(t *testing.T) {
+	s, _, errOut := readTestSession(options{Args: []string{"nao-existe"}}, deps{})
+	cmdAddons(s)
+	if strings.Contains(errOut.String(), "Você quis dizer") {
+		t.Fatalf("sugeriu sem parecido: %q", errOut.String())
+	}
+}
+
 func TestJSONStdoutContainsOnlyJSON(t *testing.T) {
 	d, _ := readFakeDeps(readDriftReport())
 	commands := map[string]func(session) int{

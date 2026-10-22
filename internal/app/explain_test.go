@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Gex-Development/gex-dev-kit/internal/catalog"
 	"github.com/Gex-Development/gex-dev-kit/internal/githooks"
 	"github.com/Gex-Development/gex-dev-kit/internal/kit"
 )
@@ -110,12 +111,12 @@ func TestExplainErrosDeUsoMarcamUsage(t *testing.T) {
 		wantTitle  string
 		wantAction string
 	}{
-		{"skill desconhecida", errors.New("Catálogo: skill indisponível: inexistente"), "Skill desconhecida", "Veja `gex-dev-kit skills` para os nomes válidos."},
-		{"hook de instalação desconhecido", errors.New("Catálogo: hook indisponível: inexistente"), "Hook desconhecido", "Veja `gex-dev-kit hooks`."},
-		{"git hook desconhecido", errors.New("git hook desconhecido: post-merge"), "Hook desconhecido", "Veja `gex-dev-kit hooks`."},
-		{"nenhum hook selecionado", errors.New("nenhum git hook selecionado"), "Hook não selecionado", "Informe um hook com `--hook NOME`. Veja `gex-dev-kit hooks`."},
-		{"--run sem pre-push", errors.New("comandos de pre-push sem o hook pre-push selecionado"), "Opção sem efeito", "Adicione `--hook gex-pre-push` ou remova `--run`."},
-		{"--pre-commit-run sem pre-commit", errors.New("comandos de pre-commit sem o hook pre-commit selecionado"), "Opção sem efeito", "Adicione `--hook gex-pre-commit` ou remova `--pre-commit-run`."},
+		{"skill desconhecida", fmt.Errorf("Catálogo: %w", fmt.Errorf("%w: inexistente", catalog.ErrUnknownSkill)), "Skill desconhecida", "Veja `gex-dev-kit skills` para os nomes válidos."},
+		{"hook de instalação desconhecido", fmt.Errorf("Catálogo: %w", fmt.Errorf("%w: inexistente", catalog.ErrUnknownHook)), "Hook desconhecido", "Veja `gex-dev-kit hooks`."},
+		{"git hook desconhecido", fmt.Errorf("%w: post-merge", githooks.ErrUnknownHook), "Hook desconhecido", "Veja `gex-dev-kit hooks`."},
+		{"nenhum hook selecionado", githooks.ErrNoHook, "Hook não selecionado", "Informe um hook com `--hook NOME`. Veja `gex-dev-kit hooks`."},
+		{"--run sem pre-push", githooks.ErrPrePushWithoutHook, "Opção sem efeito", "Adicione `--hook gex-pre-push` ou remova `--run`."},
+		{"--pre-commit-run sem pre-commit", githooks.ErrPreCommitWithoutHook, "Opção sem efeito", "Adicione `--hook gex-pre-commit` ou remova `--pre-commit-run`."},
 		{"repositório ausente", githooks.ErrNotRepo, "Não é repositório Git", "Informe a raiz de um repositório Git (pasta com .git)."},
 	}
 	for _, c := range cases {
@@ -132,5 +133,38 @@ func TestExplainErrosDeUsoMarcamUsage(t *testing.T) {
 func TestExplainFalhaComumNaoEhUso(t *testing.T) {
 	if IsUsage(errors.New("erro qualquer")) || IsUsage(nil) {
 		t.Fatalf("falha comum marcada como erro de uso")
+	}
+}
+
+func TestExplainSentinelasDosProdutores(t *testing.T) {
+	cases := []struct {
+		name     string
+		err      error
+		sentinel error
+	}{
+		{"skill do catálogo", catalog.ValidateSelection([]string{"inexistente"}, nil), catalog.ErrUnknownSkill},
+		{"hook do catálogo", catalog.ValidateSelection(nil, []string{"inexistente"}), catalog.ErrUnknownHook},
+		{"git hook desconhecido", githooks.Validate(githooks.Request{Hooks: []string{"post-merge"}}), githooks.ErrUnknownHook},
+		{"nenhum git hook", githooks.Validate(githooks.Request{}), githooks.ErrNoHook},
+		{"pre-push sem hook", githooks.Validate(githooks.Request{Hooks: []string{"commit-msg"}, PrePush: []string{"make test"}}), githooks.ErrPrePushWithoutHook},
+		{"pre-commit sem hook", githooks.Validate(githooks.Request{Hooks: []string{"commit-msg"}, PreCommit: []string{"make lint"}}), githooks.ErrPreCommitWithoutHook},
+	}
+	for _, c := range cases {
+		if !errors.Is(c.err, c.sentinel) || !IsUsage(c.err) {
+			t.Fatalf("%s: erro %v não reconhecido como %v", c.name, c.err, c.sentinel)
+		}
+	}
+}
+
+func TestExplainCausaSemPrefixoDeCamada(t *testing.T) {
+	got := Explain(fmt.Errorf("Catálogo: %w", catalog.ValidateSelection([]string{"inexistente"}, nil)))
+	if got.Cause != "skill indisponível: inexistente" {
+		t.Fatalf("causa = %q; quero %q", got.Cause, "skill indisponível: inexistente")
+	}
+}
+
+func TestExplainTextoSemSentinelaNaoEhUso(t *testing.T) {
+	if IsUsage(errors.New("skill indisponível: inexistente")) {
+		t.Fatalf("texto igual ao da sentinela não deve virar erro de uso")
 	}
 }

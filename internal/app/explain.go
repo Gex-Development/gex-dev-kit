@@ -2,8 +2,10 @@ package app
 
 import (
 	"errors"
+	"slices"
 	"strings"
 
+	"github.com/Gex-Development/gex-dev-kit/internal/catalog"
 	"github.com/Gex-Development/gex-dev-kit/internal/githooks"
 	"github.com/Gex-Development/gex-dev-kit/internal/kit"
 )
@@ -55,44 +57,34 @@ func IsUsage(err error) bool {
 	return ok
 }
 
-const (
-	marcaSkill        = "skill indisponível"
-	marcaHookCatalogo = "hook indisponível"
-	marcaHookGit      = "git hook desconhecido"
-	marcaSemHook      = "nenhum git hook selecionado"
-	marcaPrePushSem   = "comandos de pre-push sem o hook pre-push selecionado"
-	marcaPreCommitSem = "comandos de pre-commit sem o hook pre-commit selecionado"
-)
-
 func usageProblem(err error) (Problem, bool) {
 	if err == nil {
 		return Problem{}, false
 	}
-	texto := err.Error()
 	switch {
 	case errors.Is(err, githooks.ErrNotRepo):
 		return Problem{Title: "Não é repositório Git", Cause: "O caminho de --repo não está dentro de um repositório Git.", Action: "Informe a raiz de um repositório Git (pasta com .git)."}, true
-	case strings.Contains(texto, marcaSkill):
-		return Problem{Title: "Skill desconhecida", Cause: apartirDe(texto, marcaSkill), Action: "Veja `gex-dev-kit skills` para os nomes válidos."}, true
-	case strings.Contains(texto, marcaHookCatalogo), strings.Contains(texto, marcaHookGit):
-		marca := marcaHookCatalogo
-		if strings.Contains(texto, marcaHookGit) {
-			marca = marcaHookGit
-		}
-		return Problem{Title: "Hook desconhecido", Cause: apartirDe(texto, marca), Action: "Veja `gex-dev-kit hooks`."}, true
-	case strings.Contains(texto, marcaSemHook):
-		return Problem{Title: "Hook não selecionado", Cause: marcaSemHook + ".", Action: "Informe um hook com `--hook NOME`. Veja `gex-dev-kit hooks`."}, true
-	case strings.Contains(texto, marcaPrePushSem):
-		return Problem{Title: "Opção sem efeito", Cause: marcaPrePushSem + ".", Action: "Adicione `--hook gex-pre-push` ou remova `--run`."}, true
-	case strings.Contains(texto, marcaPreCommitSem):
-		return Problem{Title: "Opção sem efeito", Cause: marcaPreCommitSem + ".", Action: "Adicione `--hook gex-pre-commit` ou remova `--pre-commit-run`."}, true
+	case errors.Is(err, catalog.ErrUnknownSkill):
+		return Problem{Title: "Skill desconhecida", Cause: causaDe(err, catalog.ErrUnknownSkill), Action: "Veja `gex-dev-kit skills` para os nomes válidos."}, true
+	case errors.Is(err, catalog.ErrUnknownHook):
+		return Problem{Title: "Hook desconhecido", Cause: causaDe(err, catalog.ErrUnknownHook), Action: "Veja `gex-dev-kit hooks`."}, true
+	case errors.Is(err, githooks.ErrUnknownHook):
+		return Problem{Title: "Hook desconhecido", Cause: causaDe(err, githooks.ErrUnknownHook), Action: "Veja `gex-dev-kit hooks`."}, true
+	case errors.Is(err, githooks.ErrNoHook):
+		return Problem{Title: "Hook não selecionado", Cause: githooks.ErrNoHook.Error() + ".", Action: "Informe um hook com `--hook NOME`. Veja `gex-dev-kit hooks`."}, true
+	case errors.Is(err, githooks.ErrPrePushWithoutHook):
+		return Problem{Title: "Opção sem efeito", Cause: githooks.ErrPrePushWithoutHook.Error() + ".", Action: "Adicione `--hook gex-pre-push` ou remova `--run`."}, true
+	case errors.Is(err, githooks.ErrPreCommitWithoutHook):
+		return Problem{Title: "Opção sem efeito", Cause: githooks.ErrPreCommitWithoutHook.Error() + ".", Action: "Adicione `--hook gex-pre-commit` ou remova `--pre-commit-run`."}, true
 	}
 	return Problem{}, false
 }
 
-func apartirDe(texto, marca string) string {
-	if i := strings.Index(texto, marca); i >= 0 {
-		return texto[i:]
+func causaDe(err error, sentinelas ...error) string {
+	for e := err; e != nil; e = errors.Unwrap(e) {
+		if u := errors.Unwrap(e); u != nil && slices.ContainsFunc(sentinelas, func(s error) bool { return s == u }) {
+			return e.Error()
+		}
 	}
-	return texto
+	return err.Error()
 }

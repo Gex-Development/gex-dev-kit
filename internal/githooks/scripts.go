@@ -22,12 +22,12 @@ var hookNames = []string{"commit-msg", "pre-commit", "pre-push"}
 
 func Validate(r Request) error {
 	if len(r.Hooks) == 0 {
-		return fmt.Errorf("nenhum git hook selecionado")
+		return ErrNoHook
 	}
 	selected := map[string]bool{}
 	for _, name := range r.Hooks {
 		if !knownHook(name) {
-			return fmt.Errorf("git hook desconhecido: %s", name)
+			return fmt.Errorf("%w: %s", ErrUnknownHook, name)
 		}
 		if selected[name] {
 			return fmt.Errorf("git hook repetido: %s", name)
@@ -35,10 +35,10 @@ func Validate(r Request) error {
 		selected[name] = true
 	}
 	if len(r.PreCommit) > 0 && !selected["pre-commit"] {
-		return fmt.Errorf("comandos de pre-commit sem o hook pre-commit selecionado")
+		return ErrPreCommitWithoutHook
 	}
 	if len(r.PrePush) > 0 && !selected["pre-push"] {
-		return fmt.Errorf("comandos de pre-push sem o hook pre-push selecionado")
+		return ErrPrePushWithoutHook
 	}
 	if err := checkCommands("pre-commit", r.PreCommit); err != nil {
 		return err
@@ -73,7 +73,7 @@ func Script(hook string, r Request) (string, error) {
 		}
 		return prePushScript(r.PrePush), nil
 	}
-	return "", fmt.Errorf("git hook desconhecido: %s", hook)
+	return "", fmt.Errorf("%w: %s", ErrUnknownHook, hook)
 }
 
 func Files(r Request) ([]catalog.File, error) {

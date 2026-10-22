@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
+	"maps"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/Gex-Development/gex-dev-kit/internal/ui/terminal"
@@ -66,7 +68,7 @@ func splitCommand(args []string) (string, []string) {
 func parseOptions(command string, args []string) (options, error) {
 	var o options
 	if !knownCommand(command) {
-		return o, usageError{"comando desconhecido: " + command, acaoPadrao}
+		return o, comandoDesconhecido(command)
 	}
 	if command == "hook" {
 		for _, arg := range args {
@@ -213,7 +215,7 @@ func validaOpcoes(command string, o options) error {
 			return usageError{"argumento inesperado: " + o.Args[1], acaoPadrao}
 		}
 		if len(o.Args) == 1 && !knownCommand(o.Args[0]) {
-			return usageError{"comando desconhecido: " + o.Args[0], acaoPadrao}
+			return comandoDesconhecido(o.Args[0])
 		}
 	case "hook":
 	default:
@@ -230,4 +232,44 @@ func knownCommand(name string) bool {
 	}
 	_, ok := helpSpecs[name]
 	return ok
+}
+
+func comandoDesconhecido(nome string) usageError {
+	validos := slices.Sorted(maps.Keys(helpSpecs))
+	acao := "Comandos: " + strings.Join(validos, ", ") + ". " + acaoPadrao + sugestaoValor(nome, validos)
+	return usageError{"comando desconhecido: " + nome, acao}
+}
+
+func sugestaoValor(valor string, validos []string) string {
+	melhor, melhorDistancia := "", 3
+	for _, v := range validos {
+		if d := distanciaEdicao(valor, v); d < melhorDistancia {
+			melhor, melhorDistancia = v, d
+		}
+	}
+	if melhor == "" {
+		return ""
+	}
+	return " Você quis dizer " + melhor + "?"
+}
+
+func distanciaEdicao(a, b string) int {
+	ra, rb := []rune(a), []rune(b)
+	anterior := make([]int, len(rb)+1)
+	for j := range anterior {
+		anterior[j] = j
+	}
+	for i := 1; i <= len(ra); i++ {
+		atual := make([]int, len(rb)+1)
+		atual[0] = i
+		for j := 1; j <= len(rb); j++ {
+			custo := 1
+			if ra[i-1] == rb[j-1] {
+				custo = 0
+			}
+			atual[j] = min(anterior[j]+1, atual[j-1]+1, anterior[j-1]+custo)
+		}
+		anterior = atual
+	}
+	return anterior[len(rb)]
 }

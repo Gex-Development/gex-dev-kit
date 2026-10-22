@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -320,7 +321,7 @@ func TestRollbackRepoNaoGitSaiComDois(t *testing.T) {
 
 func TestWriteFailUsoSaiComDois(t *testing.T) {
 	var buf bytes.Buffer
-	if code := writeFail(&buf, errors.New("Catálogo: skill indisponível: x")); code != 2 {
+	if code := writeFail(&buf, fmt.Errorf("Catálogo: %w", fmt.Errorf("%w: x", catalog.ErrUnknownSkill))); code != 2 {
 		t.Fatalf("erro de uso: exit=%d; quero 2", code)
 	}
 }

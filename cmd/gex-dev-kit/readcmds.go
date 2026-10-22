@@ -44,7 +44,7 @@ func cmdHooks(s session) int {
 func cmdAddons(s session) int {
 	addons, err := readAddonSelection(s.opts.Args)
 	if err != nil {
-		return invalid(s.errOut, err.Error())
+		return usageFail(s.errOut, err)
 	}
 	doc := readAddonsDoc(addons)
 	if s.opts.JSON {
@@ -213,11 +213,20 @@ func readAddonSelection(args []string) ([]catalog.Addon, error) {
 	case 1:
 		addon, ok := catalog.AddonByName(args[0])
 		if !ok {
-			return nil, fmt.Errorf("addon desconhecido: %s", args[0])
+			return nil, addonDesconhecido(args[0])
 		}
 		return []catalog.Addon{addon}, nil
 	}
 	return nil, errors.New("uso: gex-dev-kit addons [NOME]")
+}
+
+func addonDesconhecido(nome string) usageError {
+	var validos []string
+	for _, addon := range catalog.Addons() {
+		validos = append(validos, addon.Name)
+	}
+	acao := "Addons: " + strings.Join(validos, ", ") + "." + sugestaoValor(nome, validos)
+	return usageError{"addon desconhecido: " + nome, acao}
 }
 
 func readAddonsDoc(addons []catalog.Addon) jsonAddonsDoc {

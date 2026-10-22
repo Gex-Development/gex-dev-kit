@@ -115,6 +115,60 @@ func TestParseOptionsTabela(t *testing.T) {
 	}
 }
 
+func TestComandoDesconhecidoListaValidos(t *testing.T) {
+	_, err := parseOptions("gizmo", nil)
+	u, ok := err.(usageError)
+	if !ok {
+		t.Fatalf("comando desconhecido sem erro de uso: %v", err)
+	}
+	if !strings.HasPrefix(u.action, "Comandos: addons, doctor, ds, githooks, help, hook, hooks, install,") {
+		t.Fatalf("ação não lista os comandos: %q", u.action)
+	}
+	if !strings.HasSuffix(u.action, "Use --help para opções.") || strings.Contains(u.action, "Você quis dizer") {
+		t.Fatalf("ação sem sugestão esperada: %q", u.action)
+	}
+}
+
+func TestComandoDesconhecidoSugereProximo(t *testing.T) {
+	_, err := parseOptions("instal", nil)
+	u, ok := err.(usageError)
+	if !ok {
+		t.Fatalf("comando desconhecido sem erro de uso: %v", err)
+	}
+	if !strings.HasSuffix(u.action, "Use --help para opções. Você quis dizer install?") {
+		t.Fatalf("ação sem sugestão: %q", u.action)
+	}
+}
+
+func TestDistanciaEdicao(t *testing.T) {
+	casos := []struct {
+		a, b string
+		quer int
+	}{
+		{"", "", 0},
+		{"install", "install", 0},
+		{"instal", "install", 1},
+		{"doctr", "doctor", 1},
+		{"hoks", "hooks", 1},
+		{"kitten", "sitting", 3},
+	}
+	for _, c := range casos {
+		if got := distanciaEdicao(c.a, c.b); got != c.quer {
+			t.Fatalf("distanciaEdicao(%q, %q) = %d; quero %d", c.a, c.b, got, c.quer)
+		}
+	}
+}
+
+func TestSugestaoValorRespeitaLimite(t *testing.T) {
+	validos := []string{"install", "doctor"}
+	if got := sugestaoValor("instll", validos); got != " Você quis dizer install?" {
+		t.Fatalf("distância 1: %q", got)
+	}
+	if got := sugestaoValor("xyz", validos); got != "" {
+		t.Fatalf("sem parecido deveria ser vazio: %q", got)
+	}
+}
+
 func TestFlagRaizDesconhecidaSaiComUso(t *testing.T) {
 	code, out, errors := invoke(t, "--invalid-flag")
 	if code != 2 || out != "" || !strings.Contains(errors, "opção desconhecida: --invalid-flag") || !strings.Contains(errors, "Use --help para opções.") {
