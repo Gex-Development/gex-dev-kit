@@ -191,8 +191,10 @@ func acrescentaValor(destino *[]string, nome, valor string) error {
 	return nil
 }
 
+var comandosHomeERepo = flagSet("githooks", "doctor")
+
 func validaOpcoes(command string, o options) error {
-	if o.Home != "" && o.Repo != "" {
+	if o.Home != "" && o.Repo != "" && !comandosHomeERepo[command] {
 		return usageError{"use --home ou --repo, não os dois", acaoPadrao}
 	}
 	if o.UI == terminal.ModeTUI && (o.Yes || o.Quiet || o.JSON) {

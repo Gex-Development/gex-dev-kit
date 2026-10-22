@@ -2,9 +2,12 @@ package main
 
 import (
 	"bytes"
+	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -12,9 +15,15 @@ import (
 	"github.com/Gex-Development/gex-dev-kit/internal/hooks"
 )
 
+var (
+	hookPreCommitDeadline = 60 * time.Second
+	errHookPreCommitLate  = errors.New("prazo de verificação esgotado")
+)
+
 const (
 	hookSessionDeadline    = 2 * time.Second
 	hookScanLimit          = 8 << 20
+	hookPreCommitTimeout   = "Verificação de credenciais não concluída a tempo; commit bloqueado. Rode de novo ou use `git commit --no-verify` por sua conta."
 	hookSessionUnavailable = "GEX: verificação de início de sessão indisponível."
 	hookCommitBlocked      = "Commit bloqueado: mensagem fora do padrão Conventional Commits. Use git commit -m 'tipo: descrição'."
 	hookCommitUnparsed     = "Commit bloqueado: não foi possível analisar o commit; use `git commit -m 'tipo: descrição'` literal."
@@ -161,8 +170,24 @@ func hookSessionText(input hooks.AgentInput, agent string) string {
 	}
 }
 
+func hookStagedDiff() (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), hookPreCommitDeadline)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "git", "diff", "--cached", "-U0", "--no-color", "--no-ext-diff", "--diff-filter=ACMR")
+	cmd.Env = append(os.Environ(), "GIT_OPTIONAL_LOCKS=0")
+	out, err := cmd.Output()
+	if err != nil && errors.Is(ctx.Err(), context.DeadlineExceeded) {
+		return "", errHookPreCommitLate
+	}
+	return string(out), err
+}
+
 func hookPreCommit(errOut io.Writer) int {
-	diff, err := hooks.RunGit("", "diff", "--cached", "-U0", "--no-color", "--no-ext-diff", "--diff-filter=ACMR")
+	diff, err := hookStagedDiff()
+	if errors.Is(err, errHookPreCommitLate) {
+		fmt.Fprintln(errOut, hookPreCommitTimeout)
+		return 1
+	}
 	if err != nil {
 		fmt.Fprintln(errOut, "pre-commit: não foi possível ler o diff staged; verificação ignorada.")
 		return 0

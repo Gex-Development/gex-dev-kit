@@ -154,6 +154,33 @@ func TestFlagUITuiSemTerminalPedeCLI(t *testing.T) {
 	}
 }
 
+func TestFlagHomeERepoPermitidosEmGithooksEDoctor(t *testing.T) {
+	home := t.TempDir()
+	repo := t.TempDir()
+	casos := [][]string{
+		{"githooks", "--home", home, "--repo", repo, "--hook", "gex-pre-commit"},
+		{"doctor", "--home", home, "--repo", repo},
+	}
+	for _, args := range casos {
+		comando, rest := splitCommand(args)
+		o, err := parseOptions(comando, rest)
+		if err != nil {
+			t.Fatalf("%s com --home e --repo: erro inesperado: %v", comando, err)
+		}
+		if o.Home != home || o.Repo != repo {
+			t.Fatalf("%s: home=%q repo=%q", comando, o.Home, o.Repo)
+		}
+	}
+}
+
+func TestFlagHomeERepoRecusadosEmRollback(t *testing.T) {
+	home := t.TempDir()
+	repo := t.TempDir()
+	if _, err := parseOptions("rollback", []string{"--home", home, "--repo", repo}); err == nil {
+		t.Fatalf("rollback com --home e --repo: esperado erro de uso")
+	}
+}
+
 func TestHelpTemDoisAQuatroExemplos(t *testing.T) {
 	for comando, spec := range helpSpecs {
 		if n := len(spec.exemplos); n < 2 || n > 4 {

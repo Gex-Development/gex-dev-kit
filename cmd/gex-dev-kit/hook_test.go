@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/Gex-Development/gex-dev-kit/internal/hooks"
 )
@@ -216,6 +217,36 @@ func TestHookPreCommitHonorsAllowFile(t *testing.T) {
 	var out, errors bytes.Buffer
 	if code := run([]string{"hook", "pre-commit"}, strings.NewReader(""), &out, &errors); code != 0 {
 		t.Fatalf("exceção ignorada: exit=%d err=%q", code, errors.String())
+	}
+}
+
+func TestHookPreCommitFechaSemPrazoDeVerificacao(t *testing.T) {
+	hookIsolate(t)
+	dir := hookRepo(t, "")
+	if err := os.WriteFile(filepath.Join(dir, "config.txt"), []byte("chave=ok\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	hookGit(t, dir, "add", "config.txt")
+	anterior := hookPreCommitDeadline
+	hookPreCommitDeadline = time.Nanosecond
+	t.Cleanup(func() { hookPreCommitDeadline = anterior })
+	var out, errors bytes.Buffer
+	code := run([]string{"hook", "pre-commit"}, strings.NewReader(""), &out, &errors)
+	if code != 1 || !strings.Contains(errors.String(), "Verificação de credenciais não concluída a tempo; commit bloqueado.") {
+		t.Fatalf("prazo esgotado: exit=%d err=%q", code, errors.String())
+	}
+}
+
+func TestHookPreCommitPassesWithBenignStagedFile(t *testing.T) {
+	hookIsolate(t)
+	dir := hookRepo(t, "")
+	if err := os.WriteFile(filepath.Join(dir, "readme.txt"), []byte("texto comum\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	hookGit(t, dir, "add", "readme.txt")
+	var out, errors bytes.Buffer
+	if code := run([]string{"hook", "pre-commit"}, strings.NewReader(""), &out, &errors); code != 0 || errors.Len() != 0 {
+		t.Fatalf("staged sem credencial: exit=%d err=%q", code, errors.String())
 	}
 }
 
