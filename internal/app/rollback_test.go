@@ -3,6 +3,7 @@ package app
 import (
 	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -112,5 +113,47 @@ func TestRollbackAgentsWithoutHistoryReportsNothingToRestore(t *testing.T) {
 	err := RollbackAgents(t.TempDir())
 	if err == nil || !strings.Contains(err.Error(), "nenhuma instalação anterior") {
 		t.Fatalf("rollback de agentes sem histórico deveria avisar que nada foi restaurado, veio: %v", err)
+	}
+}
+
+func rollbackTestGitIsolate(t *testing.T) {
+	t.Helper()
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git indisponível")
+	}
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, ".config"))
+	t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
+	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
+}
+
+func TestRepoHistoryRootUsaDiretorioComum(t *testing.T) {
+	rollbackTestGitIsolate(t)
+	repo := t.TempDir()
+	if out, err := exec.Command("git", "-C", repo, "init", "-q").CombinedOutput(); err != nil {
+		t.Fatalf("git init falhou: %v: %s", err, out)
+	}
+	got, err := RepoHistoryRoot(repo)
+	if err != nil {
+		t.Fatalf("RepoHistoryRoot falhou: %v", err)
+	}
+	want, err := filepath.EvalSymlinks(filepath.Join(repo, ".git"))
+	if err != nil {
+		t.Fatalf("EvalSymlinks do .git falhou: %v", err)
+	}
+	resolved, err := filepath.EvalSymlinks(got)
+	if err != nil {
+		t.Fatalf("EvalSymlinks do retorno falhou: %v", err)
+	}
+	if resolved != want {
+		t.Fatalf("RepoHistoryRoot = %q, queria %q", resolved, want)
+	}
+}
+
+func TestRepoHistoryRootFalhaForaDeRepositorio(t *testing.T) {
+	rollbackTestGitIsolate(t)
+	if _, err := RepoHistoryRoot(t.TempDir()); err == nil {
+		t.Fatalf("RepoHistoryRoot fora de repositório deveria falhar")
 	}
 }

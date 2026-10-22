@@ -323,7 +323,11 @@ func writeRequest(s session) (app.Request, error) {
 
 func writeRollbackRoot(o options) (string, error) {
 	if o.Repo != "" {
-		return writeAbs(o.Repo)
+		repo, err := writeAbs(o.Repo)
+		if err != nil {
+			return "", err
+		}
+		return app.RepoHistoryRoot(repo)
 	}
 	return writeHome(o.Home)
 }

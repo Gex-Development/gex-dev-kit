@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -107,6 +108,29 @@ func TestRollbackNoopDoesNotClaimRestoration(t *testing.T) {
 	code, out, errors := writeCall(t, options{Home: home}, cmdRollback)
 	if code != 0 || errors != "" || strings.Contains(out, "Restaurado") {
 		t.Fatalf("rollback vazio: exit=%d out=%q err=%q", code, out, errors)
+	}
+}
+
+func TestRollbackRepoRestauraGitHooks(t *testing.T) {
+	cliIsolate(t)
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git indisponível")
+	}
+	repo := t.TempDir()
+	hookGit(t, repo, "init", "-q")
+	commitMsg := filepath.Join(repo, ".git", "hooks", "commit-msg")
+	if code, _, errOut := invoke(t, "githooks", "--repo", repo, "--hook", "gex-commit-msg", "--yes"); code != 0 {
+		t.Fatalf("githooks falhou: exit=%d err=%q", code, errOut)
+	}
+	if _, err := os.Stat(commitMsg); err != nil {
+		t.Fatalf("commit-msg não foi instalado: %v", err)
+	}
+	code, out, errOut := invoke(t, "rollback", "--repo", repo, "--yes")
+	if code != 0 || errOut != "" || !strings.Contains(out, "Restaurado") {
+		t.Fatalf("rollback --repo: exit=%d out=%q err=%q", code, out, errOut)
+	}
+	if _, err := os.Stat(commitMsg); !os.IsNotExist(err) {
+		t.Fatalf("commit-msg deveria ter sido removido pelo rollback: %v", err)
 	}
 }
 

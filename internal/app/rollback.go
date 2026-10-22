@@ -17,6 +17,14 @@ func Rollback(root string) (string, error) {
 	return kit.Rollback(root)
 }
 
+func RepoHistoryRoot(repo string) (string, error) {
+	target, err := doctorCommonDir(repo)
+	if err != nil {
+		return "", err
+	}
+	return target.CommonDir, nil
+}
+
 func RollbackAgents(home string) error {
 	return agents.Rollback(home)
 }

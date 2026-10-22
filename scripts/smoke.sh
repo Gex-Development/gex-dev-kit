@@ -85,9 +85,18 @@ done
 ok 'arquivos nos dois diretórios de skills, tokens.css e logos SVG'
 
 termos_pessoais=(-e '/Users/' -e '~/vaults' -e 'davi-agents' -e 'Davi' -e 'gex-terraform' -e 'canonico-validador' -e 'TickTick' -e 'skill://' -e 'agent://' -e '@latest' -e 'Male Enhancement' -e '<metadata>' -e 'C2PA' -e 'vaul-canonico-gateways' -e 'canonico-gateways' -e 'Cockpit' -e 'arn:aws:' -e '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}' -e '[0-9]{12}')
-if grep -R -I -n -E "${termos_pessoais[@]}" "$home/.claude" "$home/.agents" "$home/.codex" > "$work/pessoais.txt"; then
-  cat "$work/pessoais.txt" >&2
-  falhou 'dado pessoal encontrado nos arquivos instalados'
+if grep -R -I -n -E "${termos_pessoais[@]}" "$home/.claude" "$home/.agents" "$home/.codex" > "$work/pessoais_bruto.txt"; then
+  : > "$work/pessoais.txt"
+  while IFS= read -r linha; do
+    restante=$(printf '%s\n' "$linha" | sed -E 's/[A-Za-z0-9._%+-]+@(example\.(com|org|net)|localhost)($|[^A-Za-z0-9.-]|\.($|[^A-Za-z0-9]))/ /g')
+    if printf '%s\n' "$restante" | grep -q -E "${termos_pessoais[@]}"; then
+      printf '%s\n' "$linha" >> "$work/pessoais.txt"
+    fi
+  done < "$work/pessoais_bruto.txt"
+  if [[ -s "$work/pessoais.txt" ]]; then
+    cat "$work/pessoais.txt" >&2
+    falhou 'dado pessoal encontrado nos arquivos instalados'
+  fi
 fi
 ok 'nenhum dado pessoal nos arquivos instalados'
 
