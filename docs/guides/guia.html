@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Guia do GEX Dev Kit</title>
+  <link rel="stylesheet" href="assets/tokens.css">
+  <style>
+    body { margin: 0; background: var(--surface-page); color: var(--text-primary); font-family: var(--font-ui); line-height: 1.55; }
+    main { max-width: 1040px; margin: 0 auto; padding: 32px 16px 64px; }
+    h1 { font-size: 34px; letter-spacing: -.02em; margin: 8px 0 12px; }
+    h2 { font-size: 24px; margin: 44px 0 12px; border-top: 1px solid var(--border-card); padding-top: 24px; }
+    h3 { font-size: 17px; margin: 24px 0 8px; }
+    p, li { font-size: 16px; }
+    .lead { font-size: 18px; color: var(--text-secondary, var(--text-primary)); }
+    video { width: 100%; border-radius: 12px; background: #000; margin: 16px 0 8px; }
+    .note { font-size: 14px; opacity: .8; }
+    figure { margin: 18px 0; }
+    figure img { width: 100%; height: auto; border-radius: 12px; border: 1px solid var(--border-card); display: block; }
+    figcaption { font-size: 14px; opacity: .8; margin-top: 6px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 18px; }
+    pre { background: var(--surface-card-2); border: 1px solid var(--border-card); border-radius: 10px; padding: 14px 16px; overflow-x: auto; font: 14px/1.5 var(--font-mono); }
+    code { font-family: var(--font-mono); font-size: .92em; }
+    table { border-collapse: collapse; width: 100%; font-size: 15px; }
+    th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border-row); vertical-align: top; }
+    th { font-weight: 600; }
+    @media (max-width: 640px) { main { padding: 24px 16px 48px; } h1 { font-size: 28px; } }
+  </style>
+</head>
+<body>
+<main>
+  <p class="note">Guia do GEX Dev Kit v0.3.0 · capturas e vídeo feitos com a CLI real em HOME isolado</p>
+  <h1>Guia do GEX Dev Kit</h1>
+  <p class="lead">O kit instala o Core GEX (instruções e 7 skills) no Claude Code e no Codex. Skills e hooks opcionais entram por escolha. Antes de gravar, a CLI mostra a prévia. Qualquer instalação pode ser revertida.</p>
+
+  <h2>Vídeo</h2>
+  <video controls preload="metadata" src="guia.mp4">Seu navegador não toca vídeo HTML5. Veja o arquivo guia.mp4 em docs/guides.</video>
+  <p class="note">Roteiro de cerca de 105 segundos, com legendas em português. Gerado a partir de docs/guides/composition.</p>
+
+  <h2>1. Entrada</h2>
+  <p>Ao abrir a CLI sem argumentos, o menu mostra o estado do Core, dos agentes e dos hooks.</p>
+  <div class="grid">
+    <figure><img src="assets/screens/home-entrada.png" alt="Tela inicial da CLI"><figcaption>Tela inicial</figcaption></figure>
+    <figure><img src="assets/screens/home-pronta.png" alt="Tela inicial com o estado do Core"><figcaption>Estado do Core e dos agentes</figcaption></figure>
+    <figure><img src="assets/screens/home-ajuda.png" alt="Ajuda com atalhos"><figcaption>Atalhos com a tecla ?</figcaption></figure>
+  </div>
+
+  <h2>2. Instalação guiada</h2>
+  <p>A opção Instalar abre o assistente. O destino é o HOME atual. Depois vêm as skills e os hooks por grupo. Ao final, a CLI pergunta se pode atualizar os agentes instalados.</p>
+  <div class="grid">
+    <figure><img src="assets/screens/assistente.png" alt="Assistente de instalação"><figcaption>Destino da instalação</figcaption></figure>
+    <figure><img src="assets/screens/previa.png" alt="Prévia de arquivos"><figcaption>Prévia com os arquivos que serão criados</figcaption></figure>
+    <figure><img src="assets/screens/confirmar.png" alt="Pergunta de confirmação"><figcaption>Confirmação. Nada é gravado antes dela</figcaption></figure>
+    <figure><img src="assets/screens/gravando.png" alt="Gravação em etapas"><figcaption>Gravação em etapas</figcaption></figure>
+    <figure><img src="assets/screens/concluido.png" alt="Tela final"><figcaption>Fim, com histórico e comando equivalente</figcaption></figure>
+  </div>
+  <p class="note">A tela final mostra o comando equivalente com a opção de HOME. Nos guias, ela aparece como <code>--home ~</code>, para não expor o caminho da máquina.</p>
+
+  <h2>3. Modo CLI</h2>
+  <p>Os mesmos passos rodam sem tela. Sem <code>--yes</code>, a CLI mostra a prévia e não grava.</p>
+  <pre><code>gex-dev-kit skills
+gex-dev-kit hooks
+gex-dev-kit install --skill tdd --hook gex-conventional-commits --yes
+gex-dev-kit doctor
+gex-dev-kit doctor --json</code></pre>
+  <div class="grid">
+    <figure><img src="assets/screens/cli-skills.png" alt="Catálogo de skills"><figcaption><code>skills</code></figcaption></figure>
+    <figure><img src="assets/screens/cli-install.png" alt="Saída do install com --yes"><figcaption><code>install --yes</code></figcaption></figure>
+    <figure><img src="assets/screens/cli-json.png" alt="Saída JSON do doctor"><figcaption><code>doctor --json</code></figcaption></figure>
+  </div>
+
+  <h2>4. Diagnóstico e reversão</h2>
+  <p><code>doctor</code> confere os arquivos gravados e o estado dos agentes. Um aviso não significa que tudo está verde. Leia cada linha.</p>
+  <pre><code>gex-dev-kit doctor
+gex-dev-kit rollback --yes</code></pre>
+  <div class="grid">
+    <figure><img src="assets/screens/doctor.png" alt="Diagnóstico do doctor"><figcaption><code>doctor</code></figcaption></figure>
+    <figure><img src="assets/screens/rollback.png" alt="Prévia e restauração do rollback"><figcaption><code>rollback</code></figcaption></figure>
+  </div>
+
+  <h2>5. Catálogo, Addons e Design System</h2>
+  <div class="grid">
+    <figure><img src="assets/screens/catalogo.png" alt="Catálogo da CLI"><figcaption>Catálogo na tela inicial</figcaption></figure>
+    <figure><img src="assets/screens/addons.png" alt="Catálogo de addons"><figcaption><code>addons caveman</code>: mostra o comando oficial. Não executa.</figcaption></figure>
+    <figure><img src="assets/screens/ds.png" alt="Vitrine do Design System"><figcaption><code>ds</code>: vitrine visual de referência</figcaption></figure>
+  </div>
+
+  <h2>6. Git hooks por repositório</h2>
+  <p>Os hooks de Git só são gravados com <code>--repo</code> e confirmação. Sem isso, a CLI mostra apenas a prévia.</p>
+  <pre><code>gex-dev-kit githooks --repo &lt;caminho-do-repositorio&gt; --hook gex-pre-commit --pre-commit-run "go vet ./..."</code></pre>
+  <figure><img src="assets/screens/githooks-previa.png" alt="Prévia dos git hooks"><figcaption><code>githooks</code>: prévia</figcaption></figure>
+
+  <h2>7. Tabela das telas</h2>
+  <table>
+    <thead><tr><th>Tela</th><th>Arquivo</th><th>Origem</th></tr></thead>
+    <tbody>
+      <tr><td>Entrada e ajuda</td><td>home-entrada, home-pronta, home-ajuda</td><td>TUI, sem argumentos</td></tr>
+      <tr><td>Instalação guiada</td><td>assistente, previa, confirmar, gravando, concluido</td><td>TUI, opção Instalar</td></tr>
+      <tr><td>Catálogo</td><td>catalogo</td><td>TUI, opção Catálogo</td></tr>
+      <tr><td>Modo CLI</td><td>cli-skills, cli-install, cli-json, doctor, rollback</td><td>Comandos em HOME isolado</td></tr>
+      <tr><td>Addons, vitrine, hooks</td><td>addons, ds, githooks-previa</td><td>Comandos da CLI</td></tr>
+    </tbody>
+  </table>
+</main>
+<script>
+  if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    document.documentElement.classList.add('dark');
+  }
+</script>
+</body>
+</html>
