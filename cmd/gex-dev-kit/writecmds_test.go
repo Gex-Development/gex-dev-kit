@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/Gex-Development/gex-dev-kit/internal/app"
+	"github.com/Gex-Development/gex-dev-kit/internal/catalog"
 	"github.com/Gex-Development/gex-dev-kit/internal/githooks"
 	"github.com/Gex-Development/gex-dev-kit/internal/kit"
 	"github.com/Gex-Development/gex-dev-kit/internal/ui/components"
@@ -227,6 +228,31 @@ func TestGitHooksWithoutRepoPrintsScriptsWithoutWriting(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(home, ".local")); !os.IsNotExist(err) {
 		t.Fatalf("githooks sem repo gravou arquivos: %v", err)
+	}
+}
+
+func TestGitHooksSemRepoUsaBinarioEstavel(t *testing.T) {
+	home := t.TempDir()
+	code, out, errors := writeCall(t, options{Home: home, Hooks: []string{"gex-commit-msg"}}, cmdGitHooks)
+	if code != 0 || errors != "" {
+		t.Fatalf("githooks sem repo: exit=%d err=%q", code, errors)
+	}
+	if !strings.Contains(out, catalog.StableBinary(home)) {
+		t.Fatalf("script sem binário estável: out=%q", out)
+	}
+	exe, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(out, exe) {
+		t.Fatalf("script aponta para o executável do teste: %s", exe)
+	}
+	entries, err := os.ReadDir(home)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 0 {
+		t.Fatalf("githooks sem repo gravou em HOME: %v", entries)
 	}
 }
 

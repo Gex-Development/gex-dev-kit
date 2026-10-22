@@ -6,10 +6,10 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/Gex-Development/gex-dev-kit/internal/app"
-	"github.com/Gex-Development/gex-dev-kit/internal/githooks"
 	"github.com/Gex-Development/gex-dev-kit/internal/kit"
 	"github.com/Gex-Development/gex-dev-kit/internal/ui/components"
 	"github.com/Gex-Development/gex-dev-kit/internal/ui/screens"
@@ -235,17 +235,18 @@ func cmdGitHooks(s session) int {
 }
 
 func writeHookScripts(s session, req app.GitHooksRequest) int {
-	hooks := make([]string, 0, len(req.Hooks))
-	for _, name := range req.Hooks {
-		hooks = append(hooks, strings.TrimPrefix(name, "gex-"))
-	}
-	files, err := githooks.Files(githooks.Request{Hooks: hooks, PreCommit: req.PreCommit, PrePush: req.PrePush, Binary: req.Executable})
+	plan, err := s.deps.PlanGitHooks(req, app.DiffLinesCLI)
 	if err != nil {
 		return writeFail(s.errOut, err)
 	}
+	names := make([]string, 0, len(plan.Scripts))
+	for name := range plan.Scripts {
+		names = append(names, name)
+	}
+	slices.Sort(names)
 	fmt.Fprintln(s.out, "Scripts dos git hooks (sem --repo; nada foi gravado):")
-	for _, f := range files {
-		fmt.Fprintf(s.out, "%s\n%s\n", f.Path, f.Data)
+	for _, name := range names {
+		fmt.Fprintf(s.out, "hooks/%s\n%s\n", name, plan.Scripts[name])
 	}
 	return 0
 }
