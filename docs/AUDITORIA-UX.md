@@ -13,7 +13,8 @@ Este arquivo registra o resultado da auditoria de UX do PLAN.md, seção 8.8 (ta
 - O commit 3b68ba7 corrige 7 dos 13 achados (UX-001, UX-002, UX-003, UX-005, UX-006, UX-008 e UX-013). Ele também corrige dois itens que não estavam na lista: valor de flag que é outra flag e `--ui=` vazio.
 - Justificamos 4 achados (UX-007, UX-009, UX-010 e UX-012, este último só em parte).
 - UX-004 e UX-011 foram corrigidos depois, junto com as sentinelas de erro.
-- PROC-001 segue aberto. A regressão do item 7 da seção 8.8 ainda não foi executada.
+- Regressão (seção 8.8, item 7) executada em 22/10 com sandbox novo e binário da HEAD ddd926e: 26 de 27 testes do `test.sh` da avaliação passaram. O único que falhou exigia o comportamento antigo (git hook desconhecido com exit 1); agora sai com exit 2, que é a correção de UX-002.
+- PROC-001: na regressão, hash e data de modificação dos arquivos do HOME real ficaram iguais antes e depois. O incidente de 21/10 continua sem origem confirmada e não se repetiu.
 
 ## 2. Verificação desta rodada
 
@@ -119,6 +120,6 @@ Conclusão da comparação: a avaliação de 21/10 achou falhas novas em erros d
 ## 8. Itens pendentes
 
 - UX-004 e UX-011: corrigidos.
-- Regressão da seção 8.8, item 7: `scripts/ux-audit-env.sh --run <test.sh>`, depois desta entrega.
-- PROC-001: checagem de hash e de data de modificação na regressão.
+- Regressão da seção 8.8, item 7: executada (26 de 27; a diferença é a correção de UX-002).
+- PROC-001: hash do HOME real inalterado na regressão; origem do incidente de 21/10 não confirmada.
 - Lacunas da seção 5 e os temas da avaliação de 20/10 que não foram retestados (seção 7).
