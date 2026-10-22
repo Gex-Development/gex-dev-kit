@@ -182,7 +182,7 @@ func goldenEstados() []goldenEstado {
 			avanca: func(_ *testing.T, m tea.Model) tea.Model {
 				return goldenFecha(m, installApplied{err: errors.New("gravação recusada")})
 			},
-			want: []string{"Causa:", "Acao:"}},
+			want: []string{"Causa:", "Ação:"}},
 
 		{nome: "doctor_atencao", tiny: true,
 			monta: func(_ *testing.T, c Common) tea.Model {

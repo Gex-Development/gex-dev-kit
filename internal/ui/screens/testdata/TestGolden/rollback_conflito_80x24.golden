@@ -5,7 +5,7 @@ GEX / ROLLBACK · Restaurar instalação do Core                              0.
 |                                                                              |
 | Causa: O rollback não alterou nada: estes arquivos mudaram depois da         |
 | instalação: .claude/CLAUDE.md.                                               |
-| Acao: Devolva-os à versão instalada (veja `doctor`) ou siga sem rollback; o  |
+| Ação: Devolva-os à versão instalada (veja `doctor`) ou siga sem rollback; o  |
 | kit nunca sobrescreve edição posterior.                                      |
 +------------------------------------------------------------------------------+
                                                                                 

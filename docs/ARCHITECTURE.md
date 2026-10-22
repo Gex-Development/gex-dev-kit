@@ -172,5 +172,6 @@ Os resultados de macOS vêm de `go test ./...` e `go build` executados nesta rev
 
 - [`scripts/check.sh`](../scripts/check.sh): roda gofmt, a verificação de comentários em código, a verificação de rótulos de IA, `go test -race ./...`, `go build ./...` e o smoke. Rode antes de abrir PR.
 - [`scripts/smoke.sh`](../scripts/smoke.sh) `CAMINHO_DO_BINARIO`: instala o kit em um HOME temporário e confere os arquivos gerados.
-- Golden da vitrine: `go test ./internal/ui/theme -run TestGolden -update`. Use só quando o visual mudar de propósito e revise os arquivos `.golden` gerados antes de commitar.
+- Golden das telas: `go test ./internal/ui/screens -run TestGolden -update`. Use só quando o visual mudar de propósito e revise o `git diff` dos arquivos `.golden` antes de commitar.
+- Golden da paleta: `go test ./internal/ui/theme -run TestGolden -update`. Use só quando o visual mudar de propósito e revise o `git diff` dos arquivos `.golden` antes de commitar.
 - [`scripts/release.sh`](../scripts/release.sh) `vX.Y.Z`: gera binários, `SHA256SUMS` e `THIRD_PARTY_LICENSES.txt` em `dist/`. Sem `--publish`, nada é publicado.

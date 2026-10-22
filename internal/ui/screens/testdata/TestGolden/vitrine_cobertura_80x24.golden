@@ -9,7 +9,7 @@ gex-dev-kit ds · Cobertura Charm                                           0.3.
   Programa             │           │ Update e View │              │            │
   Movimento            │ bubbletea │ tea.Tick      │ home.go      │ Movimento  │
   Feedback             │ bubbletea │ WindowSizeMsg │ home.go      │ Layout     │
-  Navegação            │ bubbletea │ alt screen    │ install.go   │ Programa   │
+  Navegação            │ bubbletea │ alt screen    │ home.go      │ Programa   │
   Dados                │ bubbletea │ mouse         │ home.go      │ Programa   │
   Formulários          │ bubbletea │ foco e blur   │ home.go      │ Programa   │
   Acessível            │ bubbletea │ tea.Batch e   │ home.go      │ Programa   │

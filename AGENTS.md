@@ -23,6 +23,7 @@ Escopo, estado e uso para usuários estão em `README.md`.
 
 - `scripts/check.sh`: roda formato, comentários, `go vet`, testes, build e smoke.
 - `go test ./...`: testes de todos os pacotes.
+- `go test ./internal/ui/screens -run TestGolden -update`: atualiza os golden das telas. Use só ao mudar a visual e revise o diff.
 - `go test ./internal/ui/theme -run TestGolden -update`: atualiza os golden da paleta. Use só ao mudar a visual e revise o diff.
 - `scripts/smoke.sh CAMINHO_DO_BINARIO`: instala, roda `doctor`, testa hook e rollback em HOME descartável.
 - `scripts/release.sh vX.Y.Z`: gera `dist/`. Sem `--publish`.

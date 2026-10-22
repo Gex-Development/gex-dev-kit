@@ -14,7 +14,7 @@ gex-dev-kit ds · Cobertura Charm                       0.3.0
   Formulários        │ bubble │ Window │ home.go │ Layout  │
   Acessível          │ tea    │ SizeMs │         │         │
   Bubbles            │        │ g      │         │         │
-  Testes             │ bubble │ alt    │ install │ Program │
-│ Cobertura Charm    │ tea    │ screen │ .go     │ a       │
+  Testes             │ bubble │ alt    │ home.go │ Program │
+│ Cobertura Charm    │ tea    │ screen │         │ a       │
                                                             
 ↑/k subir • ↓/j descer • enter escolher • esc voltar …      

@@ -117,16 +117,10 @@ func TestRealScreensCallConstructors(t *testing.T) {
 			falhas = append(falhas, fmt.Sprintf("entrada %d (%s): %s não aparece em %s", i, c.Feature, c.Call, c.ScreenFile))
 		}
 	}
-	if len(falhas) == 0 {
-		return
+	if len(falhas) > 0 {
+		t.Fatalf("entradas de CoverageMap sem chamada no código:\n%s", strings.Join(falhas, "\n"))
 	}
-	if len(falhas) > coverageLimiteFalhas {
-		t.Skipf("achado W5-T1: %d entradas de CoverageMap não batem com o código real: %s", len(falhas), strings.Join(falhas, "; "))
-	}
-	t.Fatalf("entradas de CoverageMap sem chamada no código:\n%s", strings.Join(falhas, "\n"))
 }
-
-const coverageLimiteFalhas = 3
 
 func coverageRepoRaiz(t *testing.T) string {
 	t.Helper()

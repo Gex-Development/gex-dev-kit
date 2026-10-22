@@ -14,7 +14,7 @@ DEV KIT
 | [x] Não foi possível ler o Core                                              |
 |                                                                              |
 | Causa: permission denied                                                     |
-| Acao: Rode gex-dev-kit doctor e envie a saida ao responsavel                 |
+| Ação: Rode gex-dev-kit doctor e envie a saída ao responsável                 |
 +------------------------------------------------------------------------------+
 > Instalar  prévia e instalação guiada do Core
   Catálogo  skills, hooks e referências

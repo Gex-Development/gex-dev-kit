@@ -14,7 +14,7 @@ func errorboxTestTheme(plain bool) theme.Theme {
 	return theme.New(theme.Options{Dark: true, Profile: colorprofile.TrueColor, Plain: plain})
 }
 
-func TestErrorBoxSempreMostraCausaEAcao(t *testing.T) {
+func TestErrorBoxSempreMostraCausaEAção(t *testing.T) {
 	th := errorboxTestTheme(false)
 	out := ansi.Strip(ErrorBox(th, 60, "falha ao gravar", "permissao negada", "Rode o doctor"))
 	for _, want := range []string{"Causa:", "Ação:", "permissao negada", "Rode o doctor"} {
@@ -30,18 +30,16 @@ func TestErrorBoxSempreMostraCausaEAcao(t *testing.T) {
 	}
 }
 
-func TestErrorBoxPlainUsaRotulosAscii(t *testing.T) {
+func TestErrorBoxPlainMantemAcentos(t *testing.T) {
 	th := errorboxTestTheme(true)
-	out := ansi.Strip(ErrorBox(th, 60, "falha", "", ""))
-	for _, want := range []string{"Causa:", "Acao:", "nao informada"} {
-		if !strings.Contains(out, want) {
+	out := ErrorBox(th, 60, "falha", "", "")
+	for _, want := range []string{"Causa:", "Ação:", "não informada"} {
+		if !strings.Contains(ansi.Strip(out), want) {
 			t.Fatalf("caixa de erro em Plain sem %q:\n%s", want, out)
 		}
 	}
-	for _, r := range out {
-		if r >= 0x80 {
-			t.Fatalf("caixa de erro em Plain tem caractere fora de ASCII: %q", out)
-		}
+	if !strings.HasPrefix(ansi.Strip(out), "+") {
+		t.Fatalf("caixa de erro em Plain sem borda ASCII (+): %q", ansi.Strip(out))
 	}
 }
 
