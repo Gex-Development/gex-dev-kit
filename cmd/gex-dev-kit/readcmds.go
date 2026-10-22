@@ -501,14 +501,7 @@ func readExecutable() string {
 }
 
 func readCommon(s session) screens.Common {
-	userHome, _ := os.UserHomeDir()
-	return screens.Common{
-		Version:  version,
-		Home:     readHome(s),
-		UserHome: userHome,
-		Profile:  s.env.ColorProfile(),
-		Motion:   s.env.Motion(s.opts.NoAnim),
-	}
+	return tuiCommon(s, readHome(s))
 }
 
 func readRunTUI(s session, code int, run func(screens.Runner, screens.Common) error) int {

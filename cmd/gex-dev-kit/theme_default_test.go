@@ -17,3 +17,13 @@ func TestTuiCommonComecaComFundoEscuro(t *testing.T) {
 		t.Fatalf("Home = %q, esperado %q", c.Home, home)
 	}
 }
+
+func TestCommonDeLeituraEEscritaComecamComFundoEscuro(t *testing.T) {
+	s := session{env: terminal.Env{}, opts: options{Home: t.TempDir()}}
+	if c := readCommon(s); !c.Dark {
+		t.Fatalf("a leitura (instalação, doctor, vitrine) deve começar escura; Dark = false")
+	}
+	if c := writeCommon(s); !c.Dark {
+		t.Fatalf("a escrita (rollback, git hooks) deve começar escura; Dark = false")
+	}
+}

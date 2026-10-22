@@ -389,14 +389,7 @@ func writeRunner(s session) (screens.Runner, func()) {
 }
 
 func writeCommon(s session) screens.Common {
-	userHome, _ := os.UserHomeDir()
-	return screens.Common{
-		Version:  version,
-		Home:     s.opts.Home,
-		UserHome: userHome,
-		Profile:  s.env.Profile,
-		Motion:   s.env.Motion(s.opts.NoAnim),
-	}
+	return tuiCommon(s, s.opts.Home)
 }
 
 func writeScreenExit(errOut io.Writer, err error) int {
