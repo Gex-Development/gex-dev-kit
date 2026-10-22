@@ -3,11 +3,13 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/Gex-Development/gex-dev-kit/internal/app"
+	"github.com/Gex-Development/gex-dev-kit/internal/githooks"
 	"github.com/Gex-Development/gex-dev-kit/internal/ui/terminal"
 )
 
@@ -259,5 +261,75 @@ func TestJSONRejectsTUIMode(t *testing.T) {
 	s, _, errOut := readTestSession(options{JSON: true, UI: terminal.ModeTUI}, deps{})
 	if code := cmdDoctor(s); code != 2 || !strings.Contains(errOut.String(), "--json") {
 		t.Fatalf("--json com --ui=tui: exit=%d err=%q", code, errOut.String())
+	}
+}
+
+func readDoctorConfere(t *testing.T, home string) (int, readDoctorCheck) {
+	t.Helper()
+	s, out, _ := readTestSession(options{Home: home, JSON: true}, realDeps())
+	code := cmdDoctor(s)
+	var doc readDoctorCheck
+	readDecode(t, out.String(), &doc)
+	if doc.ExitCode != code || doc.OK != (code == 0) {
+		t.Fatalf("ok e exit_code divergem: exit=%d doc=%+v", code, doc)
+	}
+	var ok, atencao, pendente int
+	for _, item := range doc.Items {
+		switch item.Level {
+		case "ok":
+			ok++
+		case "atencao":
+			atencao++
+		case "pendente":
+			pendente++
+		}
+	}
+	if doc.Counts.OK != ok || doc.Counts.Attention != atencao || doc.Counts.Pending != pendente {
+		t.Fatalf("counts %+v diverge dos níveis dos itens: ok=%d atencao=%d pendente=%d", doc.Counts, ok, atencao, pendente)
+	}
+	return code, doc
+}
+
+type readDoctorCheck struct {
+	OK       bool             `json:"ok"`
+	ExitCode int              `json:"exit_code"`
+	Counts   jsonDoctorCounts `json:"counts"`
+	Items    []jsonDoctorItem `json:"items"`
+}
+
+func TestDoctorJSONSemInstalacao(t *testing.T) {
+	home := cliIsolate(t)
+	code, doc := readDoctorConfere(t, home)
+	if code != 0 || !doc.OK || doc.Counts.Pending == 0 {
+		t.Fatalf("sem instalação: exit=%d doc=%+v", code, doc)
+	}
+}
+
+func TestDoctorJSONInstalacaoLimpa(t *testing.T) {
+	home := cliIsolate(t)
+	cliInstalaCore(t, home)
+	code, doc := readDoctorConfere(t, home)
+	if code != 0 || !doc.OK || doc.Counts.Attention != 0 {
+		t.Fatalf("instalação limpa: exit=%d doc=%+v", code, doc)
+	}
+}
+
+func TestDoctorJSONArquivoAlterado(t *testing.T) {
+	home := cliIsolate(t)
+	cliInstalaCore(t, home)
+	if err := os.WriteFile(filepath.Join(home, ".claude", "CLAUDE.md"), []byte("alterado pelo teste\n"), 0o644); err != nil {
+		t.Fatalf("alterar arquivo do kit: %v", err)
+	}
+	code, doc := readDoctorConfere(t, home)
+	if code != 1 || doc.OK || doc.Counts.Attention == 0 {
+		t.Fatalf("arquivo alterado: exit=%d doc=%+v", code, doc)
+	}
+}
+
+func TestReadFailNaoUsaPrefixoErro(t *testing.T) {
+	var buf bytes.Buffer
+	code := readFail(&buf, githooks.ErrNotRepo)
+	if code != 2 || strings.Contains(buf.String(), "erro:") || !strings.Contains(buf.String(), "Não é repositório Git") {
+		t.Fatalf("readFail: exit=%d saída=%q", code, buf.String())
 	}
 }

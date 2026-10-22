@@ -265,3 +265,25 @@ func TestHookRejectsUnknownSubcommand(t *testing.T) {
 		t.Fatalf("subcomando inválido: exit=%d err=%q", code, errors)
 	}
 }
+
+func TestHookMensagensDeUsoComecamComPrefixo(t *testing.T) {
+	casos := [][]string{
+		{"hook"},
+		{"hook", "inexistente"},
+		{"hook", "commit-msg", "a", "b"},
+		{"hook", "session-start"},
+	}
+	for _, args := range casos {
+		code, out, errors := invoke(t, args...)
+		if code != 2 || out != "" || !strings.HasPrefix(errors, "Uso: gex-dev-kit hook") {
+			t.Fatalf("%v: exit=%d out=%q err=%q; quero exit 2 e Uso: gex-dev-kit hook", args, code, out, errors)
+		}
+	}
+}
+
+func TestHookHelpMostraSubcomandos(t *testing.T) {
+	code, out, errors := invoke(t, "hook", "--help")
+	if code != 0 || errors != "" || !strings.Contains(out, "pre-commit") || !strings.Contains(out, "session-start") {
+		t.Fatalf("hook --help: exit=%d out=%q err=%q", code, out, errors)
+	}
+}

@@ -257,7 +257,7 @@ func readDoctorDoc(root string, report app.Report, code int) jsonDoctorDoc {
 	doc := jsonDoctorDoc{
 		Schema:   readDoctorSchema,
 		Root:     root,
-		OK:       code == 0 && attention == 0 && pending == 0,
+		OK:       code == 0,
 		ExitCode: code,
 		Counts:   jsonDoctorCounts{OK: ok, Attention: attention, Pending: pending},
 		Items:    readDoctorItems(report.Items),
@@ -273,7 +273,7 @@ func readDoctorDoc(root string, report app.Report, code int) jsonDoctorDoc {
 func readDoctorItems(statuses []app.Status) []jsonDoctorItem {
 	out := make([]jsonDoctorItem, 0, len(statuses))
 	for _, status := range statuses {
-		out = append(out, jsonDoctorItem{Path: status.Path, State: status.State, Level: readLevel(status.State), Detail: readHomeTilde(status.Detail)})
+		out = append(out, jsonDoctorItem{Path: status.Path, State: status.State, Level: app.StateLevel(status.State), Detail: readHomeTilde(status.Detail)})
 	}
 	return out
 }
@@ -304,18 +304,6 @@ func readAgentState(agent app.AgentChange) string {
 		return "pendente"
 	}
 	return "ok"
-}
-
-func readLevel(state string) string {
-	switch state {
-	case "ok":
-		return "ok"
-	case "pendente":
-		return "pendente"
-	case "aviso":
-		return "info"
-	}
-	return "atencao"
 }
 
 func readDoctorText(report app.Report) string {
@@ -563,6 +551,5 @@ func readJSON(s session, value any, code int) int {
 }
 
 func readFail(errOut io.Writer, err error) int {
-	fmt.Fprintln(errOut, "erro: "+err.Error())
-	return 1
+	return writeFail(errOut, err)
 }

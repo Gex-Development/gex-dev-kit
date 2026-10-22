@@ -102,7 +102,7 @@ Regras de uso:
 |---|---|
 | `0` | Concluído sem falha |
 | `1` | Falha de execução ou de verificação (por exemplo, `doctor` com arquivo alterado) |
-| `2` | Uso inválido: opção desconhecida, caminho relativo em `--home`, comando desconhecido |
+| `2` | Uso inválido: opção ou comando desconhecido, valor de flag ausente, caminho relativo em `--home`, skill ou hook desconhecido, `--repo` que não é repositório Git, `--run` ou `--pre-commit-run` sem o hook correspondente |
 | `129` | SIGHUP (terminal fechado) |
 | `130` | Ctrl+C (SIGINT) |
 | `143` | SIGTERM |

@@ -12,6 +12,9 @@ func Explain(err error) Problem {
 	if err == nil {
 		return Problem{}
 	}
+	if p, ok := usageProblem(err); ok {
+		return p
+	}
 	switch {
 	case errors.Is(err, kit.ErrConflict):
 		list := strings.TrimPrefix(err.Error(), kit.ErrConflict.Error()+": ")
@@ -45,4 +48,51 @@ func Explain(err error) Problem {
 		return Problem{Title: "Caminho inválido", Cause: err.Error(), Action: "Use caminho absoluto."}
 	}
 	return Problem{Title: "Falha inesperada", Cause: err.Error(), Action: "Rode `doctor` para ver o estado do kit."}
+}
+
+func IsUsage(err error) bool {
+	_, ok := usageProblem(err)
+	return ok
+}
+
+const (
+	marcaSkill        = "skill indisponível"
+	marcaHookCatalogo = "hook indisponível"
+	marcaHookGit      = "git hook desconhecido"
+	marcaSemHook      = "nenhum git hook selecionado"
+	marcaPrePushSem   = "comandos de pre-push sem o hook pre-push selecionado"
+	marcaPreCommitSem = "comandos de pre-commit sem o hook pre-commit selecionado"
+)
+
+func usageProblem(err error) (Problem, bool) {
+	if err == nil {
+		return Problem{}, false
+	}
+	texto := err.Error()
+	switch {
+	case errors.Is(err, githooks.ErrNotRepo):
+		return Problem{Title: "Não é repositório Git", Cause: "O caminho de --repo não está dentro de um repositório Git.", Action: "Informe a raiz de um repositório Git (pasta com .git)."}, true
+	case strings.Contains(texto, marcaSkill):
+		return Problem{Title: "Skill desconhecida", Cause: apartirDe(texto, marcaSkill), Action: "Veja `gex-dev-kit skills` para os nomes válidos."}, true
+	case strings.Contains(texto, marcaHookCatalogo), strings.Contains(texto, marcaHookGit):
+		marca := marcaHookCatalogo
+		if strings.Contains(texto, marcaHookGit) {
+			marca = marcaHookGit
+		}
+		return Problem{Title: "Hook desconhecido", Cause: apartirDe(texto, marca), Action: "Veja `gex-dev-kit hooks`."}, true
+	case strings.Contains(texto, marcaSemHook):
+		return Problem{Title: "Hook não selecionado", Cause: marcaSemHook + ".", Action: "Informe um hook com `--hook NOME`. Veja `gex-dev-kit hooks`."}, true
+	case strings.Contains(texto, marcaPrePushSem):
+		return Problem{Title: "Opção sem efeito", Cause: marcaPrePushSem + ".", Action: "Adicione `--hook gex-pre-push` ou remova `--run`."}, true
+	case strings.Contains(texto, marcaPreCommitSem):
+		return Problem{Title: "Opção sem efeito", Cause: marcaPreCommitSem + ".", Action: "Adicione `--hook gex-pre-commit` ou remova `--pre-commit-run`."}, true
+	}
+	return Problem{}, false
+}
+
+func apartirDe(texto, marca string) string {
+	if i := strings.Index(texto, marca); i >= 0 {
+		return texto[i:]
+	}
+	return texto
 }

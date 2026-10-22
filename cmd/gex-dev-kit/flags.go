@@ -89,7 +89,7 @@ func parseOptions(command string, args []string) (options, error) {
 			return o, err
 		}
 		if flagsComValor[nome] && !temValor {
-			if i+1 >= len(args) {
+			if i+1 >= len(args) || strings.HasPrefix(args[i+1], "-") {
 				return o, usageError{nome + " exige um valor", acaoPadrao}
 			}
 			i++
@@ -140,6 +140,9 @@ func rotuloComando(command string) string {
 func aplicaFlag(o *options, nome, valor string) error {
 	switch nome {
 	case "--ui":
+		if valor == "" {
+			return usageError{"--ui exige um valor: use auto, tui ou cli", acaoPadrao}
+		}
 		modo, err := terminal.ParseMode(valor)
 		if err != nil {
 			return usageError{err.Error(), acaoPadrao}

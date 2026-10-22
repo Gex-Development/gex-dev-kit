@@ -8,26 +8,31 @@ import (
 const usage = `gex-dev-kit [opções globais] [comando] [opções]
 
 Comandos:
-  install           prévia, confirmação e gravação do Core e das escolhas
-  doctor            estado do HOME (--home) ou dos git hooks de um repositório (--repo)
-  rollback          desfaz a última gravação do HOME ou do repositório
-  rollback-agents   restaura versões anteriores dos agentes
-  skills            catálogo de skills
-  hooks             catálogo de hooks e referências
-  addons [NOME]     catálogo de Addons; mostra o comando oficial e não o executa
-  githooks          prévia dos git hooks; grava só com --repo e confirmação
-  ds                vitrine do Design System
-  hook NOME         adaptador usado por Claude Code, Codex e Git (uso interno)
-  version           mostra a versão
-  help [COMANDO]    mostra esta ajuda ou a de um comando
+  install                 prévia, confirmação e gravação do Core e das escolhas
+  doctor                  estado do HOME (--home) ou dos git hooks de um repositório (--repo)
+  rollback                desfaz a última gravação do HOME ou do repositório
+  rollback-agents         restaura versões anteriores dos agentes
+  skills                  catálogo de skills
+  hooks                   catálogo de hooks e referências
+  addons [NOME]           catálogo de Addons; mostra o comando oficial e não o executa
+  githooks                prévia dos git hooks; grava só com --repo e confirmação
+  ds                      vitrine do Design System
+  hook commit-msg         adaptador chamado por Claude Code, Codex e Git (uso interno)
+  hook sensitive-action   adaptador chamado por Claude Code, Codex e Git (uso interno)
+  hook pre-pr             adaptador chamado por Claude Code, Codex e Git (uso interno)
+  hook session-start      adaptador chamado por Claude Code, Codex e Git (uso interno)
+  hook pre-commit         adaptador chamado por Claude Code, Codex e Git (uso interno)
+  version                 mostra a versão
+  help [COMANDO]          mostra esta ajuda ou a de um comando
 
 Opções globais (antes ou depois do comando):
-  --ui=auto|tui|cli   escolhe a interface
-  --no-anim           desliga animações
-  --quiet             remove mensagens de progresso e de sucesso
-  --json              saída JSON (skills, hooks, addons, doctor)
-  -h, --help          mostra a ajuda
-  -v, --version       mostra a versão
+  --ui=auto|tui|cli      escolhe a interface
+                         auto: TUI em terminal interativo; texto em pipe, CI, --yes, --quiet ou --json
+  --no-anim              desliga animações
+  --quiet                remove mensagens de progresso e de sucesso
+  --json                 saída JSON (skills, hooks, addons, doctor)
+  -h, --help             mostra a ajuda
+  -v, --version          mostra a versão
 
 Sem comando, em um terminal interativo, abre o menu inicial.
 `
@@ -153,9 +158,15 @@ var helpSpecs = map[string]helpSpec{
 		},
 	},
 	"hook": {
-		uso:    "gex-dev-kit hook commit-msg [CAMINHO]",
+		uso:    "gex-dev-kit hook commit-msg|sensitive-action|pre-pr|session-start|pre-commit [ARGS]",
 		resumo: "Adaptador chamado por Claude Code, Codex e Git. Uso interno; não é necessário rodar à mão.",
-		opcoes: []string{"commit-msg [CAMINHO]   lê a mensagem de CAMINHO ou a entrada JSON do agente"},
+		opcoes: []string{
+			"commit-msg [CAMINHO]                  valida a mensagem de commit (arquivo ou entrada do agente)",
+			"sensitive-action                      avisa antes de ação sensível",
+			"pre-pr                                pede confirmação antes de abrir PR",
+			"session-start --agent claude|codex    monta o contexto do início de sessão",
+			"pre-commit                            procura credenciais no diff staged",
+		},
 		exemplos: []string{
 			"gex-dev-kit hook commit-msg .git/COMMIT_EDITMSG",
 			"gex-dev-kit hook commit-msg < entrada.json",

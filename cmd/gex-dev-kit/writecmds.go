@@ -217,7 +217,11 @@ func cmdGitHooks(s session) int {
 		return writeFail(s.errOut, err)
 	}
 	if s.opts.Repo != "" {
-		if _, err := writeAbs(s.opts.Repo); err != nil {
+		repo, err := writeAbs(s.opts.Repo)
+		if err != nil {
+			return writeFail(s.errOut, err)
+		}
+		if err := app.CheckRepo(repo); err != nil {
 			return writeFail(s.errOut, err)
 		}
 	}
@@ -328,6 +332,9 @@ func writeRollbackRoot(o options) (string, error) {
 		if err != nil {
 			return "", err
 		}
+		if err := app.CheckRepo(repo); err != nil {
+			return "", err
+		}
 		return app.RepoHistoryRoot(repo)
 	}
 	return writeHome(o.Home)
@@ -402,6 +409,9 @@ func writeScreenExit(errOut io.Writer, err error) int {
 func writeFail(errOut io.Writer, err error) int {
 	p := app.Explain(err)
 	fmt.Fprintf(errOut, "%s: %s\n%s\n", p.Title, p.Cause, p.Action)
+	if app.IsUsage(err) {
+		return 2
+	}
 	return 1
 }
 

@@ -20,6 +20,8 @@ var (
 	errHookPreCommitLate  = errors.New("prazo de verificação esgotado")
 )
 
+const hookUsoGeral = "Uso: gex-dev-kit hook commit-msg|sensitive-action|pre-pr|session-start|pre-commit"
+
 const (
 	hookSessionDeadline    = 2 * time.Second
 	hookScanLimit          = 8 << 20
@@ -31,7 +33,7 @@ const (
 
 func runHook(args []string, in io.Reader, out, errOut io.Writer) int {
 	if len(args) == 0 {
-		return invalid(errOut, "uso: hook commit-msg|sensitive-action|pre-pr|session-start|pre-commit")
+		return invalid(errOut, hookUsoGeral)
 	}
 	switch args[0] {
 	case "commit-msg":
@@ -45,7 +47,7 @@ func runHook(args []string, in io.Reader, out, errOut io.Writer) int {
 	case "pre-commit":
 		return hookPreCommit(errOut)
 	}
-	return invalid(errOut, "hook desconhecido: "+args[0])
+	return invalid(errOut, hookUsoGeral+"\nhook desconhecido: "+args[0])
 }
 
 func hookScope() hooks.Scope {
@@ -65,7 +67,7 @@ func hookCommitMsg(args []string, in io.Reader, errOut io.Writer) int {
 		return hookCommitFile(args[0], errOut)
 	}
 	if len(args) != 0 {
-		return invalid(errOut, "uso: hook commit-msg [CAMINHO]")
+		return invalid(errOut, "Uso: gex-dev-kit hook commit-msg [CAMINHO]")
 	}
 	return hookCommitAgent(in, errOut)
 }
@@ -143,7 +145,7 @@ func hookPRInstalled() bool {
 
 func hookSessionStart(args []string, in io.Reader, out, errOut io.Writer) int {
 	if len(args) != 2 || args[0] != "--agent" {
-		return invalid(errOut, "uso: hook session-start --agent claude|codex")
+		return invalid(errOut, "Uso: gex-dev-kit hook session-start --agent claude|codex")
 	}
 	agent := args[1]
 	if agent != "claude" && agent != "codex" {

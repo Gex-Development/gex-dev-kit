@@ -85,16 +85,36 @@ func doctorCommonDir(repo string) (githooks.Repo, error) {
 
 func (r Report) Counts() (ok, attention, pending int) {
 	for _, item := range r.Items {
-		switch item.State {
+		switch StateLevel(item.State) {
 		case "ok":
 			ok++
-		case "ausente", "alterado", "incompleto", "bloqueado", "atualizar":
+		case "atencao":
 			attention++
-		case "pendente", "sem-historico":
+		case "pendente":
 			pending++
 		}
 	}
 	return ok, attention, pending
+}
+
+func StateLevel(state string) string {
+	switch state {
+	case "ok":
+		return "ok"
+	case "pendente", "sem-historico":
+		return "pendente"
+	case "aviso":
+		return "info"
+	}
+	return "atencao"
+}
+
+func CheckRepo(path string) error {
+	_, err := githooks.Resolve(path, hooks.RunGit)
+	if errors.Is(err, githooks.ErrHooksPath) {
+		return nil
+	}
+	return err
 }
 
 func (r Report) ExitCode() int {

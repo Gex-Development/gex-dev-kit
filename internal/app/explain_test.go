@@ -102,3 +102,35 @@ func TestExplainUndocumentedCommand(t *testing.T) {
 		t.Fatalf("explicação: %+v", p)
 	}
 }
+
+func TestExplainErrosDeUsoMarcamUsage(t *testing.T) {
+	cases := []struct {
+		name       string
+		err        error
+		wantTitle  string
+		wantAction string
+	}{
+		{"skill desconhecida", errors.New("Catálogo: skill indisponível: inexistente"), "Skill desconhecida", "Veja `gex-dev-kit skills` para os nomes válidos."},
+		{"hook de instalação desconhecido", errors.New("Catálogo: hook indisponível: inexistente"), "Hook desconhecido", "Veja `gex-dev-kit hooks`."},
+		{"git hook desconhecido", errors.New("git hook desconhecido: post-merge"), "Hook desconhecido", "Veja `gex-dev-kit hooks`."},
+		{"nenhum hook selecionado", errors.New("nenhum git hook selecionado"), "Hook não selecionado", "Informe um hook com `--hook NOME`. Veja `gex-dev-kit hooks`."},
+		{"--run sem pre-push", errors.New("comandos de pre-push sem o hook pre-push selecionado"), "Opção sem efeito", "Adicione `--hook gex-pre-push` ou remova `--run`."},
+		{"--pre-commit-run sem pre-commit", errors.New("comandos de pre-commit sem o hook pre-commit selecionado"), "Opção sem efeito", "Adicione `--hook gex-pre-commit` ou remova `--pre-commit-run`."},
+		{"repositório ausente", githooks.ErrNotRepo, "Não é repositório Git", "Informe a raiz de um repositório Git (pasta com .git)."},
+	}
+	for _, c := range cases {
+		got := Explain(c.err)
+		if got.Title != c.wantTitle || got.Action != c.wantAction || !IsUsage(c.err) {
+			t.Fatalf("%s: Explain = %+v, esperado título %q, ação %q e erro de uso", c.name, got, c.wantTitle, c.wantAction)
+		}
+		if strings.Contains(got.Cause, "Catálogo: ") {
+			t.Fatalf("%s: causa carrega prefixo de camada: %q", c.name, got.Cause)
+		}
+	}
+}
+
+func TestExplainFalhaComumNaoEhUso(t *testing.T) {
+	if IsUsage(errors.New("erro qualquer")) || IsUsage(nil) {
+		t.Fatalf("falha comum marcada como erro de uso")
+	}
+}

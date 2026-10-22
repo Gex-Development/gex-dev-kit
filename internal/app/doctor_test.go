@@ -1,12 +1,15 @@
 package app
 
 import (
+	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/Gex-Development/gex-dev-kit/internal/catalog"
+	"github.com/Gex-Development/gex-dev-kit/internal/githooks"
 	"github.com/Gex-Development/gex-dev-kit/internal/kit"
 )
 
@@ -48,6 +51,51 @@ func TestCountsSplitsStatesIntoOkAttentionAndPending(t *testing.T) {
 	ok, attention, pending := report.Counts()
 	if ok != 1 || attention != 3 || pending != 2 {
 		t.Fatalf("contagem errada: ok=%d atenção=%d pendente=%d", ok, attention, pending)
+	}
+}
+
+func TestStateLevelEhUnicaRegra(t *testing.T) {
+	casos := map[string]string{
+		"ok":            "ok",
+		"pendente":      "pendente",
+		"sem-historico": "pendente",
+		"aviso":         "info",
+		"ausente":       "atencao",
+		"alterado":      "atencao",
+		"atualizar":     "atencao",
+		"bloqueado":     "atencao",
+	}
+	for estado, nivel := range casos {
+		if got := StateLevel(estado); got != nivel {
+			t.Fatalf("StateLevel(%q) = %q; quero %q", estado, got, nivel)
+		}
+	}
+}
+
+func TestCountsSegueNivelDoJSON(t *testing.T) {
+	report := Report{Items: []kit.Status{
+		{Path: "a", State: "ok"},
+		{Path: "b", State: "incompleto"},
+		{Path: "c", State: "sem-historico"},
+		{Path: "d", State: "aviso"},
+	}}
+	ok, attention, pending := report.Counts()
+	if ok != 1 || attention != 1 || pending != 1 {
+		t.Fatalf("contagem diverge do nível: ok=%d atenção=%d pendente=%d", ok, attention, pending)
+	}
+}
+
+func TestCheckRepoDistingueRepositorioDeNaoRepositorio(t *testing.T) {
+	doctorIsolate(t)
+	if err := CheckRepo(t.TempDir()); !errors.Is(err, githooks.ErrNotRepo) {
+		t.Fatalf("pasta comum: erro = %v; quero ErrNotRepo", err)
+	}
+	repo := t.TempDir()
+	if out, err := exec.Command("git", "-C", repo, "init", "-q").CombinedOutput(); err != nil {
+		t.Fatalf("git init: %v: %s", err, out)
+	}
+	if err := CheckRepo(repo); err != nil {
+		t.Fatalf("repositório Git recusado: %v", err)
 	}
 }
 

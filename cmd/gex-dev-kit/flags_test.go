@@ -188,3 +188,50 @@ func TestHelpTemDoisAQuatroExemplos(t *testing.T) {
 		}
 	}
 }
+
+func TestValorDeFlagNaoPodeSerOutraFlag(t *testing.T) {
+	casos := [][]string{
+		{"install", "--hook", "--home=/x"},
+		{"install", "--skill", "--yes"},
+		{"githooks", "--repo", "--hook"},
+		{"githooks", "--run", "--yes"},
+		{"doctor", "--home", "--json"},
+		{"--ui", "--quiet", "skills"},
+	}
+	for _, args := range casos {
+		_, _, err := flagsParse(args)
+		if err == nil || !strings.Contains(err.Error(), "exige um valor") {
+			t.Fatalf("%v: erro = %v; quero erro de uso \"exige um valor\"", args, err)
+		}
+	}
+}
+
+func TestUIVazioEhErroDeUso(t *testing.T) {
+	_, _, err := flagsParse([]string{"--ui=", "skills"})
+	if _, ok := err.(usageError); !ok {
+		t.Fatalf("--ui= vazio: erro = %v; quero erro de uso", err)
+	}
+	if !strings.Contains(err.Error(), "--ui") {
+		t.Fatalf("--ui= vazio: mensagem sem a opção: %q", err.Error())
+	}
+}
+
+func TestUsoGlobalExplicaUIAuto(t *testing.T) {
+	if !strings.Contains(usage, "auto: TUI em terminal interativo; texto em pipe, CI, --yes, --quiet ou --json") {
+		t.Fatalf("ajuda global sem a explicação de --ui=auto:\n%s", usage)
+	}
+}
+
+func TestAjudaDoHookListaCincoSubcomandos(t *testing.T) {
+	subcomandos := []string{"commit-msg", "sensitive-action", "pre-pr", "session-start", "pre-commit"}
+	for _, texto := range []string{usage, commandHelp("hook")} {
+		for _, nome := range subcomandos {
+			if !strings.Contains(texto, nome) {
+				t.Fatalf("ajuda sem o subcomando %s:\n%s", nome, texto)
+			}
+		}
+	}
+	if !strings.Contains(commandHelp("hook"), "chamado por Claude Code, Codex e Git") {
+		t.Fatalf("ajuda do hook não diz quem chama:\n%s", commandHelp("hook"))
+	}
+}

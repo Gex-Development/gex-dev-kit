@@ -261,9 +261,67 @@ func TestGitHooksUndocumentedPlanFails(t *testing.T) {
 	d.PlanGitHooks = func(app.GitHooksRequest, int) (app.GitHooksPlan, error) {
 		return app.GitHooksPlan{}, githooks.ErrUndocumented
 	}
-	code, _, errors := writeCallWith(t, options{Home: t.TempDir(), Repo: t.TempDir(), Hooks: []string{"gex-pre-push"}, PrePush: []string{"comando-inexistente"}}, d, cmdGitHooks)
+	code, _, errors := writeCallWith(t, options{Home: t.TempDir(), Repo: writeTestRepo(t), Hooks: []string{"gex-pre-push"}, PrePush: []string{"comando-inexistente"}}, d, cmdGitHooks)
 	if code != 1 || !strings.Contains(errors, "documentado") {
 		t.Fatalf("comando não documentado: exit=%d err=%q", code, errors)
+	}
+}
+
+func writeTestRepo(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	if out, err := exec.Command("git", "-C", dir, "init", "-q").CombinedOutput(); err != nil {
+		t.Fatalf("git init: %v: %s", err, out)
+	}
+	return dir
+}
+
+func TestUnknownSkillSaiComDoisEExplica(t *testing.T) {
+	code, _, errors := writeCall(t, options{Home: t.TempDir(), Skills: []string{"inexistente"}, SkipAgentUpdate: true, Yes: true}, cmdInstall)
+	if code != 2 || !strings.Contains(errors, "Skill desconhecida") || !strings.Contains(errors, "gex-dev-kit skills") {
+		t.Fatalf("skill desconhecida: exit=%d err=%q", code, errors)
+	}
+}
+
+func TestUnknownHookInstallSaiComDoisEExplica(t *testing.T) {
+	code, _, errors := writeCall(t, options{Home: t.TempDir(), Hooks: []string{"inexistente"}, SkipAgentUpdate: true, Yes: true}, cmdInstall)
+	if code != 2 || !strings.Contains(errors, "Hook desconhecido") || !strings.Contains(errors, "gex-dev-kit hooks") {
+		t.Fatalf("hook desconhecido: exit=%d err=%q", code, errors)
+	}
+}
+
+func TestGitHooksRunSemPrePushSaiComDois(t *testing.T) {
+	code, _, errors := writeCall(t, options{Home: t.TempDir(), Repo: writeTestRepo(t), Hooks: []string{"gex-pre-commit"}, PrePush: []string{"go test ./..."}, Yes: true}, cmdGitHooks)
+	if code != 2 || !strings.Contains(errors, "Opção sem efeito") || !strings.Contains(errors, "--hook gex-pre-push") {
+		t.Fatalf("--run sem pre-push: exit=%d err=%q", code, errors)
+	}
+}
+
+func TestGitHooksSemHookSaiComDois(t *testing.T) {
+	code, _, errors := writeCall(t, options{Home: t.TempDir(), Repo: writeTestRepo(t), Yes: true}, cmdGitHooks)
+	if code != 2 || !strings.Contains(errors, "Hook não selecionado") {
+		t.Fatalf("sem hook: exit=%d err=%q", code, errors)
+	}
+}
+
+func TestGitHooksRepoNaoGitVemAntesDaSelecao(t *testing.T) {
+	code, _, errors := writeCall(t, options{Home: t.TempDir(), Repo: t.TempDir(), Yes: true}, cmdGitHooks)
+	if code != 2 || !strings.Contains(errors, "Não é repositório Git") || !strings.Contains(errors, "Informe a raiz de um repositório Git (pasta com .git).") {
+		t.Fatalf("repo não Git sem hook: exit=%d err=%q", code, errors)
+	}
+}
+
+func TestRollbackRepoNaoGitSaiComDois(t *testing.T) {
+	code, _, errors := writeCall(t, options{Home: t.TempDir(), Repo: t.TempDir(), Yes: true}, cmdRollback)
+	if code != 2 || !strings.Contains(errors, "Não é repositório Git") {
+		t.Fatalf("rollback em pasta comum: exit=%d err=%q", code, errors)
+	}
+}
+
+func TestWriteFailUsoSaiComDois(t *testing.T) {
+	var buf bytes.Buffer
+	if code := writeFail(&buf, errors.New("Catálogo: skill indisponível: x")); code != 2 {
+		t.Fatalf("erro de uso: exit=%d; quero 2", code)
 	}
 }
 
