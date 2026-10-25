@@ -58,7 +58,7 @@ func (m chatModel) setupHarness(ids []string) chatModel {
 	}
 	needsUpdate := false
 	var blocked []string
-	reason := ""
+	var reasons []string
 	for _, item := range []struct{ id, label string }{{"claude", "Claude Code"}, {"codex", "Codex"}} {
 		if !slices.Contains(ids, item.id) {
 			continue
@@ -67,28 +67,22 @@ func (m chatModel) setupHarness(ids []string) chatModel {
 		if !ok {
 			change = app.AgentChange{Name: item.id}
 		}
-		current := item.label + " (não instalado)"
-		if change.Current != "" {
-			current = item.label + " v" + strings.TrimPrefix(change.Current, "v")
-		}
+		current := agentBannerTitle(item.label, change)
 		status := homeLabel(m.common.Home, m.common.UserHome)
 		if change.Blocked {
 			status = "bloqueado: " + change.Reason
 			blocked = append(blocked, item.label)
-			if reason == "" {
-				reason = change.Reason
-			}
+			reasons = append(reasons, change.Reason)
 		} else if ok && change.Current != change.Target {
 			needsUpdate = true
 		}
 		m.queue = append(m.queue, chatAction{banner: item.id, info: []string{current, "versão fixada pelo kit: " + change.Target, status}})
 	}
-	if len(blocked) > 0 {
-		if len(blocked) == 1 {
-			m = m.say(fmt.Sprintf("A atualização de %s está bloqueada; sigo só com os arquivos do Core. Motivo: %s.", blocked[0], reason))
-		} else {
-			m = m.say(fmt.Sprintf("A atualização de %s e %s está bloqueada; sigo só com os arquivos do Core. Motivo: %s.", blocked[0], blocked[1], reason))
-		}
+	switch len(blocked) {
+	case 1:
+		m = m.say(fmt.Sprintf("A atualização de %s está bloqueada; sigo só com os arquivos do Core. Motivo: %s.", blocked[0], reasons[0]))
+	case 2:
+		m = m.say(fmt.Sprintf("A atualização de %s e %s está bloqueada; sigo só com os arquivos do Core. Motivos: %s: %s. %s: %s.", blocked[0], blocked[1], blocked[0], reasons[0], blocked[1], reasons[1]))
 	}
 	if slices.Contains(ids, "omp") {
 		m = m.say("O OMP lê as skills de ~/.agents/skills; o kit já instala lá.")
@@ -426,4 +420,14 @@ func (m chatModel) setupApplyAddons() chatModel {
 		})
 	}
 	return m.say(command).flowIdle()
+}
+
+func agentBannerTitle(label string, change app.AgentChange) string {
+	switch {
+	case change.Current != "":
+		return label + " v" + strings.TrimPrefix(change.Current, "v")
+	case change.Blocked:
+		return label + " (não instalado pelo kit)"
+	}
+	return label + " (não instalado)"
 }

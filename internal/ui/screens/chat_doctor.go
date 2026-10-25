@@ -2,6 +2,7 @@ package screens
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/Gex-Development/gex-dev-kit/internal/app"
 	"github.com/Gex-Development/gex-dev-kit/internal/ui/components"
@@ -24,6 +25,25 @@ func doctorStateKind(state string) theme.State {
 	return theme.StateWarn
 }
 
+func doctorLines(report app.Report, plain bool, userHome string) []string {
+	var attention, warnings, pending, ok []string
+	for _, item := range report.Items {
+		line := doctorStateKind(item.State).Symbol(plain) + " " + item.State + " " + maskHome(item.Path, userHome)
+		switch app.StateLevel(item.State) {
+		case "atencao":
+			attention = append(attention, line)
+		case "ok":
+			ok = append(ok, line)
+		default:
+			pending = append(pending, line)
+		}
+	}
+	for _, warning := range report.Warnings {
+		warnings = append(warnings, "aviso · "+maskHome(warning.Path, userHome)+" · "+maskHome(warning.Detail, userHome))
+	}
+	return slices.Concat(attention, warnings, pending, ok)
+}
+
 func (m chatModel) flowDoctor() chatModel {
 	m.context = "doctor"
 	m = m.say("Vou conferir a integridade do que o kit instalou.")
@@ -35,14 +55,12 @@ func (m chatModel) flowDoctor() chatModel {
 		if err != nil {
 			return chatToolResult{state: theme.StateError, err: err}
 		}
-		var lines []string
-		for _, item := range report.Items {
-			lines = append(lines, doctorStateKind(item.State).Symbol(m.theme.Plain)+" "+item.State+" "+maskHome(item.Path, m.common.UserHome))
+		_, attention, _ := report.Counts()
+		state := theme.StateOK
+		if attention > 0 {
+			state = theme.StateWarn
 		}
-		for _, warning := range report.Warnings {
-			lines = append(lines, "aviso · "+maskHome(warning.Path, m.common.UserHome)+" · "+maskHome(warning.Detail, m.common.UserHome))
-		}
-		return chatToolResult{state: theme.StateOK, lines: lines, value: report}
+		return chatToolResult{state: state, lines: doctorLines(report, m.theme.Plain, m.common.UserHome), value: report}
 	}, then: func(m chatModel, r chatToolResult) chatModel {
 		if r.err != nil {
 			p := app.Explain(r.err)
