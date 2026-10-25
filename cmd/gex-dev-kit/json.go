@@ -24,7 +24,6 @@ type jsonSpecialty struct {
 	Group       string   `json:"group"`
 	Description string   `json:"description"`
 	Requires    []string `json:"requires"`
-	Credentials []string `json:"credentials"`
 	Warning     string   `json:"warning"`
 }
 

@@ -72,7 +72,7 @@ func TestSpecialtyPersonalDataPatternCatchesLeaks(t *testing.T) {
 
 func TestSpecialtyCatalogGroupsAndDescriptions(t *testing.T) {
 	specialties := Specialties()
-	if len(specialties) != 10 || len(SpecialtySkills()) != 10 {
+	if len(specialties) != 7 || len(SpecialtySkills()) != 7 {
 		t.Fatalf("especializações inesperadas: %d", len(specialties))
 	}
 	counts := map[string]int{}
@@ -88,7 +88,7 @@ func TestSpecialtyCatalogGroupsAndDescriptions(t *testing.T) {
 		}
 		counts[specialty.Group]++
 	}
-	want := map[string]int{"Gateways": 3, "Dados e Plataforma": 5, "Produto e Interface": 2}
+	want := map[string]int{"Dados e Plataforma": 5, "Produto e Interface": 2}
 	for group, count := range want {
 		if counts[group] != count {
 			t.Fatalf("grupo %s com %d especializações, esperado %d", group, counts[group], count)

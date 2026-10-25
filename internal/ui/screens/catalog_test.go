@@ -67,7 +67,7 @@ func catalogDrain(m catalogModel, cmd tea.Cmd) catalogModel {
 
 func TestCatalogCabecalhoMostraContagemDeSkills(t *testing.T) {
 	view := catalogSized(false, 80, 24).View().Content
-	for _, want := range []string{"7 Core", "18 Matt", "10 especializações"} {
+	for _, want := range []string{"7 Core", "18 Matt", "7 especializações"} {
 		if !strings.Contains(view, want) {
 			t.Fatalf("cabeçalho sem %q:\n%s", want, view)
 		}
@@ -76,14 +76,14 @@ func TestCatalogCabecalhoMostraContagemDeSkills(t *testing.T) {
 
 func TestCatalogSkillsTemUmaEntradaPorSkill(t *testing.T) {
 	items := catalogSkillItems()
-	if len(items) != 35 {
-		t.Fatalf("lista de skills tem %d entradas, esperado 35", len(items))
+	if len(items) != 32 {
+		t.Fatalf("lista de skills tem %d entradas, esperado 32", len(items))
 	}
 	counts := map[string]int{}
 	for _, item := range items {
 		counts[strings.SplitN(item.(catalogItem).badge, " ·", 2)[0]]++
 	}
-	if counts["Core"] != 7 || counts["Matt"] != 18 || counts["Especialização"] != 10 {
+	if counts["Core"] != 7 || counts["Matt"] != 18 || counts["Especialização"] != 7 {
 		t.Fatalf("contagem por grupo errada: %v", counts)
 	}
 }

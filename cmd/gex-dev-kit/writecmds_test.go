@@ -136,21 +136,15 @@ func TestRollbackRepoRestauraGitHooks(t *testing.T) {
 	}
 }
 
-func TestGatewaySkillNeedsEnvironmentBeforeInstalling(t *testing.T) {
-	t.Setenv("PAGAMERICAN_API_KEY", "")
-	t.Setenv("BUYGOODS_ACCOUNT_ID", "")
-	t.Setenv("BUYGOODS_API_TOKEN", "")
-	t.Setenv("CLICKBANK_API_KEY", "")
-	t.Setenv("CLICKBANK_ACCOUNT", "")
-	for _, skill := range []string{"gex-pagamerican-api", "gex-buygoods-api", "gex-clickbank-api"} {
-		home := t.TempDir()
-		code, _, errors := writeCall(t, options{Home: home, Skills: []string{skill}, SkipAgentUpdate: true, Yes: true}, cmdInstall)
-		if code == 0 || !strings.Contains(errors, skill) || !strings.Contains(errors, "canal corporativo") {
-			t.Fatalf("%s sem credencial: exit=%d err=%q", skill, code, errors)
-		}
-		if _, err := os.Stat(filepath.Join(home, ".claude", "CLAUDE.md")); !os.IsNotExist(err) {
-			t.Fatalf("%s alterou HOME sem credencial: %v", skill, err)
-		}
+func TestUnknownSkillDoesNotWriteHome(t *testing.T) {
+	home := t.TempDir()
+	skill := "gex-obsoleta-api"
+	code, _, errors := writeCall(t, options{Home: home, Skills: []string{skill}, SkipAgentUpdate: true, Yes: true}, cmdInstall)
+	if code == 0 || !strings.Contains(errors, skill) {
+		t.Fatalf("%s desconhecida: exit=%d err=%q", skill, code, errors)
+	}
+	if _, err := os.Stat(filepath.Join(home, ".claude", "CLAUDE.md")); !os.IsNotExist(err) {
+		t.Fatalf("%s alterou HOME: %v", skill, err)
 	}
 }
 

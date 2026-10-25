@@ -25,10 +25,10 @@ func lookup(t *testing.T, files []File, path string) File {
 func TestCorePreservesGlobalInstructionsAndDoesNotInstallOptional(t *testing.T) {
 	home := t.TempDir()
 	original := []byte("# Preferências pessoais\n\nNão altere meu modelo.\n")
-	if err := os.Mkdir(filepath.Join(home, ".claude"), 0700); err != nil {
+	if err := os.Mkdir(filepath.Join(home, ".claude"), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(home, ".claude", "CLAUDE.md"), original, 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(home, ".claude", "CLAUDE.md"), original, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	files, err := Build(home, "", nil, nil)
@@ -76,18 +76,15 @@ func TestCoreAlwaysIncludesSevenSkillsInBothAgents(t *testing.T) {
 
 func TestSelectedSpecialtyCopiesCompletePackOnlyWhenSelected(t *testing.T) {
 	packs := map[string]string{
-		"gex-buygoods-api":             "scripts/metadata.py",
 		"gex-canonical-prod-readiness": "",
-		"gex-clickbank-api":            "scripts/quickstats.py",
 		"gex-design-system":            "",
 		"gex-gateway-audit":            "",
 		"gex-hub-design-system":        "",
 		"gex-hub-gold-refresh-prod":    "",
 		"gex-local-spark-tests":        "",
-		"gex-pagamerican-api":          "scripts/metadata.py",
 		"gex-pr-review":                "",
 	}
-	if !slices.Equal(SpecialtySkills(), []string{"gex-buygoods-api", "gex-canonical-prod-readiness", "gex-clickbank-api", "gex-design-system", "gex-gateway-audit", "gex-hub-design-system", "gex-hub-gold-refresh-prod", "gex-local-spark-tests", "gex-pagamerican-api", "gex-pr-review"}) {
+	if !slices.Equal(SpecialtySkills(), []string{"gex-canonical-prod-readiness", "gex-design-system", "gex-gateway-audit", "gex-hub-design-system", "gex-hub-gold-refresh-prod", "gex-local-spark-tests", "gex-pr-review"}) {
 		t.Fatalf("especializações inesperadas: %v", SpecialtySkills())
 	}
 	for name, script := range packs {
@@ -180,19 +177,19 @@ func TestSelectedSkillIncludesOfflineReferencesAndLicense(t *testing.T) {
 func TestHookPreservesOtherHandlersAndPreferences(t *testing.T) {
 	home := t.TempDir()
 	for _, dir := range []string{".claude", ".codex"} {
-		if err := os.Mkdir(filepath.Join(home, dir), 0700); err != nil {
+		if err := os.Mkdir(filepath.Join(home, dir), 0o700); err != nil {
 			t.Fatal(err)
 		}
 	}
 	claude := []byte(`{"model":"custom","hooks":{"PreToolUse":[{"matcher":"Bash","hooks":[{"type":"command","command":"echo existing"}]}],"Stop":[{"hooks":[{"type":"command","command":"echo stop"}]}]}}`)
 	codex := []byte(`{"description":"personal","hooks":{"Stop":[{"hooks":[{"type":"command","command":"echo stop"}]}]}}`)
 	for path, data := range map[string][]byte{".claude/settings.json": claude, ".codex/hooks.json": codex} {
-		if err := os.WriteFile(filepath.Join(home, path), data, 0600); err != nil {
+		if err := os.WriteFile(filepath.Join(home, path), data, 0o600); err != nil {
 			t.Fatal(err)
 		}
 	}
 	executable := filepath.Join(home, "gex-dev-kit")
-	if err := os.WriteFile(executable, []byte("binary"), 0700); err != nil {
+	if err := os.WriteFile(executable, []byte("binary"), 0o700); err != nil {
 		t.Fatal(err)
 	}
 	files, err := Build(home, executable, nil, []string{"gex-conventional-commits"})
@@ -437,14 +434,14 @@ func TestMergeHooksRejectsMalformedJSONWithAction(t *testing.T) {
 
 func TestBuildReportsInvalidSettingsWithPath(t *testing.T) {
 	home := t.TempDir()
-	if err := os.Mkdir(filepath.Join(home, ".claude"), 0700); err != nil {
+	if err := os.Mkdir(filepath.Join(home, ".claude"), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(home, ".claude", "settings.json"), []byte("{"), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(home, ".claude", "settings.json"), []byte("{"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	executable := filepath.Join(t.TempDir(), "gex-dev-kit")
-	if err := os.WriteFile(executable, []byte("binary"), 0700); err != nil {
+	if err := os.WriteFile(executable, []byte("binary"), 0o700); err != nil {
 		t.Fatal(err)
 	}
 	_, err := Build(home, executable, nil, []string{"gex-conventional-commits"})
@@ -479,7 +476,7 @@ func TestWindowsCommandPathQuotesOnlyAsLastResort(t *testing.T) {
 func TestBuildAddsAllAgentHandlers(t *testing.T) {
 	home := t.TempDir()
 	executable := filepath.Join(t.TempDir(), "gex-dev-kit")
-	if err := os.WriteFile(executable, []byte("binary"), 0700); err != nil {
+	if err := os.WriteFile(executable, []byte("binary"), 0o700); err != nil {
 		t.Fatal(err)
 	}
 	files, err := Build(home, executable, nil, Hooks())
@@ -523,7 +520,7 @@ func TestBuildAddsAllAgentHandlers(t *testing.T) {
 func TestSensitiveOnlyLeavesCodexConfigOut(t *testing.T) {
 	home := t.TempDir()
 	executable := filepath.Join(t.TempDir(), "gex-dev-kit")
-	if err := os.WriteFile(executable, []byte("binary"), 0700); err != nil {
+	if err := os.WriteFile(executable, []byte("binary"), 0o700); err != nil {
 		t.Fatal(err)
 	}
 	files, err := Build(home, executable, nil, []string{"gex-sensitive-action-warning"})
@@ -550,7 +547,7 @@ func TestBinaryRefreshedOnlyWithKitHandlerOrChangedBinary(t *testing.T) {
 	}
 	home := t.TempDir()
 	executable := filepath.Join(t.TempDir(), "gex-dev-kit")
-	if err := os.WriteFile(executable, []byte("binary-v2"), 0700); err != nil {
+	if err := os.WriteFile(executable, []byte("binary-v2"), 0o700); err != nil {
 		t.Fatal(err)
 	}
 	files, err := Build(home, executable, nil, nil)
@@ -560,10 +557,10 @@ func TestBinaryRefreshedOnlyWithKitHandlerOrChangedBinary(t *testing.T) {
 	if hasBinary(files) {
 		t.Fatal("binário incluído sem hook, handler do kit ou diferença")
 	}
-	if err := os.MkdirAll(filepath.Dir(StableBinary(home)), 0700); err != nil {
+	if err := os.MkdirAll(filepath.Dir(StableBinary(home)), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(StableBinary(home), []byte("binary-v1"), 0700); err != nil {
+	if err := os.WriteFile(StableBinary(home), []byte("binary-v1"), 0o700); err != nil {
 		t.Fatal(err)
 	}
 	files, err = Build(home, executable, nil, nil)
@@ -573,7 +570,7 @@ func TestBinaryRefreshedOnlyWithKitHandlerOrChangedBinary(t *testing.T) {
 	if !hasBinary(files) {
 		t.Fatal("binário estável diferente não atualizado")
 	}
-	if err := os.WriteFile(StableBinary(home), []byte("binary-v2"), 0700); err != nil {
+	if err := os.WriteFile(StableBinary(home), []byte("binary-v2"), 0o700); err != nil {
 		t.Fatal(err)
 	}
 	encoded, err := json.Marshal(StableBinary(home))
@@ -581,10 +578,10 @@ func TestBinaryRefreshedOnlyWithKitHandlerOrChangedBinary(t *testing.T) {
 		t.Fatal(err)
 	}
 	settings := []byte(`{"hooks":{"PreToolUse":[{"matcher":"Bash","hooks":[{"type":"command","command":` + string(encoded) + `,"args":["hook","pre-pr"]}]}]}}`)
-	if err := os.MkdirAll(filepath.Join(home, ".claude"), 0700); err != nil {
+	if err := os.MkdirAll(filepath.Join(home, ".claude"), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(home, ".claude", "settings.json"), settings, 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(home, ".claude", "settings.json"), settings, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	files, err = Build(home, executable, nil, nil)
@@ -598,7 +595,7 @@ func TestBinaryRefreshedOnlyWithKitHandlerOrChangedBinary(t *testing.T) {
 
 func TestBuildRejectsSymlinkedSettings(t *testing.T) {
 	home := t.TempDir()
-	if err := os.Mkdir(filepath.Join(home, ".claude"), 0700); err != nil {
+	if err := os.Mkdir(filepath.Join(home, ".claude"), 0o700); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.Symlink(filepath.Join(home, "elsewhere"), filepath.Join(home, ".claude", "CLAUDE.md")); err != nil {
@@ -654,7 +651,7 @@ func TestReferencedSkillsListsElevenEntriesAtPinnedRevision(t *testing.T) {
 func TestStableBinaryAndBinaryFileUseStablePath(t *testing.T) {
 	home := t.TempDir()
 	executable := filepath.Join(t.TempDir(), "gex-dev-kit")
-	if err := os.WriteFile(executable, []byte("binary"), 0700); err != nil {
+	if err := os.WriteFile(executable, []byte("binary"), 0o700); err != nil {
 		t.Fatal(err)
 	}
 	file, err := BinaryFile(executable)
@@ -662,7 +659,7 @@ func TestStableBinaryAndBinaryFileUseStablePath(t *testing.T) {
 		t.Fatal(err)
 	}
 	name := catalogBinaryName()
-	if file.Path != ".local/share/gex-dev-kit/bin/"+name || file.Mode != 0755 || string(file.Data) != "binary" {
+	if file.Path != ".local/share/gex-dev-kit/bin/"+name || file.Mode != 0o755 || string(file.Data) != "binary" {
 		t.Fatalf("binário estável inesperado: %+v", file)
 	}
 	if StableBinary(home) != filepath.Join(home, ".local", "share", "gex-dev-kit", "bin", name) {
@@ -684,7 +681,7 @@ func TestCoreRepeatedBuildDoesNotDuplicate(t *testing.T) {
 	}
 	for _, file := range first {
 		path := file.Path
-		if err := os.MkdirAll(filepath.Dir(filepath.Join(home, path)), 0700); err != nil {
+		if err := os.MkdirAll(filepath.Dir(filepath.Join(home, path)), 0o700); err != nil {
 			t.Fatal(err)
 		}
 		if err := os.WriteFile(filepath.Join(home, path), file.Data, file.Mode); err != nil {

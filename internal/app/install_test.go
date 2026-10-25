@@ -11,7 +11,7 @@ import (
 func installExecutable(t *testing.T) string {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "gex-dev-kit")
-	if err := os.WriteFile(path, []byte("binario de teste"), 0755); err != nil {
+	if err := os.WriteFile(path, []byte("binario de teste"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	return path
@@ -47,17 +47,15 @@ func TestPlanInstallRejectsRelativeHome(t *testing.T) {
 	}
 }
 
-func TestPlanInstallStopsBeforeWritingWithoutCredentials(t *testing.T) {
-	t.Setenv("BUYGOODS_ACCOUNT_ID", "")
-	t.Setenv("BUYGOODS_API_TOKEN", "")
+func TestPlanInstallRejectsRemovedSkillBeforeWriting(t *testing.T) {
 	r := installRequest(t)
-	r.Skills = []string{"gex-buygoods-api"}
+	r.Skills = []string{"gex-obsoleta-api"}
 	_, err := PlanInstall(r, 0)
-	if err == nil || !strings.Contains(err.Error(), "BUYGOODS_ACCOUNT_ID") || !strings.Contains(err.Error(), "canal corporativo") {
-		t.Fatalf("gateway sem credencial aceito: %v", err)
+	if err == nil || !strings.Contains(err.Error(), "gex-obsoleta-api") {
+		t.Fatalf("skill desconhecida aceita: %v", err)
 	}
 	if _, err := os.Stat(filepath.Join(r.Home, ".claude", "CLAUDE.md")); !os.IsNotExist(err) {
-		t.Fatalf("prévia alterou HOME sem credencial: %v", err)
+		t.Fatalf("prévia alterou HOME com skill desconhecida: %v", err)
 	}
 }
 
@@ -113,10 +111,10 @@ func TestApplyInstallSignalsCodexTrustForSelectedHook(t *testing.T) {
 func TestApplyInstallFailsWhenFileChangedAfterPreview(t *testing.T) {
 	r := installRequest(t)
 	plan := installPlan(t, r)
-	if err := os.MkdirAll(filepath.Join(r.Home, ".claude"), 0700); err != nil {
+	if err := os.MkdirAll(filepath.Join(r.Home, ".claude"), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(r.Home, ".claude", "CLAUDE.md"), []byte("alterado depois da prévia"), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(r.Home, ".claude", "CLAUDE.md"), []byte("alterado depois da prévia"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := ApplyInstall(plan, nil); err == nil || !strings.Contains(err.Error(), "Instalação do Core") {
@@ -140,8 +138,8 @@ func TestEquivalentCommandQuotesOnlyWhenNeeded(t *testing.T) {
 		t.Fatalf("comando %q, esperado %q", got, want)
 	}
 	spaced := filepath.Join(t.TempDir(), "casa com espaço")
-	got = EquivalentCommand(Request{Home: spaced, Skills: []string{"gex-pagamerican-api"}, Hooks: []string{"gex-conventional-commits"}, SkipAgentUpdate: true})
-	want := "gex-dev-kit install --home '" + spaced + "' --skill gex-pagamerican-api --hook gex-conventional-commits --skip-agent-update --yes"
+	got = EquivalentCommand(Request{Home: spaced, Skills: []string{"gex-design-system"}, Hooks: []string{"gex-conventional-commits"}, SkipAgentUpdate: true})
+	want := "gex-dev-kit install --home '" + spaced + "' --skill gex-design-system --hook gex-conventional-commits --skip-agent-update --yes"
 	if got != want {
 		t.Fatalf("comando %q, esperado %q", got, want)
 	}

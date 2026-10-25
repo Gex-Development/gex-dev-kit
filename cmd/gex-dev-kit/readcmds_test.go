@@ -179,8 +179,14 @@ func TestSkillsJSONCountsAndSchema(t *testing.T) {
 		References []any `json:"references"`
 	}
 	readDecode(t, out.String(), &doc)
-	if doc.Schema != "gex-dev-kit.skills/v1" || len(doc.Core) != 7 || len(doc.Specialties) != 10 || len(doc.Matt.Skills) != 18 || len(doc.References) != 11 {
+	if doc.Schema != "gex-dev-kit.skills/v1" || len(doc.Core) != 7 || len(doc.Specialties) != 7 || len(doc.Matt.Skills) != 18 || len(doc.References) != 11 {
 		t.Fatalf("contagens de skills: schema=%s core=%d esp=%d matt=%d refs=%d", doc.Schema, len(doc.Core), len(doc.Specialties), len(doc.Matt.Skills), len(doc.References))
+	}
+	for _, item := range doc.Specialties {
+		specialty := item.(map[string]any)
+		if _, ok := specialty["credentials"]; ok {
+			t.Fatal("schema JSON ainda expõe campo de credenciais")
+		}
 	}
 	if doc.Matt.Revision == "" {
 		t.Fatalf("revisão Matt ausente no JSON")

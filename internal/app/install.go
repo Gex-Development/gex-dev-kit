@@ -18,9 +18,6 @@ func PlanInstall(r Request, diffLimit int) (Plan, error) {
 	if !filepath.IsAbs(r.Home) {
 		return Plan{}, errors.New("HOME deve ser caminho absoluto")
 	}
-	if err := CheckCredentials(r.Skills); err != nil {
-		return Plan{}, err
-	}
 	files, err := catalog.Build(r.Home, r.Executable, r.Skills, r.Hooks)
 	if err != nil {
 		return Plan{}, fmt.Errorf("Catálogo: %w", err)

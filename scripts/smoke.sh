@@ -16,8 +16,6 @@ cp "$home/.claude/settings.json" "$work/claude-before"
 cp "$home/.codex/hooks.json" "$work/codex-before"
 export HOME="$home" USERPROFILE="$home" CODEX_HOME="$home/.codex" CLAUDE_CONFIG_DIR="$home/.claude"
 export PATH="/usr/bin:/bin:$(dirname -- "$binary")"
-export PAGAMERICAN_API_KEY=ficticio-smoke BUYGOODS_ACCOUNT_ID=ficticio-smoke BUYGOODS_API_TOKEN=ficticio-smoke
-export CLICKBANK_ACCOUNT=ficticio-smoke CLICKBANK_API_KEY=ficticio-smoke
 
 falhou() {
   printf 'Falhou: %s\n' "$1" >&2
@@ -49,7 +47,7 @@ executar() {
 }
 
 skills_core=(gex-abrir-issue gex-auto-revisao gex-fluxo-desenvolvimento gex-preparar-pr gex-regras-de-negocio gex-revisar-pr gex-verificar-mudanca)
-skills_especialidades=(gex-pagamerican-api gex-buygoods-api gex-clickbank-api gex-local-spark-tests gex-canonical-prod-readiness gex-hub-gold-refresh-prod gex-gateway-audit gex-pr-review gex-design-system gex-hub-design-system)
+skills_especialidades=(gex-local-spark-tests gex-canonical-prod-readiness gex-hub-gold-refresh-prod gex-gateway-audit gex-pr-review gex-design-system gex-hub-design-system)
 args_especialidades=()
 for skill in "${skills_especialidades[@]}"; do
   args_especialidades+=(--skill "$skill")
@@ -59,9 +57,9 @@ done
   --hook gex-conventional-commits --hook gex-sensitive-action-warning --hook gex-pre-pr --hook gex-session-start \
   --skip-agent-update --yes > "$work/install.txt" 2>&1 || {
   cat "$work/install.txt" >&2
-  falhou 'install com 10 especializações, retro, writing-for-agents e 4 hooks'
+  falhou 'install com 7 especializações, retro, writing-for-agents e 4 hooks'
 }
-ok 'install com 10 especializações, retro, writing-for-agents e 4 hooks'
+ok 'install com 7 especializações, retro, writing-for-agents e 4 hooks'
 
 if doctor_output=$("$binary" doctor --home "$home"); then
   doctor_status=0

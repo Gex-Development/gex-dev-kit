@@ -106,7 +106,7 @@ func TestGatherSessionContaSkillsCorePorAgente(t *testing.T) {
 	home := t.TempDir()
 	sessionMkSkill(t, filepath.Join(home, ".claude", "skills", "gex-abrir-issue"))
 	sessionMkSkill(t, filepath.Join(home, ".claude", "skills", "gex-revisar-pr"))
-	sessionMkSkill(t, filepath.Join(home, ".claude", "skills", "gex-buygoods-api"))
+	sessionMkSkill(t, filepath.Join(home, ".claude", "skills", "gex-design-system"))
 	sessionMkSkill(t, filepath.Join(home, ".agents", "skills", "gex-preparar-pr"))
 	claude := GatherSession(AgentInput{Cwd: t.TempDir()}, "claude", home, sessionNoRepo, sessionNoGit)
 	codex := GatherSession(AgentInput{Cwd: t.TempDir()}, "codex", home, sessionNoRepo, sessionNoGit)

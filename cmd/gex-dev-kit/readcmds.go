@@ -124,7 +124,6 @@ func readSpecialty(specialty catalog.Specialty) jsonSpecialty {
 		Group:       specialty.Group,
 		Description: specialty.Description,
 		Requires:    readList(specialty.Requires),
-		Credentials: readList(specialty.Credentials),
 		Warning:     specialty.Warning,
 	}
 }
@@ -372,9 +371,6 @@ func readSkillsText(doc jsonSkillsDoc) string {
 func readSpecialtyText(b *strings.Builder, specialty jsonSpecialty) {
 	readLine(b, "    ", specialty.Name, specialty.Description)
 	readRequires(b, specialty.Requires)
-	if len(specialty.Credentials) > 0 {
-		fmt.Fprintf(b, "      Credenciais: %s\n", strings.Join(specialty.Credentials, ", "))
-	}
 	if specialty.Warning != "" {
 		fmt.Fprintf(b, "      Aviso: %s\n", specialty.Warning)
 	}

@@ -26,7 +26,7 @@ func TestInstallOptionsKeepsGroupOrder(t *testing.T) {
 	}
 	want := []string{
 		"Engenharia", "Produtividade",
-		"Especializações · Gateways", "Especializações · Dados e Plataforma", "Especializações · Produto e Interface",
+		"Especializações · Dados e Plataforma", "Especializações · Produto e Interface",
 		"Hooks",
 	}
 	if !reflect.DeepEqual(titles, want) {

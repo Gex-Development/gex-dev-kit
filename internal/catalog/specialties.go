@@ -8,31 +8,9 @@ type Specialty struct {
 	Description string
 	Warning     string
 	Requires    []string
-	Credentials []string
 }
 
 var specialtyList = []Specialty{
-	{
-		Name:        "gex-pagamerican-api",
-		Group:       "Gateways",
-		Description: "Autoria GEX; fonte: PagAmerican Data API v1 (external-api-service.pagamerican.app/api/v1). Consulta metadados por dia somente leitura; autorização e credenciais em runtime.",
-		Warning:     "Exige chave de leitura por variável de ambiente; consulta somente leitura por GET.",
-		Credentials: []string{"PAGAMERICAN_API_KEY"},
-	},
-	{
-		Name:        "gex-buygoods-api",
-		Group:       "Gateways",
-		Description: "Autoria GEX; fonte: BuyGoods Public API v2 (admin3.buygoods.com/public/v2). Consulta somente leitura de orders e transactions; autorização e credenciais em runtime.",
-		Warning:     "Exige token próprio de cada conta, por variável de ambiente; consulta somente leitura.",
-		Credentials: []string{"BUYGOODS_ACCOUNT_ID", "BUYGOODS_API_TOKEN"},
-	},
-	{
-		Name:        "gex-clickbank-api",
-		Group:       "Gateways",
-		Description: "Autoria GEX; fonte: documentação oficial ClickBank APIs (support.clickbank.com). Consulta estatísticas agregadas somente leitura; autorização e credenciais em runtime.",
-		Warning:     "Exige API key autorizada para a conta, por variável de ambiente; somente GET.",
-		Credentials: []string{"CLICKBANK_ACCOUNT", "CLICKBANK_API_KEY"},
-	},
 	{
 		Name:        "gex-local-spark-tests",
 		Group:       "Dados e Plataforma",
@@ -82,14 +60,13 @@ func Specialties() []Specialty {
 	out := make([]Specialty, len(specialtyList))
 	for i, specialty := range specialtyList {
 		specialty.Requires = slices.Clone(specialty.Requires)
-		specialty.Credentials = slices.Clone(specialty.Credentials)
 		out[i] = specialty
 	}
 	return out
 }
 
 func SpecialtyGroups() []string {
-	return []string{"Gateways", "Dados e Plataforma", "Produto e Interface"}
+	return []string{"Dados e Plataforma", "Produto e Interface"}
 }
 
 func SpecialtyByName(name string) (Specialty, bool) {
