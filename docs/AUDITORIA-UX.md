@@ -6,6 +6,8 @@ Este arquivo registra o resultado da auditoria de UX do PLAN.md, seção 8.8 (ta
 - Correções: commit 3b68ba7 (branch worktree-w5t7).
 - Avaliação anterior: 20/10/2026, sobre a v0.2.0.
 
+Esta auditoria documenta uma execução anterior da CLI; as notas e resultados de testes abaixo não foram refeitos para o chat atual. O estado da TUI nesta branch está descrito na seção 9.
+
 ## 1. Resumo
 
 - A avaliação de 21/10 deu nota 3.4 de 5 no núcleo (critérios 1 a 8) e 3.5 de 5 no geral (critérios 1 a 11).
@@ -123,3 +125,14 @@ Conclusão da comparação: a avaliação de 21/10 achou falhas novas em erros d
 - Regressão da seção 8.8, item 7: executada (26 de 27; a diferença é a correção de UX-002).
 - PROC-001: hash do HOME real inalterado na regressão; origem do incidente de 21/10 não confirmada.
 - Lacunas da seção 5 e os temas da avaliação de 20/10 que não foram retestados (seção 7).
+
+## 9. Interface atual da TUI (não reavaliada)
+
+- Sem subcomando, `gex-dev-kit` mostra boas-vindas, verifica o ambiente e pede `Enter` ou clique para iniciar o chat. Os comandos TUI abrem diretamente o fluxo correspondente em `RunChat`; `ds` continua como vitrine separada. CLI, JSON e modo acessível continuam disponíveis.
+- O chat fica ocioso após a saudação ou ao concluir fluxos; `/` abre a paleta filtrável, sem menu permanente. `/menu` mostra a lista quando solicitado. `/ajuda` lista `/setup`, `/catalogo`, `/doctor`, `/rollback`, `/agentes`, `/githooks`, `/addons`, `/menu`, `/voltar`, `/ajuda`, `/limpar` e `/sair`, além de `esc`, `ctrl+o` e `ctrl+c`. Texto não reconhecido responde `Não entendi. Digite / para ver os comandos.`.
+- A conversa usa uma barra escura de contexto: GEX, harness detectado e versão, caminho do projeto (diretório atual) e branch Git quando disponível; o HOME de instalação aparece apenas quando difere do HOME real. Core instalado e versão do kit, ou progresso/etapa do setup, ficam na borda superior rosa da caixa de entrada (`PromptBox`), sem divisória separada acima da transcrição. `GEX_NO_POWERLINE=1` substitui glifos Powerline por `›` e o modo Plain usa ASCII.
+- Durante mensagens animadas e ferramentas, o campo mostra `GEX está trabalhando…`, a linha de trabalho mostra spinner, tempo e brilho móvel no rótulo, e texto digitado não é enfileirado. Respostas chegam por palavras inteiras em intervalos variados. Ferramentas ocupam cartões de cantos arredondados: checklist de fases enquanto executam, resultado alinhado ao terminar e tempo na borda inferior. `Enter` ou espaço durante a animação apenas termina de revelar o texto. `Esc` limpa a entrada ou retorna à pergunta anterior; `/voltar` também volta. Nas perguntas múltiplas, espaço ou dígitos marcam e `Enter` confirma (sem marca numa pergunta obrigatória, confirma a opção do cursor). O botão clicável `Confirmar (N)` ou `Pular (nenhuma marcada)` confirma; perguntas de caminho aceitam `Tab` para completar e `Enter` para entrar na pasta destacada. Cliques em opções e na borda superior da ferramenta e roda do mouse são aceitos; a barra lateral aparece a partir de 120×30.
+- Escolhas longas são paginadas e mantêm ao menos quatro linhas da transcrição; `←`/`→`, `PageUp`/`PageDown` e `‹`/`›` trocam páginas com o campo vazio. Dígitos valem na página atual. Com texto digitado, setas horizontais editam o campo; fora de lista paginada, `PageUp`/`PageDown` e roda rolam a conversa. Paleta e sugestões de pasta mostram `… mais N` ao exceder o espaço disponível. Catálogo separa Skills por grupos e Referências por tipo.
+- O setup anuncia harness, destino, extras, plugins, revisão e instalação. A barra lateral tem sete etapas fixas: Harness, Agentes, Destino, Extras, Plugins, Plano e Instalação. Após Extras, Plugins permite marcar addons para Claude Code e Codex; só OMP pula a etapa. O chat revisa comandos, conflitos e passos manuais antes do resumo e de **Sim, aplicar**. `/addons` oferece revisão e confirmação por plugin e destino; o rollback do kit não desfaz esses plugins.
+- A confirmação do setup é **Sim, aplicar** depois da ferramenta **Planejar instalação**; cancelar mostra `Nada foi gravado.`. `doctor` mostra `Tudo íntegro: N item(ns) ok.` ou `Encontrei N item(ns) com atenção.` e usa `report.ExitCode()`. Conflito no rollback mostra `Não restauro: estes arquivos mudaram depois da instalação.` e marca código 1; ausência de histórico mostra `Nada a restaurar.`. Em gravação, `Ctrl+C` é adiado até concluir.
+- A cobertura visual usa `TestGoldenChat` (boas-vindas, chat ocioso, setup, ferramenta em execução, confirmação e resultado), no lugar dos goldens individuais das telas removidas. Esta seção descreve código, não prova teste manual de terminal, mouse ou acessibilidade.

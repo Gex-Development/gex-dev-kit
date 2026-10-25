@@ -1,6 +1,6 @@
 # Kit de Desenvolvimento GEX
 
-CLI para preparar Claude Code e Codex com instruções globais e sete skills de trabalho GEX obrigatórias. Skills Matt Pocock, especializações e um hook de Conventional Commits entram por escolha. Addons, MCPs e arquivos de projetos não são alterados.
+CLI para preparar Claude Code e Codex com instruções globais e sete skills de trabalho GEX obrigatórias. Skills Matt Pocock, especializações e um hook de Conventional Commits entram por escolha. A TUI também instala plugins opcionais; MCPs e arquivos de projetos não são alterados pelo Core.
 
 ## Estado
 
@@ -20,7 +20,7 @@ chmod +x gex-dev-kit_v0.2.0_linux_amd64
 
 No macOS, confira checksums com `shasum -a 256 -c SHA256SUMS` e troque `linux_amd64` por `darwin_arm64` ou `darwin_amd64`. No PowerShell, baixe o executável Windows correspondente, confira hash com `Get-FileHash` e execute-o.
 
-A release v0.2.0 não contém as sete skills Core, as especializações nem as telas novas. Para avaliar essas mudanças, use o código da branch, não o binário publicado.
+A release v0.2.0 não contém as sete skills Core, as especializações nem o chat da TUI desta branch. Para avaliar essas mudanças, use o código da branch, não o binário publicado.
 
 ## Piloto local (v0.3.0)
 
@@ -34,9 +34,13 @@ HOME="$PILOT_HOME" ./gex-dev-kit
 ./gex-dev-kit rollback --home "$PILOT_HOME"
 ```
 
-No terminal interativo, o painel mostra o estado do Core com spinner, menu navegável e atalhos `?`, `↑`/`↓`, `Enter` e `q`. Na instalação guiada, escolha skills, especializações e hook. No último passo, responda **Agora não** para não atualizar executáveis durante o piloto. A prévia rolável mostra os arquivos afetados: `Enter` abre a confirmação, `s` aplica e `Esc` cancela.
+No terminal interativo, `gex-dev-kit` abre boas-vindas e verifica o ambiente; `Enter` ou clique inicia o chat do assistente GEX. Quando está ocioso, digite `/` para abrir a paleta de comandos. `/setup` começa com um roteiro curto: Harness, Agentes, Destino, Extras, Plugins, Plano e Instalação. Após escolher os harnesses, o kit os reconhece numa frase e mostra um banner para cada Claude Code ou Codex escolhido, sem verificação separada por ferramenta. Para testar sem atualizar executáveis, escolha **Agora não** na pergunta sobre agentes.
 
-`ACCESSIBLE=1`, `NO_COLOR=1` ou `TERM=dumb` trocam o painel por menu e confirmação em texto. `NO_COLOR=1` tira só as cores.
+Na conversa, a barra escura mostra GEX, o primeiro harness detectado e sua versão, o caminho do projeto (diretório atual) e, quando disponível, o branch Git (`*N` arquivos modificados, `?N` não rastreados). O HOME de instalação aparece apenas quando difere do HOME real. A régua fica na borda superior rosa da caixa de entrada: fora do setup mostra o Core instalado (`N/7`) e a versão do kit; durante o setup, porcentagem e `Etapa N/7`. Não há divisória separada acima da transcrição. `GEX_NO_POWERLINE=1` troca os separadores decorativos por `›`; terminais em modo Plain usam ASCII.
+
+Com animação ativa, cada resposta chega por palavras inteiras num cronograma determinístico a 60 fps: base de 55 caracteres por segundo, intervalos irregulares, pausas de pontuação e aceleração proporcional para limitar textos longos a cerca de 9 s. Entre mensagens há uma batida de 450 ms (700 ms após mais de 300 runas). A linha de trabalho mostra spinner, tempo e brilho móvel no rótulo da fase atual. Cada ferramenta tem cartão de cantos arredondados, estado colorido, resultado alinhado e tempo na borda inferior; enquanto executa, seu corpo exibe checklist de fases de 1 s. Em “Verificar ambiente”, HOME, Claude Code, Codex e Core substituem suas fases pelas linhas reais ao fim de cada etapa; nas outras ferramentas, o checklist cede lugar ao resultado final. A retenção visual dura no máximo 6 s; progresso real chega imediatamente. `Enter` ou espaço pula a animação atual; a entrada permanece travada enquanto o assistente escreve ou uma ferramenta executa. Depois que a gravação real termina, a exibição pode continuar sem adiar `Ctrl+C`. Com `--no-anim`, respostas e resultados aparecem imediatamente, sem checklist.
+
+`ACCESSIBLE=1` ou `TERM=dumb` usam menu e confirmação em texto. `NO_COLOR=1` remove apenas as cores; com terminal interativo, o chat continua.
 
 Para escolher opções sem o formulário:
 
@@ -63,11 +67,35 @@ Os exemplos acima são da v0.2.0. Para a branch local, troque o executável por 
 
 | Situação | Interface usada |
 |---|---|
-| Terminal interativo, sem opção extra | Painel (TUI) |
+| Terminal interativo, sem opção extra | Chat (TUI) |
 | `--yes`, `--quiet` ou `--json` | CLI |
 | `--ui=cli` | CLI |
 | `--ui=tui` sem terminal interativo | Erro de uso (código 2) |
-| `ACCESSIBLE=1`, `NO_COLOR=1` ou `TERM=dumb` | Menu e confirmação em texto |
+| `ACCESSIBLE=1` ou `TERM=dumb` | Menu e confirmação em texto |
+| `NO_COLOR=1` em terminal interativo | Chat sem cores |
+
+### Comandos dentro do chat
+
+| Comando | Ação |
+|---|---|
+| `/setup` | Configurar ou atualizar o kit |
+| `/catalogo` | Ver skills e hooks com “O que faz”, “Quando usar” e “Analogia” |
+| `/doctor` | Verificar a integridade |
+| `/rollback` | Desfazer a última instalação |
+| `/agentes` | Restaurar versões anteriores dos agentes |
+| `/githooks` | Configurar git hooks |
+| `/addons` | Ver e instalar plugins de terceiros após revisão e confirmação |
+| `/menu` | Mostrar as opções como lista, quando necessário |
+| `/voltar` | Voltar uma etapa |
+| `/ajuda` | Listar comandos e atalhos |
+| `/limpar` | Limpar a conversa atual |
+| `/sair` | Encerrar |
+
+Na paleta, `↑`/`↓` escolhem e `Tab` completa. Também é possível digitar palavras como “instalar”, “skill”, “verificar”, “desfazer”, “agente”, “git hook” e “addon”. Nas perguntas com várias opções, espaço e números `1`–`9` marcam itens; `Enter` confirma a seleção. Se uma escolha obrigatória ainda não estiver marcada, `Enter` escolhe o item sob o cursor. O botão **Confirmar (N)** ou **Pular (nenhuma marcada)** também confirma com clique; sem Extras selecionados, não há skills ou hooks opcionais.
+
+Listas mostram só os itens que cabem, preservando ao menos quatro linhas da conversa. Escolhas longas exibem `‹ página i/n ›`: `←`/`→`, `PageUp`/`PageDown` ou clique em `‹`/`›` trocam a página; números `1`–`9` valem na página atual e marcações persistem. Com texto digitado, `←`/`→` movem o cursor. Sem escolha paginada, `PageUp`/`PageDown` e a roda continuam rolando a conversa. A paleta e o navegador de pastas mostram `… mais N` quando não cabem; digite para filtrar. Em `/catalogo`, Skills são divididas em Core, Engenharia, Produtividade e Especializações (Dados e Plataforma / Produto e Interface); Referências, em Skills de terceiros e Hooks candidatos. `Esc` volta um nível.
+
+Em **Extras**, a pergunta `Além do Core (obrigatório), o que mais você quer instalar?` lista grupos opcionais; apenas os grupos marcados abrem suas opções. Depois, **Plugins** permite selecionar instaladores para Claude Code/Codex. O resumo antes da prévia mostra harness, destino, Core, extras, agentes e plugins escolhidos. Confira comandos, conflitos, prévia e diff; só **Sim, aplicar** executa. `Esc` limpa a entrada ou volta à etapa anterior; `/voltar` também volta. Perguntas de caminho oferecem navegador de pastas (`Tab` completa, `Enter` abre a pasta destacada); é possível colar com `Cmd+V` ou `Ctrl+V`, conforme o terminal. Clique no título de uma ferramenta ou use `Ctrl+O` para expandir o bloco; a roda navega escolhas ou conversa. A partir de 120 colunas e 30 linhas, a barra lateral mostra ambiente e sete etapas. Enquanto GEX escreve ou executa ferramenta, o campo fica travado: entradas digitadas não são guardadas. `Enter` ou espaço apenas termina de revelar texto em curso.
 
 ### Comandos
 
@@ -125,25 +153,19 @@ Com sinal durante uma gravação, o kit termina a gravação em curso antes de s
 
 O Core escreve instruções em `~/.claude/CLAUDE.md` e `~/.codex/AGENTS.md`. Instala 7 skills `gex-*` em `~/.claude/skills/` e `~/.agents/skills/`.
 
-São 10 especializações opcionais, por grupo. Quatro delas são skills de gateway (`gex-pagamerican-api`, `gex-buygoods-api`, `gex-clickbank-api` e `gex-local-spark-tests`). Os clientes de gateway são só leitura e exigem credenciais no ambiente na hora da seleção:
-
-- `PAGAMERICAN_API_KEY`
-- `BUYGOODS_ACCOUNT_ID` e `BUYGOODS_API_TOKEN`
-- `CLICKBANK_API_KEY` e `CLICKBANK_ACCOUNT`
-
-Instalar uma skill não executa consulta. Acesso real depende de credenciais e permissões aprovadas.
+São 7 especializações opcionais, nos grupos Dados e Plataforma e Produto e Interface. Instalar uma skill apenas copia seus arquivos; atividades externas exigem permissões próprias.
 
 O hook `gex-conventional-commits` usa `PreToolUse` nos dois agentes. Ele bloqueia commit com mensagem fora de Conventional Commits, quando a mensagem é literal. É orientação local: não substitui validação Git por projeto nem proteção remota.
 
 No Codex, abra `/hooks`, revise e confie na definição instalada. O kit não faz essa confirmação por você.
 
-Configurações existentes são preservadas. Login, modelo e credenciais não são alterados.
+Configurações existentes são preservadas. Login e modelo não são alterados.
 
 O catálogo tem 4 hooks de agente, 3 git hooks e 25 referências de hooks de terceiros. As referências não são instaladas.
 
 As 18 skills Matt Pocock são cópias offline do commit [`5beb35b0`](https://github.com/mattpocock/skills/tree/5beb35b040e3de97e54fa9e386d7e42d15c295c2), sob [licença MIT](https://github.com/mattpocock/skills/blob/5beb35b040e3de97e54fa9e386d7e42d15c295c2/LICENSE). Instalar uma skill só copia os arquivos; não a executa. Há 11 referências de skill que ficam só no catálogo, como `setup-matt-pocock-skills`, `implement-spec` e `ask-matt`. Elas alteram projeto, labels ou dependem de outras partes do catálogo. Skills que criam issues, labels, branches ou alteram projetos exigem autorização separada quando forem usadas.
 
-Os 4 Addons (`caveman`, `ponytail`, `superpowers` e `spec-kit`) aparecem só com o comando oficial. O kit não os instala nem os executa.
+Os quatro plugins opcionais são `caveman` (respostas curtas), `ponytail` (menor mudança completa), `superpowers` (métodos de brainstorming, testes e revisão) e `spec-kit` (fluxo de especificação). Na etapa **Plugins** do `/setup`, entre Extras e Plano, ou em `/addons`, selecione destinos Claude Code/Codex, confira comandos exatos, fonte, licença e conflitos e confirme antes de executar. A CLI `addons` só consulta o catálogo; `install` não instala plugins. A instalação roda cada comando sem shell, com timeout e HOME escolhido. Se faltar um executável, o passo é pulado e mostrado como instrução manual. `superpowers` no Codex exige `/plugins` interativo; `spec-kit` exige `specify init` manual por projeto. Depois de instalar hooks no Codex, abra `/hooks` e aprove-os. O rollback do kit não desfaz plugins: remova-os no próprio Claude Code ou Codex.
 
 ## Agentes
 

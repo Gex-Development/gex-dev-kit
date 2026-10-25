@@ -50,7 +50,7 @@ Reinstalar substitui só o mesmo hook, e outros hooks do kit ou alheios ficam. A
 
 O `tokens.css` não tem comentários e os 2 SVG não têm `<metadata>`. Os PNGs ficam fora por causa da proveniência C2PA e do tamanho. A licença da marca ainda está pendente.
 
-## ADR-0013: Packs de gateway mantidos (desvio)
+## ADR-0013: Packs de gateway mantidos (substituída pela ADR-0035)
 
 As prévias dos packs de gateway podem divergir, aceito. Desvio do escopo aprovado: o cofre do sistema não foi implementado. Só se verifica se a variável de ambiente está presente.
 
@@ -58,7 +58,7 @@ As prévias dos packs de gateway podem divergir, aceito. Desvio do escopo aprova
 
 As skills Matt ficam no commit `5beb35b0` (licença MIT), e `retro` entra no kit. `wizard`, `to-spec`, `to-tickets`, `triage`, `wayfinder` e `implement` viram referência, e três skills ficam fora.
 
-## ADR-0015: Addons só com comando exibido
+## ADR-0015: Addons só com comando exibido (substituída pela ADR-0036)
 
 O kit nunca executa a instalação de um addon. Nenhum addon fica ativo por padrão. O GSD fica fora do kit.
 
@@ -125,3 +125,23 @@ Antes de cada onda, o orquestrador registra esqueletos com as assinaturas da se�
 ## ADR-0031: Limite de tamanho do binário em 14 MiB
 
 O limite do `scripts/release.sh` sobe de 12 MiB para 14 MiB. O windows/amd64 passou de 12 MiB em 0,15 MiB depois das correções de UX. Os binários já usam `-s -w` e `-trimpath`. Com 14 MiB sobra margem, e um crescimento grande continua reprovado pelo script.
+
+## ADR-0032: TUI como chat de harness
+
+A TUI usa `RunChat` para todos os fluxos, com comandos e escolhas locais, sem modelo de IA; o modo CLI, o modo acessível e a vitrine `ds` permanecem. Por decisão explícita, a entrada fica travada enquanto o assistente escreve ou executa, ao contrário de Crush e omp, que enfileiram mensagens. Reverter esse comportamento exige trocar `locked()` por uma fila de entrada em `internal/ui/screens/chat.go`.
+
+## ADR-0033: Comandos por barra no lugar do menu
+
+Após as boas-vindas, o chat fica ocioso e `/` abre a paleta filtrável em vez de manter a pergunta “O que você quer fazer?” sempre na tela. `/menu` oferece a lista sob demanda, e `Esc` ou `/voltar` retornam uma etapa sem encerrar o programa.
+
+## ADR-0034: Chave de API gravada na config do agente (substituída pela ADR-0035)
+
+As skills documentavam que o kit “não guarda a chave” e o Core orienta a não pedir segredos no chat; por decisão explícita do usuário, o setup da TUI agora pede chaves de gateway em campo mascarado e as grava em texto puro nas configurações Claude/Codex. A consequência é que os arquivos `0600` e o histórico privado do kit contêm segredos, mesmo sem exibi-los na prévia; a CLI não pede nem grava chaves.
+
+## ADR-0035: Skills de API e gravação de chave removidas
+
+Esta decisão substitui as ADR-0013 e ADR-0034. As três skills de API de gateway saem do catálogo e o kit deixa de pedir, validar ou gravar chaves nas configurações dos agentes; permissões de ferramentas externas ficam fora da instalação do kit.
+
+## ADR-0036: Addons passam a ser instalados pelo kit
+
+Por decisão explícita do usuário, a TUI instala os quatro plugins opcionais no setup e em `/addons`, substituindo a ADR-0015; a CLI permanece apenas catálogo. Executar código de terceiros oferece risco e o rollback do kit não o desfaz: antes da confirmação, o chat mostra comandos exatos, fonte, licença e conflitos; o runner usa argv sem shell, timeout e respeita o HOME isolado. Passos interativos permanecem manuais.

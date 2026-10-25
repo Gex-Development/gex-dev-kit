@@ -15,15 +15,16 @@ Escopo, estado e uso para usuários estão em `README.md`.
 - `internal/agents`: controle dos binários do Claude Code e do Codex.
 - `internal/hooks`: lógica dos hooks de agente.
 - `internal/githooks`: git hooks por repositório.
-- `internal/ui/*`: tema, terminal, movimento, layout, componentes e telas.
+- `internal/ui/*`: tema, terminal, movimento, layout e componentes do chat; `screens.RunChat` conduz setup, catálogo, doctor, rollback, agentes, git hooks e addons. `ds` permanece separado.
 
 ## Comandos
 
 - `scripts/check.sh`: portão completo (formato, comentários, `go vet` com Windows, testes com `-race`, build e smoke). Rode antes de entregar.
-- `go test ./internal/ui/screens -run TestGolden -update` e `go test ./internal/ui/theme -run TestGolden -update`: regravam os golden das telas e da paleta. Só ao mudar o visual de propósito; revise o diff.
+- `go test ./internal/ui/screens -run TestGoldenChat -update` e `go test ./internal/ui/theme -run TestGolden -update`: regravam os goldens do chat e da paleta. Só ao mudar o visual de propósito; revise o diff.
 - `scripts/smoke.sh CAMINHO_DO_BINARIO`: instalação, doctor, hooks e rollback num HOME descartável.
 - `scripts/release.sh vX.Y.Z`: gera `dist/` local. Publicar exige `--publish` e confirmação humana.
 - `scripts/ux-audit-env.sh`: sandbox da auditoria de UX; `--run ARQUIVO.sh` roda um script dentro dele.
+- `scripts/demo.sh`: compila e abre a TUI num HOME descartável, sem `CI` nem `NO_COLOR`; o HOME é apagado ao sair.
 
 ## Convenções
 

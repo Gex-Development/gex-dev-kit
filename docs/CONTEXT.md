@@ -6,13 +6,25 @@ CLI que prepara Claude Code e Codex com o Core GEX e com escolhas opcionais, sem
 
 - Instalar e manter o Core GEX nos dois agentes: instruções globais e skills `gex-*`.
 - Deixar a pessoa escolher especializações, skills Matt e hooks. Nada opcional é instalado sem escolha.
-- Mostrar addons de terceiros com o comando oficial de instalação. O kit não executa esse comando.
+- Mostrar e instalar plugins opcionais de terceiros na TUI, após revisão dos comandos e confirmação.
 
 ## Quem usa
 
 Pessoas de desenvolvimento da GEX que usam Claude Code ou Codex em repositórios da organização.
 
 ## Language
+
+**Setup**:
+Fluxo do chat da TUI com sete etapas fixas (Harness, Agentes, Destino, Extras, Plugins, Plano e Instalação): escolhe extras e plugins, mostra prévia e diff, pede confirmação e executa a instalação na conversa.
+_Avoid_: segundo instalador, modelo de IA
+
+**Extras**:
+Grupos opcionais oferecidos além do Core obrigatório; só os grupos marcados abrem seleção de itens. Sem grupo marcado, não há skills nem hooks opcionais.
+_Avoid_: parte obrigatória do Core
+
+**Harness**:
+Ferramenta de desenvolvimento que lê instruções e skills: Claude Code, Codex ou OMP. OMP usa `~/.agents/skills`; escolher apenas OMP não atualiza binários de Claude Code nem Codex.
+_Avoid_: agente instalado pelo kit
 
 ### Conteúdo
 
@@ -29,7 +41,7 @@ Pasta com `SKILL.md` que o agente carrega quando a tarefa pede.
 _Avoid_: plugin, comando
 
 **Especialização**:
-Skill GEX opcional, escolhida por função: Gateways, Dados e Plataforma, ou Produto e Interface.
+Skill GEX opcional, escolhida por função: Dados e Plataforma ou Produto e Interface.
 _Avoid_: pack extra, skill avançada
 
 **Skill Matt**:
@@ -41,8 +53,9 @@ Item do catálogo mostrado com motivo e fonte, que o kit nunca instala.
 _Avoid_: candidato, sugestão
 
 **Addon**:
-Método ou estilo de terceiros que a pessoa instala por conta própria, com o comando oficial exibido pelo kit.
+Método ou estilo de terceiros instalado opcionalmente pelo chat, com comandos oficiais exibidos antes da confirmação; passos interativos ficam manuais.
 _Avoid_: plugin do kit, extensão
+
 
 ### Hooks
 
@@ -85,7 +98,7 @@ Lista exata do que será criado, atualizado, restaurado ou removido, com o diff 
 _Avoid_: dry-run, simulação
 
 **Confirmação**:
-Resposta explícita depois da prévia: tecla `s`, `--yes` ou resposta no modo acessível.
+Resposta explícita depois da prévia: opção **Sim, aplicar** no chat, `--yes` na CLI ou resposta no modo acessível.
 _Avoid_: aceite automático
 
 **Histórico**:
@@ -123,8 +136,52 @@ _Avoid_: última versão
 ### Interface
 
 **Modo TUI**:
-Interface de tela cheia em terminal interativo.
+Chat de tela cheia em terminal interativo; boas-vindas ao entrar sem subcomando.
 _Avoid_: GUI, app
+
+**Chat**:
+Conversa local do assistente GEX, com respostas e comandos fixos, sem modelo de IA; a entrada fica travada enquanto ele escreve ou executa ferramentas.
+_Avoid_: chat com IA, fila de mensagens do usuário
+
+**Fluxo**:
+Sequência de perguntas e ferramentas dentro do chat para setup, catálogo, doctor, rollback, agentes, git hooks ou addons.
+_Avoid_: tela independente
+
+**Ferramenta (ToolBlock)**:
+Cartão emoldurado no histórico que mostra título, checklist de fases durante execução, estado e resultado de uma operação do kit; clique na borda superior alterna o corpo expandido e recolhido.
+_Avoid_: comando de shell executado pelo usuário
+
+**Linha de trabalho**:
+Linha entre histórico e entrada que exibe operação em curso, spinner, rótulo com brilho móvel e tempo decorrido.
+_Avoid_: mensagem enviada pelo usuário
+
+**Linha de status**:
+Barra escura do chat com GEX, harness, caminho do projeto e Git; o HOME de instalação aparece somente quando difere do HOME real. Core/versão ou porcentagem/etapa ficam na borda superior rosa da caixa de entrada (`PromptBox`).
+_Avoid_: menu de navegação, caminho do projeto como HOME de instalação
+
+**Barra lateral**:
+Painel do chat em terminais de pelo menos 120 colunas por 30 linhas, com estado do ambiente e etapas do setup.
+_Avoid_: menu separado
+
+**Paleta de comandos**:
+Lista filtrável que aparece ao digitar `/` no chat ocioso; `/menu` mostra opções como lista sob demanda.
+_Avoid_: menu permanente
+
+**Página de escolha**:
+Parte de uma pergunta longa que cabe por inteiro na área de entrada; setas horizontais ou `PageUp`/`PageDown` trocam a página sem perder marcações. Não substitui a rolagem da transcrição.
+_Avoid_: janela rolável de itens
+
+**Ocioso**:
+Estado do chat sem pergunta ou ferramenta ativa, aguardando comando na barra de entrada.
+_Avoid_: fim do programa
+
+**Banner**:
+Arte do mascote do harness exibida no histórico durante sua verificação, como a do Claude Code no setup.
+_Avoid_: tela separada
+
+**Navegador de pastas**:
+Sugestões de diretórios para perguntas de caminho: `Tab` completa e `Enter` desce na pasta destacada.
+_Avoid_: seletor de arquivos do projeto
 
 **Modo CLI**:
 Saída linha a linha, scriptável, sem animação.
@@ -153,13 +210,12 @@ _Avoid_: atalho
 - Hooks de política GEX, que só agem em repositório GEX, e hook de início de sessão opcional.
 - Git hooks por projeto, só com `--repo` e confirmação.
 - `doctor` e `rollback` para ver e desfazer o que o kit gravou.
-- Catálogo de addons com fonte, licença, versão conferida e comando oficial. Nada é executado.
+- Catálogo de addons com fonte, licença, versão conferida e comandos oficiais; instalação opcional na TUI depois de confirmar.
 - Instalação e reversão da versão fixada de Claude Code e Codex, só pelo instalador oficial.
 
 ## Fora de escopo
 
 - Servidor MCP.
-- Instalação de addons. O kit só mostra o comando oficial.
 - Alterar arquivos do projeto fora de `.git`.
 - Publicação: push, PR, release ou merge feitos pelo kit.
 - GSD, que não entra no kit.
