@@ -358,3 +358,26 @@ func TestProbeReasonMarksTimeout(t *testing.T) {
 		t.Fatalf("motivo comum alterado: %q", got)
 	}
 }
+
+func TestPreviewCollisionNamesEveryExecutableOnPath(t *testing.T) {
+	home, bin := isolated(t)
+	other := filepath.Join(home, "outro", "bin")
+	if err := os.MkdirAll(other, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	first := filepath.Join(other, executable("claude"))
+	second := filepath.Join(bin, executable("claude"))
+	for _, p := range []string{first, second} {
+		if err := os.WriteFile(p, []byte("x"), 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	t.Setenv("PATH", other+string(os.PathListSeparator)+bin)
+	changes, err := Preview(home)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !changes[0].Blocked || !strings.Contains(changes[0].Reason, first) || !strings.Contains(changes[0].Reason, second) {
+		t.Fatalf("reason must list both executables: %+v", changes[0])
+	}
+}

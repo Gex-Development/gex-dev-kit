@@ -294,7 +294,7 @@ func Preview(home string) ([]Change, error) {
 			c.Reason = "instalação anterior interrompida; verificar binário e histórico manualmente"
 		case len(entries) > 1:
 			c.Blocked = true
-			c.Reason = "múltiplos executáveis no PATH; resolver colisão antes da instalação"
+			c.Reason = "múltiplos executáveis no PATH (" + strings.Join(entries, ", ") + "); deixe só um e rode de novo"
 		case len(entries) == 1 && !samePath(entries[0], target):
 			resolved, err := filepath.EvalSymlinks(entries[0])
 			if err != nil {
