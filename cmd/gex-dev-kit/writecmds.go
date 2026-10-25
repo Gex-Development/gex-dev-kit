@@ -68,15 +68,11 @@ func writeInstallCLI(s session, req app.Request) int {
 func writeInstallTUI(s session, req app.Request) int {
 	r, stop := writeRunner(s)
 	defer stop()
-	res, err := screens.RunInstall(r, writeCommon(s), screens.InstallDeps{
-		Options: s.deps.InstallOptions,
-		Plan:    func(q app.Request) (app.Plan, error) { return s.deps.PlanInstall(q, app.DiffLinesTUI) },
-		Apply:   s.deps.ApplyInstall,
-	}, req, true)
+	res, err := screens.RunChat(r, tuiCommon(s, req.Home), chatDeps(s, req.Home, req), screens.IntentSetup)
 	if err != nil {
 		return writeScreenExit(s.errOut, err)
 	}
-	return writeInstallResult(s, res)
+	return res.ExitCode
 }
 
 func writeInstallResult(s session, res app.Result) int {
@@ -147,23 +143,18 @@ func writeRollbackCLI(s session, root string) int {
 }
 
 func writeRollbackTUI(s session, root string) int {
-	kind := screens.RollbackCore
-	if s.opts.Repo != "" {
-		kind = screens.RollbackRepo
-	}
 	r, stop := writeRunner(s)
 	defer stop()
-	id, err := screens.RunRollback(r, writeCommon(s), kind, screens.RollbackDeps{
+	deps := chatDeps(s, homeDoUsuario(s), app.Request{Home: homeDoUsuario(s)})
+	deps.Rollback = screens.RollbackDeps{
 		Plan:  func() (app.RollbackPreview, error) { return s.deps.PlanRollback(root, app.DiffLinesTUI) },
 		Apply: func() (string, error) { return s.deps.Rollback(root) },
-	})
+	}
+	result, err := screens.RunChat(r, writeCommon(s), deps, screens.IntentRollback)
 	if err != nil {
 		return writeScreenExit(s.errOut, err)
 	}
-	if id != "" {
-		fmt.Fprintln(s.out, "Restaurado. Histórico:", id)
-	}
-	return 0
+	return result.ExitCode
 }
 
 func cmdRollbackAgents(s session) int {
@@ -193,14 +184,11 @@ func cmdRollbackAgents(s session) int {
 func writeRollbackAgentsTUI(s session, home string) int {
 	r, stop := writeRunner(s)
 	defer stop()
-	_, err := screens.RunRollback(r, writeCommon(s), screens.RollbackAgents, screens.RollbackDeps{
-		Plan:  func() (app.RollbackPreview, error) { return app.RollbackPreview{}, nil },
-		Apply: func() (string, error) { return "", s.deps.RollbackAgents(home) },
-	})
+	result, err := screens.RunChat(r, writeCommon(s), chatDeps(s, home, app.Request{Home: home}), screens.IntentRollbackAgents)
 	if err != nil {
 		return writeScreenExit(s.errOut, err)
 	}
-	return 0
+	return result.ExitCode
 }
 
 func cmdGitHooks(s session) int {
@@ -290,17 +278,13 @@ func writeGitHooksCLI(s session, req app.GitHooksRequest) int {
 func writeGitHooksTUI(s session, req app.GitHooksRequest) int {
 	r, stop := writeRunner(s)
 	defer stop()
-	res, err := screens.RunGitHooks(r, writeCommon(s), screens.GitHooksDeps{
-		Plan:  func(q app.GitHooksRequest) (app.GitHooksPlan, error) { return s.deps.PlanGitHooks(q, app.DiffLinesTUI) },
-		Apply: s.deps.ApplyGitHooks,
-	}, req)
+	d := chatDeps(s, req.Home, app.Request{Home: req.Home})
+	d.GitHooksPreset = req
+	res, err := screens.RunChat(r, writeCommon(s), d, screens.IntentGitHooks)
 	if err != nil {
 		return writeScreenExit(s.errOut, err)
 	}
-	if res.HistoryID != "" {
-		fmt.Fprintln(s.out, "Git hooks gravados. Histórico:", res.HistoryID)
-	}
-	return 0
+	return res.ExitCode
 }
 
 func writeMode(s session) (terminal.Mode, error) {

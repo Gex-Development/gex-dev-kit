@@ -26,6 +26,15 @@ const (
 )
 
 func cmdSkills(s session) int {
+	if !s.opts.JSON {
+		mode, err := readMode(s)
+		if err != nil {
+			return invalid(s.errOut, err.Error())
+		}
+		if mode == terminal.ModeTUI {
+			return readChatTUI(s, screens.IntentCatalog)
+		}
+	}
 	doc := readSkillsDoc()
 	if s.opts.JSON {
 		return readJSON(s, doc, 0)
@@ -34,6 +43,15 @@ func cmdSkills(s session) int {
 }
 
 func cmdHooks(s session) int {
+	if !s.opts.JSON {
+		mode, err := readMode(s)
+		if err != nil {
+			return invalid(s.errOut, err.Error())
+		}
+		if mode == terminal.ModeTUI {
+			return readChatTUI(s, screens.IntentCatalog)
+		}
+	}
 	doc := readHooksDoc()
 	if s.opts.JSON {
 		return readJSON(s, doc, 0)
@@ -42,6 +60,15 @@ func cmdHooks(s session) int {
 }
 
 func cmdAddons(s session) int {
+	if !s.opts.JSON {
+		mode, err := readMode(s)
+		if err != nil {
+			return invalid(s.errOut, err.Error())
+		}
+		if mode == terminal.ModeTUI {
+			return readChatTUI(s, screens.IntentAddons)
+		}
+	}
 	addons, err := readAddonSelection(s.opts.Args)
 	if err != nil {
 		return usageFail(s.errOut, err)
@@ -65,7 +92,10 @@ func cmdDoctor(s session) int {
 	code := report.ExitCode()
 	if mode == terminal.ModeTUI {
 		return readRunTUI(s, code, func(r screens.Runner, c screens.Common) error {
-			return screens.RunDoctor(r, c, report)
+			deps := chatDeps(s, readHome(s), app.Request{Home: readHome(s)})
+			deps.Doctor = func() (app.Report, error) { return report, nil }
+			_, err := screens.RunChat(r, c, deps, screens.IntentDoctor)
+			return err
 		})
 	}
 	if s.opts.JSON {
@@ -85,6 +115,13 @@ func cmdShowcase(s session) int {
 		})
 	}
 	return readEmit(s, screens.ShowcaseText(readTheme(s), readWidth(s)), 0)
+}
+
+func readChatTUI(s session, intent screens.ChatIntent) int {
+	return readRunTUI(s, 0, func(r screens.Runner, c screens.Common) error {
+		_, err := screens.RunChat(r, c, chatDeps(s, readHome(s), app.Request{Home: readHome(s)}), intent)
+		return err
+	})
 }
 
 func readMode(s session) (terminal.Mode, error) {

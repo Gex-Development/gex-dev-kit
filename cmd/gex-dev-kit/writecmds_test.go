@@ -32,6 +32,59 @@ func writeCallWith(t *testing.T, o options, d deps, fn func(session) int) (int, 
 	return code, out.String(), errOut.String()
 }
 
+func TestChatDepsPreservaPresetEOperacoesDeInstalacao(t *testing.T) {
+	preset := app.Request{Home: t.TempDir(), Skills: []string{"tdd"}}
+	calls := 0
+	d := deps{
+		InstallOptions: func() []app.OptionGroup { calls++; return nil },
+		PlanInstall: func(req app.Request, lines int) (app.Plan, error) {
+			calls++
+			if req.Home != preset.Home || lines != app.DiffLinesTUI {
+				t.Fatalf("plano recebeu home=%q linhas=%d", req.Home, lines)
+			}
+			return app.Plan{}, nil
+		},
+		ApplyInstall: func(app.Plan, func(app.Step)) (app.Result, error) {
+			calls++
+			return app.Result{}, nil
+		},
+	}
+	chat := chatDeps(session{deps: d}, preset.Home, preset)
+	if chat.Preset.Home != preset.Home || len(chat.Preset.Skills) != 1 || chat.Preset.Skills[0] != "tdd" {
+		t.Fatalf("preset perdido: %+v", chat.Preset)
+	}
+	chat.Install.Options()
+	_, _ = chat.Install.Plan(preset)
+	_, _ = chat.Install.Apply(app.Plan{}, nil)
+	if calls != 3 {
+		t.Fatalf("operações de instalação chamadas %d vezes, esperado 3", calls)
+	}
+}
+
+func TestChatDepsInstalaAddonComHOMEEscolhido(t *testing.T) {
+	bin := t.TempDir()
+	home := t.TempDir()
+	script := filepath.Join(bin, "claude")
+	output := filepath.Join(bin, "calls")
+	if err := os.WriteFile(script, []byte("#!/bin/sh\nprintf '%s %s\\n' \"$HOME\" \"$*\" > \""+output+"\"\n"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", bin)
+	chat := chatDeps(session{}, home, app.Request{})
+	plan, err := chat.Addons.Plan([]string{"superpowers"}, []string{"claude"})
+	if err != nil || len(plan.Steps) != 1 || len(plan.Missing) != 0 {
+		t.Fatalf("plano errado: %+v %v", plan, err)
+	}
+	result := chat.Addons.Install(plan, home, nil)
+	if len(result.Steps) != 1 || result.Steps[0].Status != app.AddonOK {
+		t.Fatalf("instalação falhou: %+v", result)
+	}
+	got, err := os.ReadFile(output)
+	if err != nil || string(got) != home+" plugin install superpowers@claude-plugins-official\n" {
+		t.Fatalf("execução não recebeu HOME isolado e argv esperado: %q %v", got, err)
+	}
+}
+
 func TestInstallDoesNotApplyWithoutConfirmation(t *testing.T) {
 	home := t.TempDir()
 	code, out, errors := writeCall(t, options{Home: home, SkipAgentUpdate: true}, cmdInstall)

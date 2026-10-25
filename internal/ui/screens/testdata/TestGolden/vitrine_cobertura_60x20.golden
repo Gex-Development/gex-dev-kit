@@ -5,16 +5,16 @@
   Bordas e cor       ┌────────┬────────┬─────────┬─────────┐
   Layout             │ Lib    │ Recur… │ Tela    │ Página  │
   Medidas            ├────────┼────────┼─────────┼─────────┤
-  Terminal           │ bubble │ tea.Mo │ home.go │ Identid │
-  Programa           │ tea    │ del,   │         │ ade     │
+  Terminal           │ bubble │ tea.Mo │ chat_vi │ Identid │
+  Programa           │ tea    │ del,   │ ew.go   │ ade     │
   Movimento          │        │ Update │         │         │
   Feedback           │        │ e View │         │         │
-  Navegação          │ bubble │ tea.Ti │ home.go │ Movimen │
+  Navegação          │ bubble │ tea.Ti │ chat.go │ Movimen │
   Dados              │ tea    │ ck     │         │ to      │
-  Formulários        │ bubble │ Window │ home.go │ Layout  │
+  Formulários        │ bubble │ Window │ chat.go │ Layout  │
   Acessível          │ tea    │ SizeMs │         │         │
   Bubbles            │        │ g      │         │         │
-  Testes             │ bubble │ alt    │ home.go │ Program │
-│ Cobertura Charm    │ tea    │ screen │         │ a       │
+  Testes             │ bubble │ alt    │ chat_vi │ Program │
+│ Cobertura Charm    │ tea    │ screen │ ew.go   │ a       │
                                                             
 ↑/k subir • ↓/j descer • enter escolher • esc voltar …      

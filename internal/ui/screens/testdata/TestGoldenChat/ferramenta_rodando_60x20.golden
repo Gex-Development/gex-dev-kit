@@ -1,0 +1,19 @@
+
+* Resumo da instalação:
+    • Harness: OMP (oh-my-pi)
+    • Destino: ~
+    • Core GEX + 0 skill(s) e 0 hook(s) opcionais
+    • Agentes: manter versões
+
+* Agora vou planejar a instalação.
+
++- * Planejar instala??o ~ --------------------------------+
+| [ok] Montando as regras do Core                          |
+| * Selecionando as skills?                                |
+| [ ] Comparando com o que j? existe                       |
++----------------------------------------------------- 1s -+
+* Selecionando as skills… - 0s                   ctrl+c sair
++- [GEX] [OMP] [gex-dev-kit]--------- -- 86% -- Etapa 6/7--+
+| > GEX está trabalhando…                                  |
++----------------------------------------------------------+
+setup · Plano            enter pula a animacao - ctrl+c sair

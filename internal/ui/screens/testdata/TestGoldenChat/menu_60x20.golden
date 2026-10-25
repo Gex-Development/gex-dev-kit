@@ -1,0 +1,19 @@
+* Olá! Eu sou o assistente do Kit GEX. Vou configurar seu
+  ambiente de desenvolvimento com você.
+
++- v Verificar ambiente ~ ---------------------------------+
+| [ok] HOME        ~                                       |
+| [i] Claude Code  n?o detectado                           |
+| [i] Codex        n?o detectado                           |
+| [i] Core         0/7 skills ? n?o instalado              |
++----------------------------------------------------------+
+
+* Ainda não há Core instalado neste HOME.
+
+* Digite / para ver o que posso fazer. Para configurar o
+  ambiente, use /setup.
+
++- [GEX] [gex-dev-kit]------------- -- Core 0/7 -- v0.3.0--+
+| > Digite / para ver os comandos                          |
++----------------------------------------------------------+
+pronto            / comandos · ctrl+o expandir · ctrl+c sair

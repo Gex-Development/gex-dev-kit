@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"charm.land/bubbles/v2/cursor"
+	"charm.land/bubbles/v2/filepicker"
 	"charm.land/bubbles/v2/help"
 	blist "charm.land/bubbles/v2/list"
 	"charm.land/bubbles/v2/paginator"
@@ -271,7 +272,9 @@ func demoHelp(t theme.Theme, width int) string {
 }
 
 func demoFilePicker(t theme.Theme, width int) string {
-	return demoFit("filepicker lista pastas e arquivos:\npasta atual: ./internal/ui/\n  ▸ screens/\n  ▸ theme/", width)
+	picker := filepicker.New()
+	picker.CurrentDirectory = "./internal/ui/"
+	return demoFit("filepicker lista pastas e arquivos:\npasta atual: "+picker.CurrentDirectory+"\n  ▸ screens/\n  ▸ theme/", width)
 }
 
 func demoTimer(t theme.Theme, width int) string {

@@ -2,23 +2,23 @@
 ────────────────────────────────────────────────────────────────────────────────
 ▸ Páginas                Demo                                                   
   Identidade           Mapa de cobertura: 49 entradas                           
-  Bordas e cor         ┌───────────┬───────────────┬──────────────┬────────────┐
-  Layout               │ Lib       │ Recurso       │ Tela         │ Página     │
-  Medidas              ├───────────┼───────────────┼──────────────┼────────────┤
-  Terminal             │ bubbletea │ tea.Model,    │ home.go      │ Identidade │
-  Programa             │           │ Update e View │              │            │
-  Movimento            │ bubbletea │ tea.Tick      │ home.go      │ Movimento  │
-  Feedback             │ bubbletea │ WindowSizeMsg │ home.go      │ Layout     │
-  Navegação            │ bubbletea │ alt screen    │ home.go      │ Programa   │
-  Dados                │ bubbletea │ mouse         │ home.go      │ Programa   │
-  Formulários          │ bubbletea │ foco e blur   │ home.go      │ Programa   │
-  Acessível            │ bubbletea │ tea.Batch e   │ home.go      │ Programa   │
-  Bubbles              │           │ tea.Sequence  │              │            │
-  Testes               │ bubbletea │ tea.Println   │ install.go   │ Programa   │
-│ Cobertura Charm      │           │ fora do alt   │              │            │
-                       │           │ screen        │              │            │
-                       │ bubbletea │ suspensão     │ home.go      │ Programa   │
-                       │           │ (Ctrl+Z)      │              │            │
-                       │ bubbletea │ mensagens de  │ install.go   │ Programa   │
+  Bordas e cor         ┌───────────┬──────────────┬───────────────┬────────────┐
+  Layout               │ Lib       │ Recurso      │ Tela          │ Página     │
+  Medidas              ├───────────┼──────────────┼───────────────┼────────────┤
+  Terminal             │ bubbletea │ tea.Model,   │ chat_view.go  │ Identidade │
+  Programa             │           │ Update e     │               │            │
+  Movimento            │           │ View         │               │            │
+  Feedback             │ bubbletea │ tea.Tick     │ chat.go       │ Movimento  │
+  Navegação            │ bubbletea │ WindowSizeMs │ chat.go       │ Layout     │
+  Dados                │           │ g            │               │            │
+  Formulários          │ bubbletea │ alt screen   │ chat_view.go  │ Programa   │
+  Acessível            │ bubbletea │ mouse        │ chat_view.go  │ Programa   │
+  Bubbles              │ bubbletea │ foco e blur  │ chat.go       │ Programa   │
+  Testes               │ bubbletea │ tea.Batch e  │ chat.go       │ Programa   │
+│ Cobertura Charm      │           │ tea.Sequence │               │            │
+                       │ bubbletea │ tea.Println  │ showcase.go   │ Programa   │
+                       │           │ fora do alt  │               │            │
+                       │           │ screen       │               │            │
+                       │ bubbletea │ suspensão    │ chat.go       │ Programa   │
                                                                                 
 ↑/k subir • ↓/j descer • enter escolher • esc voltar • q sair • ? ajuda …       

@@ -1,0 +1,29 @@
+                                                                                        GEX - DEV KIT
+* Ainda não há Core instalado neste HOME.                                               
+                                                                                        AMBIENTE
+* Digite / para ver o que posso fazer. Para configurar o ambiente, use /setup.          [i] Claude Code
+                                                                                          não detectado
+| /setup                                                                                [i] Codex
+                                                                                          não detectado
+* Vamos configurar seu ambiente. São poucos passos: harness, destino, extras, plugins,  [i] Core
+  revisão e instalação. Você pode voltar com esc a qualquer momento.                      0/7 skills · não instalado
+                                                                                        ETAPAS
+| OMP (oh-my-pi)                                                                        [ok] Harness
+                                                                                        [ok] Agentes
+* Beleza, entendi que o seu harness é o OMP (oh-my-pi).                                 [ok] Destino
+                                                                                        > Extras
+* O OMP lê as skills de ~/.agents/skills; o kit já instala lá.                          [ ] Plugins
+                                                                                        [ ] Plano
+| Neste HOME (~)                                                                        [ ] Instalação
+                                                                                        
+[?] Além do Core (obrigatório), o que mais você quer instalar?                          
+> 1. [ ] Produto e Interface (1 opção)                                                  
+    -> Identidade visual                                                                
+                                                                                        
+  [ Pular (nenhuma marcada) ]                                                           
+up/down mover | espaco marca | enter confirma | esc voltar                              
+                                                                                        
++- [GEX] [OMP] [gex-dev-kit]------------------------------------ -- 57% -- Etapa 4/7--+ 
+| > ou digite um comando (/ajuda)                                                     | 
++-------------------------------------------------------------------------------------+ 
+setup · Extras                                                                espaco marca | enter confirma | esc voltar

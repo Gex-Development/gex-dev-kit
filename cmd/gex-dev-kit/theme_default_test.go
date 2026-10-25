@@ -27,3 +27,14 @@ func TestCommonDeLeituraEEscritaComecamComFundoEscuro(t *testing.T) {
 		t.Fatalf("a escrita (rollback, git hooks) deve começar escura; Dark = false")
 	}
 }
+
+func TestTuiCommonPowerlineEnvironment(t *testing.T) {
+	s := session{env: terminal.Env{Environ: []string{"GEX_NO_POWERLINE=0"}}}
+	if !tuiCommon(s, t.TempDir()).Powerline {
+		t.Fatal("powerline deve estar ligado por padrão")
+	}
+	s.env.Environ = []string{"GEX_NO_POWERLINE=1"}
+	if tuiCommon(s, t.TempDir()).Powerline {
+		t.Fatal("GEX_NO_POWERLINE=1 deve desligar glifos")
+	}
+}

@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"os/signal"
+	"slices"
 	"syscall"
 
 	"github.com/Gex-Development/gex-dev-kit/internal/agents"
@@ -137,30 +139,71 @@ func runHome(s session) int {
 }
 
 func runHomeTUI(s session) int {
-	sinais, parar := screens.NotifySignals()
-	defer parar()
-	perfil := s.env.ColorProfile()
-	r := screens.Runner{In: s.env.InFile, Out: s.env.OutFile, Environ: s.env.Environ, Profile: perfil, Signals: sinais}
+	r, stop := writeRunner(s)
+	r.Profile = s.env.ColorProfile()
+	defer stop()
 	home := homeDoUsuario(s)
-	c := tuiCommon(s, home)
-	d := screens.HomeDeps{
-		Core:   func() (app.CoreStatus, error) { return app.Core(home) },
-		Agents: func() ([]app.AgentChange, error) { return agents.Preview(home) },
-	}
-	escolha, err := screens.RunHome(r, c, d)
+	res, err := screens.RunChat(r, tuiCommon(s, home), chatDeps(s, home, app.Request{}), screens.IntentHome)
 	if err != nil {
 		return telaFalhou(s.errOut, err)
 	}
-	s.opts = options{UI: terminal.ModeTUI, Home: s.opts.Home, NoAnim: s.opts.NoAnim}
-	return acaoDaHome(s, string(escolha))
+	return res.ExitCode
+}
+
+func chatDeps(s session, home string, preset app.Request) screens.ChatDeps {
+	dir, _ := os.Getwd()
+	return screens.ChatDeps{
+		Dir:    dir,
+		Core:   func() (app.CoreStatus, error) { return app.Core(home) },
+		Agents: func() ([]app.AgentChange, error) { return agents.Preview(home) },
+		Git: func() (app.GitInfo, bool) {
+			wd, err := os.Getwd()
+			if err != nil {
+				return app.GitInfo{}, false
+			}
+			return app.GitStatus(wd)
+		},
+		Doctor: func() (app.Report, error) { return s.deps.Doctor(home, s.env.Environ, readExecutable()) },
+		Install: screens.InstallDeps{
+			Options: s.deps.InstallOptions,
+			Plan:    func(req app.Request) (app.Plan, error) { return s.deps.PlanInstall(req, app.DiffLinesTUI) },
+			Apply:   s.deps.ApplyInstall,
+		},
+		Addons: screens.AddonDeps{
+			Plan: func(names, harnesses []string) (app.AddonPlan, error) {
+				return app.PlanAddons(names, harnesses, exec.LookPath)
+			},
+			Install: func(plan app.AddonPlan, home string, progress func(app.AddonStepResult)) app.AddonResult {
+				return app.InstallAddons(plan, home, app.ExecAddonRunner, progress)
+			},
+		},
+		Rollback: screens.RollbackDeps{
+			Plan:  func() (app.RollbackPreview, error) { return s.deps.PlanRollback(home, app.DiffLinesTUI) },
+			Apply: func() (string, error) { return s.deps.Rollback(home) },
+		},
+		RollbackAgents: screens.RollbackDeps{
+			Plan:  func() (app.RollbackPreview, error) { return app.RollbackPreview{}, nil },
+			Apply: func() (string, error) { return "", s.deps.RollbackAgents(home) },
+		},
+		GitHooks: screens.GitHooksDeps{
+			Plan: func(req app.GitHooksRequest) (app.GitHooksPlan, error) {
+				return s.deps.PlanGitHooks(req, app.DiffLinesTUI)
+			},
+			Apply: s.deps.ApplyGitHooks,
+		},
+		GitHooksPreset: app.GitHooksRequest{Home: home, Executable: readExecutable()},
+		Preset:         preset,
+	}
 }
 
 func acaoDaHome(s session, escolha string) int {
 	switch escolha {
+	case "setup":
+		return cmdInstall(s)
 	case "install":
 		return cmdInstall(s)
 	case "catalog":
-		return telaFalhou(s.errOut, screens.RunCatalog(screens.Runner{In: s.env.InFile, Out: s.env.OutFile, Environ: s.env.Environ, Profile: s.env.ColorProfile()}, tuiCommon(s, homeDoUsuario(s))))
+		return cmdSkills(s)
 	case "doctor":
 		return cmdDoctor(s)
 	case "rollback":
@@ -180,7 +223,7 @@ func acaoDaHome(s session, escolha string) int {
 }
 
 func tuiCommon(s session, home string) screens.Common {
-	return screens.Common{Version: version, Home: home, UserHome: userHome(), Dark: true, Profile: s.env.ColorProfile(), Motion: s.env.Motion(s.opts.NoAnim)}
+	return screens.Common{Version: version, Home: home, UserHome: userHome(), Dark: true, Profile: s.env.ColorProfile(), Motion: s.env.Motion(s.opts.NoAnim), Powerline: !slices.Contains(s.env.Environ, "GEX_NO_POWERLINE=1")}
 }
 
 func homeDoUsuario(s session) string {
@@ -196,6 +239,9 @@ func userHome() string {
 }
 
 func telaFalhou(errOut io.Writer, err error) int {
+	if err == nil {
+		return 0
+	}
 	if code, ok := screens.ExitCode(err); ok {
 		return code
 	}

@@ -1,0 +1,66 @@
+package screens
+
+import (
+	"fmt"
+
+	"github.com/Gex-Development/gex-dev-kit/internal/app"
+	"github.com/Gex-Development/gex-dev-kit/internal/ui/components"
+	"github.com/Gex-Development/gex-dev-kit/internal/ui/theme"
+)
+
+func doctorStateKind(state string) theme.State {
+	switch state {
+	case "ok":
+		return theme.StateOK
+	case "pendente", "sem-historico":
+		return theme.StatePending
+	case "atualizar":
+		return theme.StateWarn
+	case "aviso":
+		return theme.StateInfo
+	case "alterado", "ausente", "incompleto", "bloqueado":
+		return theme.StateError
+	}
+	return theme.StateWarn
+}
+
+func (m chatModel) flowDoctor() chatModel {
+	m.context = "doctor"
+	m = m.say("Vou conferir a integridade do que o kit instalou.")
+	return m.tool(chatToolSpec{title: "Doctor", params: homeLabel(m.common.Home, m.common.UserHome), phases: []string{"Lendo os arquivos instalados…", "Comparando com o catálogo…", "Conferindo os hooks…"}, run: func(_ func(string)) chatToolResult {
+		if m.deps.Doctor == nil {
+			return chatToolResult{state: theme.StateError, err: fmt.Errorf("relatório indisponível")}
+		}
+		report, err := m.deps.Doctor()
+		if err != nil {
+			return chatToolResult{state: theme.StateError, err: err}
+		}
+		var lines []string
+		for _, item := range report.Items {
+			lines = append(lines, doctorStateKind(item.State).Symbol(m.theme.Plain)+" "+item.State+" "+maskHome(item.Path, m.common.UserHome))
+		}
+		for _, warning := range report.Warnings {
+			lines = append(lines, "aviso · "+maskHome(warning.Path, m.common.UserHome)+" · "+maskHome(warning.Detail, m.common.UserHome))
+		}
+		return chatToolResult{state: theme.StateOK, lines: lines, value: report}
+	}, then: func(m chatModel, r chatToolResult) chatModel {
+		if r.err != nil {
+			p := app.Explain(r.err)
+			return m.say(p.Title + ": " + p.Cause).flowIdle()
+		}
+		report := r.value.(app.Report)
+		m.exitCode = report.ExitCode()
+		ok, attention, _ := report.Counts()
+		if attention == 0 {
+			return m.say(fmt.Sprintf("Tudo íntegro: %d item(ns) ok.", ok)).flowIdle()
+		}
+		m = m.say(fmt.Sprintf("Encontrei %d item(ns) com atenção.", attention))
+		opts := []components.ChoiceOption{{ID: "setup", Label: "Reinstalar com o setup"}, {ID: "menu", Label: "Concluir"}}
+		return m.askFor(chatAsk{hasChoice: true, question: "O que eu faço?", choice: components.NewChoice("O que eu faço?", opts, false, true), options: opts, onAnswer: func(m chatModel, a chatAnswer) chatModel {
+			if a.IDs[0] == "setup" {
+				return m.flowSetup()
+			}
+			return m.flowIdle()
+		}})
+	}})
+}

@@ -1,0 +1,19 @@
+| criar .claude/CLAUDE.md ? novo                           |
++----------------------------------------------------------+
+
+| Sim, aplicar
+
+* Agora vou instalar os componentes do Core.
+
++- v Instalar Core ----------------------------------------+
++----------------------------------------------------------+
+
+* Pronto! Instalei 1 arquivo(s). Histórico: hist-1.
+
+* Comando equivalente: gex-dev-kit install --home /home/demo
+  --skip-agent-update --yes
+
++- [GEX] [OMP] [gex-dev-kit]------- -- Core 0/7 -- v0.3.0--+
+| > Digite / para ver os comandos                          |
++----------------------------------------------------------+
+pronto            / comandos · ctrl+o expandir · ctrl+c sair
