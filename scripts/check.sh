@@ -97,6 +97,9 @@ passo 'go test'
 go test ./...
 passo 'go test -race'
 go test -race ./...
+passo 'instalador'
+/bin/bash "$root/scripts/test-install.sh"
+
 passo 'go build'
 go build ./...
 

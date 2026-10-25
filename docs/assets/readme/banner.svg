@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="260" viewBox="0 0 1200 260" role="img" aria-labelledby="title desc">
+  <title id="title">GEX DEV KIT</title>
+  <desc id="desc">Ferramentas para desenvolver com Claude Code e Codex na GEX.</desc>
+  <defs>
+    <linearGradient id="bg" x2="1" y2="1">
+      <stop stop-color="#101a30"/>
+      <stop offset="1" stop-color="#0b1224"/>
+    </linearGradient>
+    <linearGradient id="line">
+      <stop stop-color="#5bc8ff"/>
+      <stop offset="0.5" stop-color="#e060c8"/>
+      <stop offset="1" stop-color="#e89a6b"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="260" rx="24" fill="url(#bg)"/>
+  <rect x="1" y="1" width="1198" height="258" rx="23" fill="none" stroke="#354566" stroke-width="2"/>
+  <path d="M 48 45 H 1152" stroke="#354566"/>
+  <circle cx="70" cy="27" r="5" fill="#e060c8"/>
+  <circle cx="88" cy="27" r="5" fill="#e89a6b"/>
+  <circle cx="106" cy="27" r="5" fill="#70c9a5"/>
+  <text x="136" y="32" font-family="monospace" font-size="13" fill="#91a6c7">GEX / DEVELOPER TOOLS</text>
+  <rect x="48" y="79" width="8" height="104" rx="4" fill="url(#line)"/>
+  <text x="80" y="153" font-family="monospace" font-size="76" font-weight="bold" letter-spacing="-5" fill="#5bc8ff">GEX</text>
+  <text x="289" y="153" font-family="monospace" font-size="76" font-weight="bold" letter-spacing="-5" fill="#f4f7ff">DEV KIT</text>
+  <text x="83" y="204" font-family="monospace" font-size="22" fill="#bdd1e8">Seu ambiente pronto para criar, revisar e entregar.</text>
+  <path d="M 840 205 H 1118" stroke="url(#line)" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="1140" cy="205" r="7" fill="#70c9a5"/>
+  <path d="M 973 89 l 21 20 -21 20 M 1030 129 h 45" fill="none" stroke="#2b7fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
