@@ -2,6 +2,17 @@
 
 Todas as mudanças relevantes do Kit de Desenvolvimento GEX ficam neste arquivo. O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e as versões usam [SemVer](https://semver.org/lang/pt-BR/).
 
+## [Não publicada]
+
+### Adicionado
+
+- **Instaladores de uma linha** por sistema: `scripts/install.sh` (macOS e Linux) e `scripts/install.ps1` (Windows). Escolhem o binário certo para o sistema e a arquitetura, conferem o SHA-256 antes de instalar, instalam como `gex-dev-kit` (`~/.local/bin` no macOS e Linux; `%LOCALAPPDATA%\Programs\gex-dev-kit` no Windows, com a pasta no PATH do usuário) e mostram a linha de PATH quando falta. Substituem o passo a passo manual de `gh release download`, `sha256sum` e `chmod`. Exigem o `gh` autenticado, porque a release é privada. O `install.ps1` não foi executado em Windows.
+- `scripts/test-install.sh`, com um `gh` falso, entra no `scripts/check.sh`.
+
+### Alterado
+
+- README reorganizado: instalação por sistema, primeiro uso com diagrama do setup, receitas por tarefa, solução de problemas e referência recolhida; banner próprio.
+
 ## [0.3.0] - 2026-10-25
 
 As notas da publicação estão em [`docs/release-notes/v0.3.0.md`](docs/release-notes/v0.3.0.md).
