@@ -1,11 +1,23 @@
 package catalog
 
+import "strings"
+
+type AddonStep struct {
+	Argv []string
+}
+
+type AddonInstall struct {
+	Steps  []AddonStep
+	Manual string
+}
+
 type Addon struct {
 	Name, Kind, Summary          string
 	Source, License              string
 	Revision, Release, CheckedAt string
 	InstallClaude, InstallCodex  string
 	Pinned                       string
+	Install                      map[string]AddonInstall
 	Deterministic                bool
 	Installs, Conflicts          []string
 	CoreCompat                   string
@@ -25,6 +37,13 @@ func Addons() []Addon {
 			InstallClaude: "claude plugin marketplace add JuliusBrussee/caveman && claude plugin install caveman@caveman",
 			InstallCodex:  "npx -y github:JuliusBrussee/caveman -- --only codex",
 			Pinned:        "npx --allow-git=root -y github:JuliusBrussee/caveman#v4.0.1",
+			Install: map[string]AddonInstall{
+				"claude": {Steps: []AddonStep{
+					{Argv: []string{"claude", "plugin", "marketplace", "add", "JuliusBrussee/caveman"}},
+					{Argv: []string{"claude", "plugin", "install", "caveman@caveman"}},
+				}},
+				"codex": {Steps: []AddonStep{{Argv: []string{"npx", "-y", "github:JuliusBrussee/caveman", "--", "--only", "codex"}}}},
+			},
 			Deterministic: false,
 			Installs: []string{
 				"No Claude Code: hooks SessionStart, SubagentStart, UserPromptSubmit e SessionEnd.",
@@ -53,7 +72,17 @@ func Addons() []Addon {
 /plugin install ponytail@ponytail`,
 			InstallCodex: `codex plugin marketplace add DietrichGebert/ponytail
 codex plugin add ponytail@ponytail`,
-			Pinned:        "Sem versão fixada no comando oficial.",
+			Pinned: "Sem versão fixada no comando oficial.",
+			Install: map[string]AddonInstall{
+				"claude": {Steps: []AddonStep{
+					{Argv: []string{"claude", "plugin", "marketplace", "add", "DietrichGebert/ponytail"}},
+					{Argv: []string{"claude", "plugin", "install", "ponytail@ponytail"}},
+				}},
+				"codex": {Steps: []AddonStep{
+					{Argv: []string{"codex", "plugin", "marketplace", "add", "DietrichGebert/ponytail"}},
+					{Argv: []string{"codex", "plugin", "add", "ponytail@ponytail"}},
+				}},
+			},
 			Deterministic: false,
 			Installs: []string{
 				"No Claude Code: hooks SessionStart, SubagentStart e UserPromptSubmit, e o painel band acima do prompt.",
@@ -78,6 +107,10 @@ codex plugin add ponytail@ponytail`,
 			InstallClaude: "/plugin install superpowers@claude-plugins-official",
 			InstallCodex:  "/plugins → superpowers → Install Plugin",
 			Pinned:        "Marketplace oficial fixa o commit bb92a77741419a4ab5f06e711a283343f1ada0c3 (tag v7.0.0). Muda quando o marketplace atualiza.",
+			Install: map[string]AddonInstall{
+				"claude": {Steps: []AddonStep{{Argv: []string{"claude", "plugin", "install", "superpowers@claude-plugins-official"}}}},
+				"codex":  {Manual: "No Codex: abra /plugins, escolha superpowers e Install Plugin (menu interativo, o kit não consegue automatizar)."},
+			},
 			Deterministic: true,
 			Installs: []string{
 				"No Claude Code: hook SessionStart que carrega o bootstrap das skills.",
@@ -104,7 +137,11 @@ codex plugin add ponytail@ponytail`,
 specify init my-project --integration claude`,
 			InstallCodex: `uv tool install specify-cli
 specify init my-project --integration codex`,
-			Pinned:        "uv tool install specify-cli --from git+https://github.com/github/spec-kit.git@v1.2.2",
+			Pinned: "uv tool install specify-cli --from git+https://github.com/github/spec-kit.git@v1.2.2",
+			Install: map[string]AddonInstall{
+				"claude": {Steps: []AddonStep{{Argv: []string{"uv", "tool", "install", "specify-cli", "--from", "git+https://github.com/github/spec-kit.git@v1.2.2"}}}, Manual: "Em cada projeto, rode specify init . --integration claude (ou codex)."},
+				"codex":  {Steps: []AddonStep{{Argv: []string{"uv", "tool", "install", "specify-cli", "--from", "git+https://github.com/github/spec-kit.git@v1.2.2"}}}, Manual: "Em cada projeto, rode specify init . --integration claude (ou codex)."},
+			},
 			Deterministic: false,
 			Installs: []string{
 				"Exige Python 3.11 ou mais novo e uv.",
@@ -129,4 +166,12 @@ func AddonByName(name string) (Addon, bool) {
 		}
 	}
 	return Addon{}, false
+}
+
+func (a Addon) DisplayCommands(harness string) []string {
+	var commands []string
+	for _, step := range a.Install[harness].Steps {
+		commands = append(commands, strings.Join(step.Argv, " "))
+	}
+	return commands
 }
