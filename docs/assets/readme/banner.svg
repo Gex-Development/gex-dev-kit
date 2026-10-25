@@ -1,29 +1,188 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="260" viewBox="0 0 1200 260" role="img" aria-labelledby="title desc">
-  <title id="title">GEX DEV KIT</title>
-  <desc id="desc">Ferramentas para desenvolver com Claude Code e Codex na GEX.</desc>
-  <defs>
-    <linearGradient id="bg" x2="1" y2="1">
-      <stop stop-color="#101a30"/>
-      <stop offset="1" stop-color="#0b1224"/>
-    </linearGradient>
-    <linearGradient id="line">
-      <stop stop-color="#5bc8ff"/>
-      <stop offset="0.5" stop-color="#e060c8"/>
-      <stop offset="1" stop-color="#e89a6b"/>
-    </linearGradient>
-  </defs>
-  <rect width="1200" height="260" rx="24" fill="url(#bg)"/>
-  <rect x="1" y="1" width="1198" height="258" rx="23" fill="none" stroke="#354566" stroke-width="2"/>
-  <path d="M 48 45 H 1152" stroke="#354566"/>
-  <circle cx="70" cy="27" r="5" fill="#e060c8"/>
-  <circle cx="88" cy="27" r="5" fill="#e89a6b"/>
-  <circle cx="106" cy="27" r="5" fill="#70c9a5"/>
-  <text x="136" y="32" font-family="monospace" font-size="13" fill="#91a6c7">GEX / DEVELOPER TOOLS</text>
-  <rect x="48" y="79" width="8" height="104" rx="4" fill="url(#line)"/>
-  <text x="80" y="153" font-family="monospace" font-size="76" font-weight="bold" letter-spacing="-5" fill="#5bc8ff">GEX</text>
-  <text x="289" y="153" font-family="monospace" font-size="76" font-weight="bold" letter-spacing="-5" fill="#f4f7ff">DEV KIT</text>
-  <text x="83" y="204" font-family="monospace" font-size="22" fill="#bdd1e8">Seu ambiente pronto para criar, revisar e entregar.</text>
-  <path d="M 840 205 H 1118" stroke="url(#line)" stroke-width="3" stroke-linecap="round"/>
-  <circle cx="1140" cy="205" r="7" fill="#70c9a5"/>
-  <path d="M 973 89 l 21 20 -21 20 M 1030 129 h 45" fill="none" stroke="#2b7fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="336" viewBox="0 0 1200 336" role="img" aria-labelledby="t d">
+<title id="t">GEX DEV KIT</title>
+<desc id="d">Banner animado do Kit GEX: letras em pixel art, mascotes do Claude Code, Codex e OMP e uma caixa de comandos que digita gex-dev-kit, /setup, /doctor e /catalogo.</desc>
+
+<style>
+.mono{font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono","DejaVu Sans Mono",monospace}
+.ltr{animation:pop .7s cubic-bezier(.2,.9,.25,1) both}
+@keyframes pop{0%{opacity:0;transform:translateY(22px)}100%{opacity:1;transform:none}}
+.glow{animation:pulse 4.5s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:.28}50%{opacity:.62}}
+.shine{animation:sweep 7s ease-in-out 2.6s infinite;transform:translateX(-420px)}
+@keyframes sweep{0%{transform:translateX(-420px)}28%,100%{transform:translateX(1180px)}}
+.drift1{animation:drift 14s ease-in-out infinite alternate}
+@keyframes drift{0%{transform:translate(0,0)}100%{transform:translate(70px,26px)}}
+.bob{animation:bob 3.6s ease-in-out infinite}
+.bob2{animation-duration:4.1s;animation-delay:-1.2s}
+.bob3{animation-duration:3.3s;animation-delay:-2.1s}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
+.shadow{animation:shadow 3.6s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
+.shadow2{animation-duration:4.1s;animation-delay:-1.2s}
+.shadow3{animation-duration:3.3s;animation-delay:-2.1s}
+@keyframes shadow{0%,100%{transform:scaleX(1);opacity:.5}50%{transform:scaleX(.78);opacity:.28}}
+.eye{animation:blink 5.2s infinite;transform-box:fill-box;transform-origin:center}
+@keyframes blink{0%,91%,100%{transform:scaleY(1)}94%{transform:scaleY(.08)}}
+.blink{animation:caret 1.05s steps(1) infinite}
+@keyframes caret{0%,55%{opacity:1}56%,100%{opacity:0}}
+.tag{clip-path:inset(0 100% 0 0);animation:type 2.6s steps(51,end) 1.7s both}
+@keyframes type{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
+.tagcur{opacity:0;animation:tagcur 2.6s steps(51,end) 1.7s both}
+@keyframes tagcur{0%{opacity:1;transform:translateX(0)}100%{opacity:1;transform:translateX(640px)}}
+.run{animation:run 3.4s linear infinite}
+@keyframes run{from{stroke-dashoffset:0}to{stroke-dashoffset:-640}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.shine{display:none}.tag{clip-path:none}.c0{clip-path:none;opacity:1}.tagcur,.k0{display:none}}
+
+.c0{opacity:1;clip-path:inset(0 100% 0 0);animation:c0 16.0s steps(11,end) 0.0s infinite forwards}
+@keyframes c0{0%{opacity:1;clip-path:inset(0 100% 0 0)}6.250%{opacity:1;clip-path:inset(0 0 0 0)}21.875%{opacity:1;clip-path:inset(0 0 0 0)}22.375%{opacity:0;clip-path:inset(0 0 0 0)}100%{opacity:0;clip-path:inset(0 0 0 0)}}
+.k0{opacity:0;animation:k0 16.0s steps(11,end) 0.0s infinite forwards}
+@keyframes k0{0%{opacity:1;transform:translateX(0)}6.250%{opacity:1;transform:translateX(132px)}21.875%{opacity:1;transform:translateX(132px)}22.375%{opacity:0;transform:translateX(132px)}100%{opacity:0;transform:translateX(132px)}}
+
+.c1{opacity:0;clip-path:inset(0 100% 0 0);animation:c1 16.0s steps(6,end) 4.0s infinite forwards}
+@keyframes c1{0%{opacity:1;clip-path:inset(0 100% 0 0)}6.250%{opacity:1;clip-path:inset(0 0 0 0)}21.875%{opacity:1;clip-path:inset(0 0 0 0)}22.375%{opacity:0;clip-path:inset(0 0 0 0)}100%{opacity:0;clip-path:inset(0 0 0 0)}}
+.k1{opacity:0;animation:k1 16.0s steps(6,end) 4.0s infinite forwards}
+@keyframes k1{0%{opacity:1;transform:translateX(0)}6.250%{opacity:1;transform:translateX(72px)}21.875%{opacity:1;transform:translateX(72px)}22.375%{opacity:0;transform:translateX(72px)}100%{opacity:0;transform:translateX(72px)}}
+
+.c2{opacity:0;clip-path:inset(0 100% 0 0);animation:c2 16.0s steps(7,end) 8.0s infinite forwards}
+@keyframes c2{0%{opacity:1;clip-path:inset(0 100% 0 0)}6.250%{opacity:1;clip-path:inset(0 0 0 0)}21.875%{opacity:1;clip-path:inset(0 0 0 0)}22.375%{opacity:0;clip-path:inset(0 0 0 0)}100%{opacity:0;clip-path:inset(0 0 0 0)}}
+.k2{opacity:0;animation:k2 16.0s steps(7,end) 8.0s infinite forwards}
+@keyframes k2{0%{opacity:1;transform:translateX(0)}6.250%{opacity:1;transform:translateX(84px)}21.875%{opacity:1;transform:translateX(84px)}22.375%{opacity:0;transform:translateX(84px)}100%{opacity:0;transform:translateX(84px)}}
+
+.c3{opacity:0;clip-path:inset(0 100% 0 0);animation:c3 16.0s steps(9,end) 12.0s infinite forwards}
+@keyframes c3{0%{opacity:1;clip-path:inset(0 100% 0 0)}6.250%{opacity:1;clip-path:inset(0 0 0 0)}21.875%{opacity:1;clip-path:inset(0 0 0 0)}22.375%{opacity:0;clip-path:inset(0 0 0 0)}100%{opacity:0;clip-path:inset(0 0 0 0)}}
+.k3{opacity:0;animation:k3 16.0s steps(9,end) 12.0s infinite forwards}
+@keyframes k3{0%{opacity:1;transform:translateX(0)}6.250%{opacity:1;transform:translateX(108px)}21.875%{opacity:1;transform:translateX(108px)}22.375%{opacity:0;transform:translateX(108px)}100%{opacity:0;transform:translateX(108px)}}
+</style>
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#101c38"/><stop offset="1" stop-color="#080e1d"/></linearGradient>
+<linearGradient id="gexg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8fe0ff"/><stop offset="1" stop-color="#3b82f6"/></linearGradient>
+<linearGradient id="devg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#c9d6ee"/></linearGradient>
+<linearGradient id="shg" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".5" stop-color="#fff" stop-opacity=".95"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+<linearGradient id="bar" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#e060c8"/><stop offset=".55" stop-color="#a566e8"/><stop offset="1" stop-color="#5bc8ff"/></linearGradient>
+<radialGradient id="gb" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#2b7fff" stop-opacity=".55"/><stop offset="1" stop-color="#2b7fff" stop-opacity="0"/></radialGradient>
+<radialGradient id="gp" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#e060c8" stop-opacity=".42"/><stop offset="1" stop-color="#e060c8" stop-opacity="0"/></radialGradient>
+<filter id="blur" x="-20%" y="-40%" width="140%" height="180%"><feGaussianBlur stdDeviation="9"/></filter>
+<clipPath id="card"><rect width="1200" height="336" rx="24"/></clipPath>
+<mask id="wm" maskUnits="userSpaceOnUse" x="0" y="0" width="1200" height="336">
+<path transform="translate(64 78)" d="M11 0h33v11h-33zM0 11h11v11h-11zM44 11h11v11h-11zM0 22h11v11h-11zM0 33h11v11h-11zM22 33h33v11h-33zM0 44h11v11h-11zM44 44h11v11h-11zM0 55h11v11h-11zM44 55h11v11h-11zM11 66h33v11h-33z" fill="#fff"/>
+<path transform="translate(130 78)" d="M0 0h55v11h-55zM0 11h11v11h-11zM0 22h11v11h-11zM0 33h44v11h-44zM0 44h11v11h-11zM0 55h11v11h-11zM0 66h55v11h-55z" fill="#fff"/>
+<path transform="translate(196 78)" d="M0 0h11v11h-11zM44 0h11v11h-11zM0 11h11v11h-11zM44 11h11v11h-11zM11 22h11v11h-11zM33 22h11v11h-11zM22 33h11v11h-11zM11 44h11v11h-11zM33 44h11v11h-11zM0 55h11v11h-11zM44 55h11v11h-11zM0 66h11v11h-11zM44 66h11v11h-11z" fill="#fff"/>
+<path transform="translate(295 78)" d="M0 0h44v11h-44zM0 11h11v11h-11zM44 11h11v11h-11zM0 22h11v11h-11zM44 22h11v11h-11zM0 33h11v11h-11zM44 33h11v11h-11zM0 44h11v11h-11zM44 44h11v11h-11zM0 55h11v11h-11zM44 55h11v11h-11zM0 66h44v11h-44z" fill="#fff"/>
+<path transform="translate(361 78)" d="M0 0h55v11h-55zM0 11h11v11h-11zM0 22h11v11h-11zM0 33h44v11h-44zM0 44h11v11h-11zM0 55h11v11h-11zM0 66h55v11h-55z" fill="#fff"/>
+<path transform="translate(427 78)" d="M0 0h11v11h-11zM44 0h11v11h-11zM0 11h11v11h-11zM44 11h11v11h-11zM0 22h11v11h-11zM44 22h11v11h-11zM0 33h11v11h-11zM44 33h11v11h-11zM0 44h11v11h-11zM44 44h11v11h-11zM11 55h11v11h-11zM33 55h11v11h-11zM22 66h11v11h-11z" fill="#fff"/>
+<path transform="translate(515 78)" d="M0 0h11v11h-11zM44 0h11v11h-11zM0 11h11v11h-11zM33 11h11v11h-11zM0 22h11v11h-11zM22 22h11v11h-11zM0 33h22v11h-22zM0 44h11v11h-11zM22 44h11v11h-11zM0 55h11v11h-11zM33 55h11v11h-11zM0 66h11v11h-11zM44 66h11v11h-11z" fill="#fff"/>
+<path transform="translate(581 78)" d="M0 0h55v11h-55zM22 11h11v11h-11zM22 22h11v11h-11zM22 33h11v11h-11zM22 44h11v11h-11zM22 55h11v11h-11zM0 66h55v11h-55z" fill="#fff"/>
+<path transform="translate(647 78)" d="M0 0h55v11h-55zM22 11h11v11h-11zM22 22h11v11h-11zM22 33h11v11h-11zM22 44h11v11h-11zM22 55h11v11h-11zM22 66h11v11h-11z" fill="#fff"/>
+</mask>
+</defs>
+<g clip-path="url(#card)">
+<rect width="1200" height="336" fill="url(#bg)"/>
+<g class="drift1"><circle cx="230" cy="110" r="300" fill="url(#gb)"/></g>
+<g class="drift2"><circle cx="1020" cy="270" r="300" fill="url(#gp)"/></g>
+<path d="M0 0V336" stroke="#ffffff" stroke-opacity=".022"/>
+<path d="M40 0V336" stroke="#ffffff" stroke-opacity=".022"/>
+<path d="M80 0V336" stroke="#ffffff" stroke-opacity=".022"/>
+<path d="M120 0V336" stroke="#ffffff" stroke-opacity=".022"/>
+<path d="M160 0V336" stroke="#ffffff" stroke-opacity=".022"/>
+<path d="M200 0V336" stroke="#ffffff" stroke-opacity=".022"/>
+<path d="M240 0V336" stroke="#ffffff" stroke-opacity=".022"/>
+<path d="M280 0V336" stroke="#ffffff" stroke-opacity=".022"/>
+<path d="M320 0V336" stroke="#ffffff" stroke-opacity=".022"/>
+<path d="M360 0V336" stroke="#ffffff" stroke-opacity=".022"/>
+<path d="M400 0V336" stroke="#ffffff" stroke-opacity=".022"/>
+<path d="M440 0V336" stroke="#ffffff" stroke-opacity=".022"/>
+<path d="M480 0V336" stroke="#ffffff" stroke-opacity=".022"/>
+<path d="M520 0V336" stroke="#ffffff" stroke-opacity=".022"/>
+<path d="M560 0V336" stroke="#ffffff" stroke-opacity=".022"/>
+<path d="M600 0V336" stroke="#ffffff" stroke-opacity=".022"/>
+<path d="M640 0V336" stroke="#ffffff" stroke-opacity=".022"/>
+<path d="M680 0V336" stroke="#ffffff" stroke-opacity=".022"/>
+<path d="M720 0V336" stroke="#ffffff" stroke-opacity=".022"/>
+<path d="M760 0V336" stroke="#ffffff" stroke-opacity=".022"/>
+<path d="M800 0V336" stroke="#ffffff" stroke-opacity=".022"/>
+<path d="M840 0V336" stroke="#ffffff" stroke-opacity=".022"/>
+<path d="M880 0V336" stroke="#ffffff" stroke-opacity=".022"/>
+<path d="M920 0V336" stroke="#ffffff" stroke-opacity=".022"/>
+<path d="M960 0V336" stroke="#ffffff" stroke-opacity=".022"/>
+<path d="M1000 0V336" stroke="#ffffff" stroke-opacity=".022"/>
+<path d="M1040 0V336" stroke="#ffffff" stroke-opacity=".022"/>
+<path d="M1080 0V336" stroke="#ffffff" stroke-opacity=".022"/>
+<path d="M1120 0V336" stroke="#ffffff" stroke-opacity=".022"/>
+<path d="M1160 0V336" stroke="#ffffff" stroke-opacity=".022"/>
+<path d="M0 0H1200" stroke="#ffffff" stroke-opacity=".022"/>
+<path d="M0 40H1200" stroke="#ffffff" stroke-opacity=".022"/>
+<path d="M0 80H1200" stroke="#ffffff" stroke-opacity=".022"/>
+<path d="M0 120H1200" stroke="#ffffff" stroke-opacity=".022"/>
+<path d="M0 160H1200" stroke="#ffffff" stroke-opacity=".022"/>
+<path d="M0 200H1200" stroke="#ffffff" stroke-opacity=".022"/>
+<path d="M0 240H1200" stroke="#ffffff" stroke-opacity=".022"/>
+<path d="M0 280H1200" stroke="#ffffff" stroke-opacity=".022"/>
+<path d="M0 320H1200" stroke="#ffffff" stroke-opacity=".022"/>
+</g>
+<rect x="1" y="1" width="1198" height="334" rx="23" fill="none" stroke="#2b3c63" stroke-width="2"/>
+<circle cx="46" cy="32" r="6" fill="#e060c8"/><circle cx="68" cy="32" r="6" fill="#e89a6b"/><circle cx="90" cy="32" r="6" fill="#70c9a5"/>
+<text class="mono" x="120" y="37" font-size="13" fill="#7f93b8" textLength="206" lengthAdjust="spacing">GEX / DEVELOPER TOOLS</text>
+<path d="M46 56H1154" stroke="#2b3c63"/>
+<g class="glow" filter="url(#blur)">
+<path transform="translate(64 78)" d="M11 0h33v11h-33zM0 11h11v11h-11zM44 11h11v11h-11zM0 22h11v11h-11zM0 33h11v11h-11zM22 33h33v11h-33zM0 44h11v11h-11zM44 44h11v11h-11zM0 55h11v11h-11zM44 55h11v11h-11zM11 66h33v11h-33z" fill="#3b82f6"/>
+<path transform="translate(130 78)" d="M0 0h55v11h-55zM0 11h11v11h-11zM0 22h11v11h-11zM0 33h44v11h-44zM0 44h11v11h-11zM0 55h11v11h-11zM0 66h55v11h-55z" fill="#3b82f6"/>
+<path transform="translate(196 78)" d="M0 0h11v11h-11zM44 0h11v11h-11zM0 11h11v11h-11zM44 11h11v11h-11zM11 22h11v11h-11zM33 22h11v11h-11zM22 33h11v11h-11zM11 44h11v11h-11zM33 44h11v11h-11zM0 55h11v11h-11zM44 55h11v11h-11zM0 66h11v11h-11zM44 66h11v11h-11z" fill="#3b82f6"/>
+<path transform="translate(295 78)" d="M0 0h44v11h-44zM0 11h11v11h-11zM44 11h11v11h-11zM0 22h11v11h-11zM44 22h11v11h-11zM0 33h11v11h-11zM44 33h11v11h-11zM0 44h11v11h-11zM44 44h11v11h-11zM0 55h11v11h-11zM44 55h11v11h-11zM0 66h44v11h-44z" fill="#9db6e6"/>
+<path transform="translate(361 78)" d="M0 0h55v11h-55zM0 11h11v11h-11zM0 22h11v11h-11zM0 33h44v11h-44zM0 44h11v11h-11zM0 55h11v11h-11zM0 66h55v11h-55z" fill="#9db6e6"/>
+<path transform="translate(427 78)" d="M0 0h11v11h-11zM44 0h11v11h-11zM0 11h11v11h-11zM44 11h11v11h-11zM0 22h11v11h-11zM44 22h11v11h-11zM0 33h11v11h-11zM44 33h11v11h-11zM0 44h11v11h-11zM44 44h11v11h-11zM11 55h11v11h-11zM33 55h11v11h-11zM22 66h11v11h-11z" fill="#9db6e6"/>
+<path transform="translate(515 78)" d="M0 0h11v11h-11zM44 0h11v11h-11zM0 11h11v11h-11zM33 11h11v11h-11zM0 22h11v11h-11zM22 22h11v11h-11zM0 33h22v11h-22zM0 44h11v11h-11zM22 44h11v11h-11zM0 55h11v11h-11zM33 55h11v11h-11zM0 66h11v11h-11zM44 66h11v11h-11z" fill="#9db6e6"/>
+<path transform="translate(581 78)" d="M0 0h55v11h-55zM22 11h11v11h-11zM22 22h11v11h-11zM22 33h11v11h-11zM22 44h11v11h-11zM22 55h11v11h-11zM0 66h55v11h-55z" fill="#9db6e6"/>
+<path transform="translate(647 78)" d="M0 0h55v11h-55zM22 11h11v11h-11zM22 22h11v11h-11zM22 33h11v11h-11zM22 44h11v11h-11zM22 55h11v11h-11zM22 66h11v11h-11z" fill="#9db6e6"/>
+</g>
+<g class="ltr" style="animation-delay:0.10s"><path transform="translate(64 78)" d="M11 0h33v11h-33zM0 11h11v11h-11zM44 11h11v11h-11zM0 22h11v11h-11zM0 33h11v11h-11zM22 33h33v11h-33zM0 44h11v11h-11zM44 44h11v11h-11zM0 55h11v11h-11zM44 55h11v11h-11zM11 66h33v11h-33z" fill="url(#gexg)"/></g>
+<g class="ltr" style="animation-delay:0.17s"><path transform="translate(130 78)" d="M0 0h55v11h-55zM0 11h11v11h-11zM0 22h11v11h-11zM0 33h44v11h-44zM0 44h11v11h-11zM0 55h11v11h-11zM0 66h55v11h-55z" fill="url(#gexg)"/></g>
+<g class="ltr" style="animation-delay:0.24s"><path transform="translate(196 78)" d="M0 0h11v11h-11zM44 0h11v11h-11zM0 11h11v11h-11zM44 11h11v11h-11zM11 22h11v11h-11zM33 22h11v11h-11zM22 33h11v11h-11zM11 44h11v11h-11zM33 44h11v11h-11zM0 55h11v11h-11zM44 55h11v11h-11zM0 66h11v11h-11zM44 66h11v11h-11z" fill="url(#gexg)"/></g>
+<g class="ltr" style="animation-delay:0.31s"><path transform="translate(295 78)" d="M0 0h44v11h-44zM0 11h11v11h-11zM44 11h11v11h-11zM0 22h11v11h-11zM44 22h11v11h-11zM0 33h11v11h-11zM44 33h11v11h-11zM0 44h11v11h-11zM44 44h11v11h-11zM0 55h11v11h-11zM44 55h11v11h-11zM0 66h44v11h-44z" fill="url(#devg)"/></g>
+<g class="ltr" style="animation-delay:0.38s"><path transform="translate(361 78)" d="M0 0h55v11h-55zM0 11h11v11h-11zM0 22h11v11h-11zM0 33h44v11h-44zM0 44h11v11h-11zM0 55h11v11h-11zM0 66h55v11h-55z" fill="url(#devg)"/></g>
+<g class="ltr" style="animation-delay:0.45s"><path transform="translate(427 78)" d="M0 0h11v11h-11zM44 0h11v11h-11zM0 11h11v11h-11zM44 11h11v11h-11zM0 22h11v11h-11zM44 22h11v11h-11zM0 33h11v11h-11zM44 33h11v11h-11zM0 44h11v11h-11zM44 44h11v11h-11zM11 55h11v11h-11zM33 55h11v11h-11zM22 66h11v11h-11z" fill="url(#devg)"/></g>
+<g class="ltr" style="animation-delay:0.52s"><path transform="translate(515 78)" d="M0 0h11v11h-11zM44 0h11v11h-11zM0 11h11v11h-11zM33 11h11v11h-11zM0 22h11v11h-11zM22 22h11v11h-11zM0 33h22v11h-22zM0 44h11v11h-11zM22 44h11v11h-11zM0 55h11v11h-11zM33 55h11v11h-11zM0 66h11v11h-11zM44 66h11v11h-11z" fill="url(#devg)"/></g>
+<g class="ltr" style="animation-delay:0.59s"><path transform="translate(581 78)" d="M0 0h55v11h-55zM22 11h11v11h-11zM22 22h11v11h-11zM22 33h11v11h-11zM22 44h11v11h-11zM22 55h11v11h-11zM0 66h55v11h-55z" fill="url(#devg)"/></g>
+<g class="ltr" style="animation-delay:0.66s"><path transform="translate(647 78)" d="M0 0h55v11h-55zM22 11h11v11h-11zM22 22h11v11h-11zM22 33h11v11h-11zM22 44h11v11h-11zM22 55h11v11h-11zM22 66h11v11h-11z" fill="url(#devg)"/></g>
+<rect x="42" y="78" width="7" height="77" rx="3.5" fill="url(#bar)"/>
+<g mask="url(#wm)"><g transform="skewX(-18)"><rect class="shine" x="0" y="60" width="220" height="120" fill="url(#shg)"/></g></g>
+<text class="mono tag" x="66" y="196" font-size="21" fill="#c4d6ee" textLength="640" lengthAdjust="spacing">Seu ambiente pronto para criar, revisar e entregar.</text>
+<g class="tagcur" style="transform-box:view-box"><rect class="blink" x="66" y="178" width="11" height="22" fill="#5bc8ff"/></g>
+<ellipse class="shadow" cx="828.5" cy="161" rx="30.800000000000004" ry="4" fill="#000"/>
+<g class="bob"><path d="M797 94h63v7h-63zM797 101h63v7h-63zM790 108h77v7h-77zM790 115h77v7h-77zM797 122h63v7h-63zM804 129h7v7h-7zM818 129h7v7h-7zM832 129h7v7h-7zM846 129h7v7h-7zM804 136h7v7h-7zM818 136h7v7h-7zM832 136h7v7h-7zM846 136h7v7h-7z" fill="#e89a6b"/>
+<rect class="eye" x="811" y="101" width="7" height="14" fill="#1b1410"/><rect class="eye" x="839" y="101" width="7" height="14" fill="#1b1410"/></g>
+<ellipse class="shadow shadow2" cx="960" cy="158" rx="29.400000000000002" ry="4" fill="#000"/>
+<g class="bob bob2"><path d="M939 100h14v7h-14zM967 100h14v7h-14zM932 107h56v7h-56zM925 114h70v7h-70zM925 121h70v7h-70zM932 128h56v7h-56zM939 135h42v7h-42z" fill="#70c9a5"/>
+<path d="M943.2 114.0l10.5 7.700000000000001l-10.5 7.700000000000001" fill="none" stroke="#10241d" stroke-width="6.3" stroke-linecap="square" stroke-linejoin="miter"/>
+<rect x="962.1" y="124.5" width="14.700000000000001" height="6.3" fill="#10241d"/></g>
+<ellipse class="shadow shadow3" cx="1078" cy="161" rx="25.2" ry="4" fill="#000"/>
+<g class="bob bob3"><rect x="1043" y="91" width="70" height="57.39999999999999" rx="8" fill="#d1b0ed"/>
+<path d="M1053.5 104.3h49v7h-49zM1060.5 111.3h7v7h-7zM1088.5 111.3h7v7h-7zM1060.5 118.3h7v7h-7zM1088.5 118.3h7v7h-7zM1060.5 125.3h7v7h-7zM1088.5 125.3h14v7h-14zM1060.5 132.3h7v7h-7zM1095.5 132.3h7v7h-7z" fill="#1e1530"/></g>
+<text class="mono" x="782.5" y="198" font-size="13" fill="#7f93b8" textLength="92" lengthAdjust="spacing">Claude Code</text>
+<text class="mono" x="937.0" y="198" font-size="13" fill="#7f93b8" textLength="46" lengthAdjust="spacing">Codex</text>
+<text class="mono" x="1064.0" y="198" font-size="13" fill="#7f93b8" textLength="28" lengthAdjust="spacing">OMP</text>
+<rect x="46" y="238" width="1108" height="64" rx="16" fill="#070c19" stroke="#e060c8" stroke-width="2"/>
+<path class="run" d="M640 238H1136" stroke="#ffd2f4" stroke-width="2" stroke-dasharray="70 570" stroke-linecap="round"/>
+<rect x="68" y="224" width="528" height="28" rx="5" fill="#04070f"/>
+<path d="M596 224l14 14l-14 14z" fill="#04070f"/>
+<path d="M82 233l5 5l-5 5l-5 -5z" fill="#5bc8ff"/>
+<text class="mono" x="94" y="243" font-size="14" fill="#c8d3e8" textLength="26" lengthAdjust="spacing">GEX</text>
+<path d="M136 230l7 8l-7 8" fill="none" stroke="#55648a" stroke-width="1.6"/>
+<circle cx="162" cy="238" r="4.5" fill="#e89a6b"/>
+<text class="mono" x="174" y="243" font-size="14" fill="#e89a6b" textLength="92" lengthAdjust="spacing">Claude Code</text>
+<path d="M278 230l7 8l-7 8" fill="none" stroke="#55648a" stroke-width="1.6"/>
+<path d="M296 234h5l2 2h7v8h-14z" fill="#4fd1c0"/>
+<text class="mono" x="318" y="243" font-size="14" fill="#4fd1c0" textLength="92" lengthAdjust="spacing">gex-dev-kit</text>
+<path d="M422 230l7 8l-7 8" fill="none" stroke="#55648a" stroke-width="1.6"/>
+<circle cx="444" cy="235" r="2.6" fill="none" stroke="#f2a65a" stroke-width="1.6"/><circle cx="444" cy="243" r="2.6" fill="none" stroke="#f2a65a" stroke-width="1.6"/><path d="M444 237.6v3" stroke="#f2a65a" stroke-width="1.6"/>
+<text class="mono" x="456" y="243" font-size="14" fill="#f2a65a" textLength="34" lengthAdjust="spacing">main</text>
+<text class="mono" x="500" y="243" font-size="14" fill="#f2a65a" textLength="17" lengthAdjust="spacing">*3</text>
+<text class="mono" x="524" y="243" font-size="14" fill="#4fd1c0" textLength="17" lengthAdjust="spacing">?2</text>
+<text class="mono" x="80" y="282" font-size="21" font-weight="700" fill="#4ade80">&gt;</text>
+<text class="mono c0" x="106" y="282" font-size="21" fill="#f4f7ff" textLength="132" lengthAdjust="spacing">gex-dev-kit</text>
+<g class="k0"><rect class="blink" x="106" y="264" width="12" height="23" fill="#c8d3e8"/></g>
+<text class="mono c1" x="106" y="282" font-size="21" fill="#f4f7ff" textLength="72" lengthAdjust="spacing">/setup</text>
+<g class="k1"><rect class="blink" x="106" y="264" width="12" height="23" fill="#c8d3e8"/></g>
+<text class="mono c2" x="106" y="282" font-size="21" fill="#f4f7ff" textLength="84" lengthAdjust="spacing">/doctor</text>
+<g class="k2"><rect class="blink" x="106" y="264" width="12" height="23" fill="#c8d3e8"/></g>
+<text class="mono c3" x="106" y="282" font-size="21" fill="#f4f7ff" textLength="108" lengthAdjust="spacing">/catalogo</text>
+<g class="k3"><rect class="blink" x="106" y="264" width="12" height="23" fill="#c8d3e8"/></g>
 </svg>

@@ -11,7 +11,8 @@ Todas as mudanças relevantes do Kit de Desenvolvimento GEX ficam neste arquivo.
 
 ### Alterado
 
-- README reorganizado: instalação por sistema, primeiro uso com diagrama do setup, receitas por tarefa, solução de problemas e referência recolhida; banner próprio.
+- README reorganizado: instalação por sistema com badges de ícone (macOS, Linux, Windows), primeiro uso com diagrama do setup, receitas por tarefa, solução de problemas, glossário e referência recolhida. Texto reescrito em frases curtas; o maior parágrafo caiu de 124 para 37 palavras.
+- Banner animado do README (`docs/assets/readme/banner.svg`): SVG sem fontes externas, estático quando o sistema pede movimento reduzido.
 
 ## [0.3.0] - 2026-10-25
 
