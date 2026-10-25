@@ -12,8 +12,14 @@ if [[ ${2:-} != '' && ${2:-} != '--publish' ]]; then
 fi
 
 root=$(git rev-parse --show-toplevel)
+notas="$root/docs/release-notes/$version.md"
+if [[ ! -f $notas ]]; then
+  printf 'Falta o arquivo de notas da release: %s\n' "$notas" >&2
+  exit 1
+fi
 mkdir -p "$root/dist"
-limite=$((14 * 1024 * 1024))
+limite_mib=16
+limite=$((limite_mib * 1024 * 1024))
 for target in darwin/arm64 darwin/amd64 linux/arm64 linux/amd64 windows/arm64 windows/amd64; do
   os=${target%/*}
   arch=${target#*/}
@@ -25,7 +31,7 @@ for target in darwin/arm64 darwin/amd64 linux/arm64 linux/amd64 windows/arm64 wi
   tamanho=$(wc -c < "$binario" | tr -d ' ')
   printf '  %s: %s bytes (limite %s)\n' "$(basename -- "$binario")" "$tamanho" "$limite"
   if (( tamanho > limite )); then
-    printf 'Binário acima de 14 MiB (%s bytes): %s\n' "$limite" "$binario" >&2
+    printf 'Binário acima de %s MiB (%s bytes): %s\n' "$limite_mib" "$limite" "$binario" >&2
     exit 1
   fi
 done
@@ -78,4 +84,4 @@ else
   read -r -p "Publicar $version em Gex-Development/gex-dev-kit? Digite sim: " answer
   [[ $answer == sim ]] || exit 1
 fi
-gh release create "$version" "$root/dist/gex-dev-kit_${version}_"* "$root/dist/SHA256SUMS" "$root/dist/THIRD_PARTY_LICENSES.txt" --repo Gex-Development/gex-dev-kit --title "$version" --notes "Kit GEX: Core global Claude Code/Codex, skills Matt Pocock opcionais, hooks auditados, doctor e rollback. Confira README e hashes antes de instalar."
+gh release create "$version" "$root/dist/gex-dev-kit_${version}_"* "$root/dist/SHA256SUMS" "$root/dist/THIRD_PARTY_LICENSES.txt" --repo Gex-Development/gex-dev-kit --title "$version" --notes-file "$notas"

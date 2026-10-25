@@ -122,7 +122,7 @@ Toda instalação atualiza o executável estável quando ele é diferente do kit
 
 Antes de cada onda, o orquestrador registra esqueletos com as assinaturas da seção 1 do plano. Nenhum esqueleto importa pacote de onda posterior. Os contratos entre tarefas paralelas ficam no esqueleto, e cada tarefa os verifica com dados ou funções falsas (tabela 10.7).
 
-## ADR-0031: Limite de tamanho do binário em 14 MiB
+## ADR-0031: Limite de tamanho do binário em 14 MiB (substituída pela ADR-0037)
 
 O limite do `scripts/release.sh` sobe de 12 MiB para 14 MiB. O windows/amd64 passou de 12 MiB em 0,15 MiB depois das correções de UX. Os binários já usam `-s -w` e `-trimpath`. Com 14 MiB sobra margem, e um crescimento grande continua reprovado pelo script.
 
@@ -144,4 +144,8 @@ Esta decisão substitui as ADR-0013 e ADR-0034. As três skills de API de gatewa
 
 ## ADR-0036: Addons passam a ser instalados pelo kit
 
-Por decisão explícita do usuário, a TUI instala os quatro plugins opcionais no setup e em `/addons`, substituindo a ADR-0015; a CLI permanece apenas catálogo. Executar código de terceiros oferece risco e o rollback do kit não o desfaz: antes da confirmação, o chat mostra comandos exatos, fonte, licença e conflitos; o runner usa argv sem shell, timeout e respeita o HOME isolado. Passos interativos permanecem manuais.
+Por decisão explícita do usuário, a TUI instala os quatro plugins opcionais no setup e em `/addons`, substituindo a ADR-0015; a CLI permanece apenas catálogo. Executar código de terceiros oferece risco e o rollback do kit não o desfaz: antes da confirmação, o chat mostra os comandos exatos e os conflitos com o Core (fonte e licença ficam no card de `/addons`); o runner usa argv sem shell, timeout e respeita o HOME isolado. Passos interativos permanecem manuais.
+
+## ADR-0037: Limite de tamanho do binário em 16 MiB
+
+Esta decisão substitui a ADR-0031. O windows/amd64 passou de 12,2 MiB (12.753.408 bytes, antes do chat) para 14,1 MiB (14.783.488 bytes) e estourou o limite de 14 MiB do `scripts/release.sh`. `go.mod` e `go.sum` não mudaram: o crescimento vem do código próprio do chat, dos componentes e dos textos das explicações. Por decisão explícita do usuário, o limite sobe para 16 MiB, o que deixa cerca de 1,9 MiB de margem sobre o maior binário. Um crescimento grande continua reprovado pelo script.

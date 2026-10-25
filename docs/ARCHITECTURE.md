@@ -189,4 +189,4 @@ Os resultados de macOS vêm de `go test ./...` e `go build` executados nesta rev
 - [`scripts/smoke.sh`](../scripts/smoke.sh) `CAMINHO_DO_BINARIO`: instala o kit em um HOME temporário e confere os arquivos gerados.
 - Golden do chat: `go test ./internal/ui/screens -run TestGoldenChat -update`. Use só quando o visual mudar de propósito e revise o `git diff` dos arquivos `.golden` antes de commitar.
 - Golden da paleta: `go test ./internal/ui/theme -run TestGolden -update`. Use só quando o visual mudar de propósito e revise o `git diff` dos arquivos `.golden` antes de commitar.
-- [`scripts/release.sh`](../scripts/release.sh) `vX.Y.Z`: gera binários, `SHA256SUMS` e `THIRD_PARTY_LICENSES.txt` em `dist/`. Sem `--publish`, nada é publicado.
+- [`scripts/release.sh`](../scripts/release.sh) `vX.Y.Z`: gera binários (até 16 MiB cada), `SHA256SUMS` e `THIRD_PARTY_LICENSES.txt` em `dist/` e exige as notas em `docs/release-notes/vX.Y.Z.md`. Sem `--publish`, nada é publicado.
