@@ -60,3 +60,4 @@ Escopo, estado e uso para usuários estão em `README.md`.
 - `docs/ADR.md`: antes de reverter uma decisão ou quando o código parece "estranho de propósito".
 - `docs/CONTEXT.md`: ao nomear algo novo (glossário) ou decidir se algo está no escopo.
 - `docs/AUDITORIA-UX.md`: ao mudar mensagens, ajuda ou códigos de saída.
+- `CHANGELOG.md`: a cada mudança visível ao usuário, na seção da versão em preparo; ao publicar, fixe a data da versão e confira `docs/release-notes/vX.Y.Z.md`.
