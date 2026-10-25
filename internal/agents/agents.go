@@ -14,12 +14,8 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
-)
-
-const (
-	ClaudeVersion = "2.1.306"
-	CodexVersion  = "0.163.0"
 )
 
 const (
@@ -50,13 +46,109 @@ type record struct {
 }
 type history map[string]record
 
-type product struct{ name, version, url string }
+type product struct{ name, url string }
 
 var products = []product{
-	{"claude", ClaudeVersion, "https://claude.ai/install.sh"},
-	{"codex", CodexVersion, "https://chatgpt.com/codex/install.sh"},
+	{"claude", "https://claude.ai/install.sh"},
+	{"codex", "https://chatgpt.com/codex/install.sh"},
 }
 var exactVersion = regexp.MustCompile(`^\d+\.\d+\.\d+$`)
+
+var fetchLatest = func(name string) (string, error) {
+	url := "https://downloads.claude.ai/claude-code-releases/latest"
+	host := "downloads.claude.ai"
+	if name == "codex" {
+		url = "https://releases.openai.com/codex/channels/latest"
+		host = "releases.openai.com"
+	}
+	client := &http.Client{Timeout: 3 * time.Second, CheckRedirect: func(req *http.Request, _ []*http.Request) error {
+		if req.URL.Scheme != "https" || req.URL.Hostname() != host {
+			return errors.New("redirecionamento fora do domínio oficial")
+		}
+		return nil
+	}}
+	response, err := client.Get(url)
+	if err != nil {
+		return "", err
+	}
+	defer response.Body.Close()
+	if response.Request.URL.Scheme != "https" || response.Request.URL.Hostname() != host {
+		return "", errors.New("redirecionamento fora do domínio oficial")
+	}
+	if response.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("HTTP %d", response.StatusCode)
+	}
+	body, err := readLatestBody(response.Body, name)
+	if err != nil {
+		return "", err
+	}
+	return parseLatest(name, body)
+}
+
+func readLatestBody(r io.Reader, name string) ([]byte, error) {
+	limit := int64(4 << 10)
+	if name == "codex" {
+		limit = 1 << 20
+	}
+	body, err := io.ReadAll(io.LimitReader(r, limit+1))
+	if err != nil {
+		return nil, err
+	}
+	if int64(len(body)) > limit {
+		return nil, errors.New("resposta de versão grande demais")
+	}
+	return body, nil
+}
+
+func parseLatest(name string, body []byte) (string, error) {
+	version := strings.TrimSpace(string(body))
+	if name == "codex" {
+		var data struct {
+			TagName string `json:"tag_name"`
+		}
+		if err := json.Unmarshal(body, &data); err != nil || !strings.HasPrefix(data.TagName, "rust-v") {
+			return "", errors.New("versão mais recente inválida")
+		}
+		version = strings.TrimPrefix(data.TagName, "rust-v")
+	}
+	if !exactVersion.MatchString(version) {
+		return "", errors.New("versão mais recente inválida")
+	}
+	return version, nil
+}
+
+var latestCache = struct {
+	sync.Mutex
+	items map[string]latestEntry
+}{items: make(map[string]latestEntry)}
+
+type latestEntry struct {
+	version string
+	err     error
+	until   time.Time
+}
+
+func cachedLatest(name string) (string, error) {
+	latestCache.Lock()
+	entry, ok := latestCache.items[name]
+	if ok && time.Now().Before(entry.until) {
+		latestCache.Unlock()
+		return entry.version, entry.err
+	}
+	latestCache.Unlock()
+	version, err := fetchLatest(name)
+	if err == nil && !exactVersion.MatchString(version) {
+		err = errors.New("versão mais recente inválida")
+	}
+	duration := 5 * time.Minute
+	if err != nil {
+		duration = 30 * time.Second
+	}
+	latestCache.Lock()
+	latestCache.items[name] = latestEntry{version, err, time.Now().Add(duration)}
+	latestCache.Unlock()
+	return version, err
+}
 
 func executable(name string) string {
 	if runtime.GOOS == "windows" {
@@ -64,15 +156,18 @@ func executable(name string) string {
 	}
 	return name
 }
+
 func binPath(home, name string) string {
 	if runtime.GOOS == "windows" && name == "codex" {
 		return filepath.Join(home, "AppData", "Local", "Programs", "OpenAI", "Codex", "bin", executable(name))
 	}
 	return filepath.Join(home, ".local", "bin", executable(name))
 }
+
 func statePath(home string) string {
 	return filepath.Join(home, ".local", "state", "gex-dev-kit", "agent-updates.json")
 }
+
 func validHome(home string) error {
 	if home == "" || !filepath.IsAbs(home) || filepath.Clean(home) != home {
 		return errors.New("HOME deve ser caminho absoluto normalizado")
@@ -89,6 +184,7 @@ func validHome(home string) error {
 	}
 	return nil
 }
+
 func checkStateLinks(home string) error {
 	for _, path := range []string{filepath.Join(home, ".local"), filepath.Join(home, ".local", "state"), filepath.Dir(statePath(home)), statePath(home)} {
 		info, err := os.Lstat(path)
@@ -127,12 +223,13 @@ func load(home string) (history, error) {
 	}
 	return h, nil
 }
+
 func save(home string, h history) error {
 	if err := checkStateLinks(home); err != nil {
 		return err
 	}
 	path := statePath(home)
-	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return err
 	}
 	b, err := json.MarshalIndent(h, "", "  ")
@@ -144,7 +241,7 @@ func save(home string, h history) error {
 		return err
 	}
 	defer os.Remove(f.Name())
-	if err = f.Chmod(0600); err == nil {
+	if err = f.Chmod(0o600); err == nil {
 		_, err = f.Write(b)
 	}
 	if err == nil {
@@ -161,6 +258,7 @@ func save(home string, h history) error {
 	}
 	return replaceFile(f.Name(), path)
 }
+
 func samePath(a, b string) bool {
 	a = filepath.Clean(a)
 	b = filepath.Clean(b)
@@ -169,6 +267,7 @@ func samePath(a, b string) bool {
 	}
 	return a == b
 }
+
 func pathEntries(name string) []string {
 	var found []string
 	seen := map[string]bool{}
@@ -192,6 +291,7 @@ func pathEntries(name string) []string {
 	}
 	return found
 }
+
 func manager(path string) string {
 	lower := strings.ToLower(filepath.ToSlash(path))
 	switch {
@@ -209,12 +309,14 @@ func manager(path string) string {
 		return "não gerenciado pelo kit (brew/winget/apt/dnf/npm ou instalação própria)"
 	}
 }
+
 func manual(name string) string {
 	if name == "claude" {
-		return "https://code.claude.com/docs/en/setup — verifique claude --version; npm install -g @anthropic-ai/claude-code@2.1.306; brew upgrade claude-code / winget upgrade Anthropic.ClaudeCode / sudo apt upgrade claude-code / sudo dnf upgrade claude-code NÃO garantem versão pinada"
+		return "https://code.claude.com/docs/en/setup — verifique claude --version; npm install -g @anthropic-ai/claude-code@latest; brew upgrade claude-code / winget upgrade Anthropic.ClaudeCode / apt upgrade claude-code / dnf upgrade claude-code podem demorar a trazer a versão mais recente"
 	}
-	return "https://github.com/openai/codex/releases/tag/rust-v0.163.0 — verifique codex --version; npm install -g @openai/codex@0.163.0; brew upgrade --cask codex NÃO garante versão pinada"
+	return "https://github.com/openai/codex/releases — verifique codex --version; npm install -g @openai/codex@latest; brew upgrade --cask codex / winget upgrade OpenAI.Codex podem demorar a trazer a versão mais recente"
 }
+
 func installCommand(p product, version string) string {
 	if runtime.GOOS == "windows" {
 		if p.name == "claude" {
@@ -223,16 +325,18 @@ func installCommand(p product, version string) string {
 		return "PowerShell: $env:CODEX_NON_INTERACTIVE='1'; & ([scriptblock]::Create((irm https://chatgpt.com/codex/install.ps1))) -Release " + version
 	}
 	if p.name == "claude" {
-		return "curl -fsSL https://claude.ai/install.sh | bash -s " + version
+		return "curl -fsSL https://claude.ai/install.sh | bash -s -- " + version
 	}
 	return "curl -fsSL https://chatgpt.com/codex/install.sh | CODEX_NON_INTERACTIVE=1 sh -s -- --release " + version
 }
+
 func probeReason(err error) string {
 	if errors.Is(err, errCommandTimeout) {
 		return "não verificado (tempo esgotado)"
 	}
 	return err.Error()
 }
+
 func observedVersion(home string, p product, path string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), probeTimeout)
 	defer cancel()
@@ -277,10 +381,20 @@ func Preview(home string) ([]Change, error) {
 	if err != nil {
 		return nil, err
 	}
+	versions := make([]latestEntry, len(products))
+	var wg sync.WaitGroup
+	for i, p := range products {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			versions[i].version, versions[i].err = cachedLatest(p.name)
+		}()
+	}
+	wg.Wait()
 	changes := make([]Change, 0, len(products))
-	for _, p := range products {
+	for i, p := range products {
 		r := h[p.name]
-		c := Change{Name: p.name, Current: r.Current, Target: p.version, Command: installCommand(p, p.version), Manual: manual(p.name)}
+		c := Change{Name: p.name, Current: r.Current, Target: versions[i].version, Command: installCommand(p, "latest"), Manual: manual(p.name)}
 		entries := pathEntries(p.name)
 		target := binPath(home, p.name)
 		info, statErr := os.Lstat(target)
@@ -303,8 +417,18 @@ func Preview(home string) ([]Change, error) {
 			c.Blocked = true
 			c.Reason = manager(resolved) + " em " + entries[0] + "; não alterar instalação alheia"
 		case exists && r.Current == "":
-			c.Blocked = true
-			c.Reason = "binário não gerenciado pelo kit em " + target
+			resolved, e := filepath.EvalSymlinks(target)
+			resolvedHome, homeErr := filepath.EvalSymlinks(home)
+			nativeDir := filepath.Join(resolvedHome, ".local", "share", "claude", "versions") + string(filepath.Separator)
+			if p.name != "claude" || e != nil || homeErr != nil || !strings.HasPrefix(resolved, nativeDir) {
+				c.Blocked = true
+				c.Reason = "binário não gerenciado pelo kit em " + target
+			} else if version, e := observedVersion(home, p, target); e != nil {
+				c.Blocked = true
+				c.Reason = probeReason(e)
+			} else {
+				c.Current = version
+			}
 		case r.Current != "" && !exists:
 			c.Blocked = true
 			c.Reason = "binário gerenciado ausente; histórico divergente"
@@ -349,6 +473,13 @@ func Preview(home string) ([]Change, error) {
 				c.Reason = "Codex alteraria PATH do usuário; inclua ~/.local/bin no PATH de usuário antes de instalar"
 			}
 		}
+		if versions[i].err != nil && c.Current == "" && !c.Blocked {
+			c.Blocked = true
+			c.Reason = "não consegui consultar a versão mais recente (sem rede?)"
+		}
+		if versions[i].err != nil {
+			c.Target = c.Current
+		}
 		changes = append(changes, c)
 	}
 	return changes, nil
@@ -359,11 +490,11 @@ func requireLock(home string) (func(), error) {
 		return nil, err
 	}
 	dir := filepath.Dir(statePath(home))
-	if err := os.MkdirAll(dir, 0700); err != nil {
+	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return nil, err
 	}
 	lock := filepath.Join(dir, "agent-updates.lock")
-	if err := os.Mkdir(lock, 0700); err != nil {
+	if err := os.Mkdir(lock, 0o700); err != nil {
 		return nil, fmt.Errorf("outra atualização ou lock pendente: %w", err)
 	}
 	unlock := func() {
@@ -387,8 +518,9 @@ func writeLockOwner(lock string) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(filepath.Join(lock, "owner.json"), b, 0600)
+	return os.WriteFile(filepath.Join(lock, "owner.json"), b, 0o600)
 }
+
 func Apply(home string, changes []Change) error {
 	if err := validHome(home); err != nil {
 		return err
@@ -443,12 +575,16 @@ func Apply(home string, changes []Change) error {
 		if err := save(home, h); err != nil {
 			return err
 		}
-		if err := install(home, p, p.version); err != nil {
+		actual, err := install(home, p, "latest")
+		if err != nil {
 			return fmt.Errorf("%s instalação incompleta, verificar manualmente: %w", p.name, err)
 		}
+		if actual != c.Target {
+			return fmt.Errorf("%s instalação incompleta, verificar manualmente: %s --version = %s, esperado %s", p.name, p.name, actual, c.Target)
+		}
 		r.Pending = false
-		r.Previous = r.Current
-		r.Current = p.version
+		r.Previous = c.Current
+		r.Current = actual
 		h[p.name] = r
 		if err := save(home, h); err != nil {
 			return fmt.Errorf("%s instalado mas histórico não persistiu: %w", p.name, err)
@@ -535,12 +671,12 @@ func runGroup(cmd *exec.Cmd, group *procGroup) error {
 	return err
 }
 
-func install(home string, p product, version string) error {
+func install(home string, p product, version string) (string, error) {
 	if runtime.GOOS != "windows" && os.Geteuid() == 0 {
-		return errors.New("instalador standalone não pode rodar como root")
+		return "", errors.New("instalador standalone não pode rodar como root")
 	}
-	if !exactVersion.MatchString(version) {
-		return errors.New("versão inválida")
+	if version != "latest" && !exactVersion.MatchString(version) {
+		return "", errors.New("versão inválida")
 	}
 	url := p.url
 	if runtime.GOOS == "windows" {
@@ -548,7 +684,7 @@ func install(home string, p product, version string) error {
 	}
 	script, err := fetchScript(url)
 	if err != nil {
-		return fmt.Errorf("baixar instalador oficial %s: %w", url, err)
+		return "", fmt.Errorf("baixar instalador oficial %s: %w", url, err)
 	}
 	var path string
 	var args []string
@@ -556,16 +692,16 @@ func install(home string, p product, version string) error {
 	if runtime.GOOS == "windows" {
 		f, e := os.CreateTemp(home, "gex-agent-*.ps1")
 		if e != nil {
-			return e
+			return "", e
 		}
 		path = f.Name()
 		defer os.Remove(path)
 		if _, e = f.Write(script); e != nil {
 			f.Close()
-			return e
+			return "", e
 		}
 		if e = f.Close(); e != nil {
-			return e
+			return "", e
 		}
 		input = nil
 		args = []string{"-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", path}
@@ -588,17 +724,18 @@ func install(home string, p product, version string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), installTimeout)
 	defer cancel()
 	if _, err = runCommand(ctx, home, path, input, args...); err != nil {
-		return fmt.Errorf("instalador oficial: %w", err)
+		return "", fmt.Errorf("instalador oficial: %w", err)
 	}
 	actual, err := observedVersion(home, p, binPath(home, p.name))
 	if err != nil {
-		return err
+		return "", err
 	}
-	if actual != version {
-		return fmt.Errorf("%s --version = %s, esperado %s", p.name, actual, version)
+	if version != "latest" && actual != version {
+		return "", fmt.Errorf("%s --version = %s, esperado %s", p.name, actual, version)
 	}
-	return nil
+	return actual, nil
 }
+
 func Rollback(home string) error {
 	if err := validHome(home); err != nil {
 		return err
@@ -641,7 +778,7 @@ func Rollback(home string) error {
 		if err := save(home, h); err != nil {
 			return err
 		}
-		if err := install(home, p, prior); err != nil {
+		if _, err := install(home, p, prior); err != nil {
 			return fmt.Errorf("rollback %s incompleto: %w", p.name, err)
 		}
 		r.Pending = false

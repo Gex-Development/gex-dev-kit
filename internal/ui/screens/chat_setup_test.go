@@ -421,7 +421,7 @@ func TestChatSetupHarnessBannersWithoutCheckTools(t *testing.T) {
 	for _, entry := range m.entries {
 		if entry.banner != "" {
 			banners++
-			if len(entry.info) != 3 || !strings.Contains(entry.info[1], "versão fixada pelo kit:") {
+			if len(entry.info) != 3 || !strings.Contains(entry.info[1], "versão mais recente:") {
 				t.Fatalf("banner incompleto: %v", entry.info)
 			}
 		}
@@ -433,4 +433,20 @@ func TestChatSetupHarnessBannersWithoutCheckTools(t *testing.T) {
 	if banners != 2 || strings.Count(text, "Beleza, entendi") != 1 || !strings.Contains(text, "A atualização de Claude Code está bloqueada; sigo só com os arquivos do Core. Motivo: sem permissão.") {
 		t.Fatalf("banners ou aviso incorretos: %d %s", banners, text)
 	}
+}
+
+func TestChatSetupBannerShowsUnconsultedLatest(t *testing.T) {
+	m := chatSetupModel(chatInstallFakeDeps())
+	m.agents = []app.AgentChange{{Name: "claude", Blocked: true, Reason: "sem rede"}}
+	m = chatSetupQuestion(t, m, "Qual harness")
+	m = chatSetupChoose(t, m, "claude")
+	for _, entry := range m.entries {
+		if entry.banner == "claude" {
+			if entry.info[1] != "versão mais recente: não consultada" {
+				t.Fatalf("versão não consultada: %v", entry.info)
+			}
+			return
+		}
+	}
+	t.Fatal("banner Claude ausente")
 }

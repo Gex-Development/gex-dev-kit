@@ -76,7 +76,11 @@ func (m chatModel) setupHarness(ids []string) chatModel {
 		} else if ok && change.Current != change.Target {
 			needsUpdate = true
 		}
-		m.queue = append(m.queue, chatAction{banner: item.id, info: []string{current, "versão fixada pelo kit: " + change.Target, status}})
+		latest := change.Target
+		if latest == "" {
+			latest = "não consultada"
+		}
+		m.queue = append(m.queue, chatAction{banner: item.id, info: []string{current, "versão mais recente: " + latest, status}})
 	}
 	switch len(blocked) {
 	case 1:
@@ -90,7 +94,7 @@ func (m chatModel) setupHarness(ids []string) chatModel {
 	m = m.setupStep(1)
 	if needsUpdate {
 		opts := []components.ChoiceOption{{ID: "yes", Label: "Sim, atualizar"}, {ID: "no", Label: "Agora não"}}
-		return m.askFor(chatAsk{hasChoice: true, question: "Quer que eu atualize os agentes para as versões fixadas?", choice: components.NewChoice("Quer que eu atualize os agentes para as versões fixadas?", opts, false, true), options: opts, onAnswer: func(m chatModel, a chatAnswer) chatModel {
+		return m.askFor(chatAsk{hasChoice: true, question: "Quer que eu atualize os agentes para as versões mais recentes?", choice: components.NewChoice("Quer que eu atualize os agentes para as versões mais recentes?", opts, false, true), options: opts, onAnswer: func(m chatModel, a chatAnswer) chatModel {
 			m.request.SkipAgentUpdate = a.IDs[0] == "no"
 			return m.setupDestination()
 		}})

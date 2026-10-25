@@ -16,13 +16,13 @@ func isolated(t *testing.T) (string, string) {
 	t.Helper()
 	home := t.TempDir()
 	bin := filepath.Join(home, ".local", "bin")
-	if err := os.MkdirAll(bin, 0700); err != nil {
+	if err := os.MkdirAll(bin, 0o700); err != nil {
 		t.Fatal(err)
 	}
 	path := bin
 	codexBin := filepath.Dir(binPath(home, "codex"))
 	if codexBin != bin {
-		if err := os.MkdirAll(codexBin, 0700); err != nil {
+		if err := os.MkdirAll(codexBin, 0o700); err != nil {
 			t.Fatal(err)
 		}
 		path += string(os.PathListSeparator) + codexBin
@@ -32,9 +32,26 @@ func isolated(t *testing.T) (string, string) {
 	original := windowsUserPathReady
 	windowsUserPathReady = func(string, string) (bool, error) { return true, nil }
 	t.Cleanup(func() { windowsUserPathReady = original })
+	previousLatest := fetchLatest
+	fetchLatest = func(name string) (string, error) {
+		if name == "claude" {
+			return "2.1.306", nil
+		}
+		return "0.163.0", nil
+	}
+	latestCache.Lock()
+	latestCache.items = make(map[string]latestEntry)
+	latestCache.Unlock()
+	t.Cleanup(func() {
+		fetchLatest = previousLatest
+		latestCache.Lock()
+		latestCache.items = make(map[string]latestEntry)
+		latestCache.Unlock()
+	})
 	t.Setenv("USERPROFILE", home)
 	return home, bin
 }
+
 func TestWindowsCodexUsesOfficialExclusiveVisibleDirectory(t *testing.T) {
 	if runtime.GOOS != "windows" {
 		t.Skip("Windows installer layout")
@@ -64,7 +81,7 @@ func TestWindowsCodexUsesOfficialExclusiveVisibleDirectory(t *testing.T) {
 func TestPreviewBlocksUnownedAndManagedCommands(t *testing.T) {
 	home, bin := isolated(t)
 	path := filepath.Join(bin, executable("claude"))
-	if err := os.WriteFile(path, []byte("old"), 0700); err != nil {
+	if err := os.WriteFile(path, []byte("old"), 0o700); err != nil {
 		t.Fatal(err)
 	}
 	changes, err := Preview(home)
@@ -83,11 +100,11 @@ func TestPreviewBlocksUnownedAndManagedCommands(t *testing.T) {
 	if err := os.Remove(path); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.MkdirAll(filepath.Join(home, "node_modules", ".bin"), 0700); err != nil {
+	if err := os.MkdirAll(filepath.Join(home, "node_modules", ".bin"), 0o700); err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv("PATH", filepath.Join(home, "node_modules", ".bin")+string(os.PathListSeparator)+bin)
-	if err := os.WriteFile(filepath.Join(home, "node_modules", ".bin", executable("codex")), []byte("npm"), 0700); err != nil {
+	if err := os.WriteFile(filepath.Join(home, "node_modules", ".bin", executable("codex")), []byte("npm"), 0o700); err != nil {
 		t.Fatal(err)
 	}
 	changes, err = Preview(home)
@@ -101,7 +118,7 @@ func TestPreviewBlocksUnownedAndManagedCommands(t *testing.T) {
 
 func TestApplyRejectsBlockedBatchBeforeAnyInstall(t *testing.T) {
 	home, _ := isolated(t)
-	if err := os.WriteFile(binPath(home, "codex"), []byte("unowned"), 0700); err != nil {
+	if err := os.WriteFile(binPath(home, "codex"), []byte("unowned"), 0o700); err != nil {
 		t.Fatal(err)
 	}
 	changes, err := Preview(home)
@@ -121,6 +138,7 @@ func TestApplyRejectsBlockedBatchBeforeAnyInstall(t *testing.T) {
 		t.Fatalf("history changed: %v", err)
 	}
 }
+
 func TestRejectsTamperedRollbackVersionWithoutWriting(t *testing.T) {
 	home, _ := isolated(t)
 	if err := save(home, history{"claude": {Current: "2.1.306", Previous: "; rm -rf ~"}}); err != nil {
@@ -132,7 +150,7 @@ func TestRejectsTamperedRollbackVersionWithoutWriting(t *testing.T) {
 	}
 }
 
-func TestApplyAndRollbackUseExactVersions(t *testing.T) {
+func TestApplyAndRollbackUseLatestVersions(t *testing.T) {
 	home, bin := isolated(t)
 	previousFetch, previousRun := fetchScript, runCommand
 	t.Cleanup(func() { fetchScript, runCommand = previousFetch, previousRun })
@@ -141,7 +159,10 @@ func TestApplyAndRollbackUseExactVersions(t *testing.T) {
 	runCommand = func(_ context.Context, home, path string, input []byte, args ...string) (string, error) {
 		if len(input) > 0 || strings.EqualFold(path, "powershell.exe") {
 			version := args[len(args)-1]
-			if err := os.WriteFile(target, []byte(version), 0700); err != nil {
+			if version != "latest" {
+				t.Fatalf("unexpected installer version: %s", version)
+			}
+			if err := os.WriteFile(target, []byte("2.1.306"), 0o700); err != nil {
 				return "", err
 			}
 			return "", nil
@@ -162,7 +183,7 @@ func TestApplyAndRollbackUseExactVersions(t *testing.T) {
 	if err := Apply(home, changes[:1]); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(target, []byte("2.1.306"), 0700); err != nil {
+	if err := os.WriteFile(target, []byte("2.1.306"), 0o700); err != nil {
 		t.Fatal(err)
 	}
 	if err := Rollback(home); err == nil {
@@ -176,7 +197,7 @@ func TestRollbackRestoresPreviousKitRelease(t *testing.T) {
 	t.Cleanup(func() { fetchScript, runCommand = oldFetch, oldRun })
 	fetchScript = func(string) ([]byte, error) { return []byte("official installer"), nil }
 	target := filepath.Join(bin, executable("claude"))
-	if err := os.WriteFile(target, []byte("2.1.305"), 0700); err != nil {
+	if err := os.WriteFile(target, []byte("2.1.305"), 0o700); err != nil {
 		t.Fatal(err)
 	}
 	if err := save(home, history{"claude": {Current: "2.1.305"}}); err != nil {
@@ -184,7 +205,13 @@ func TestRollbackRestoresPreviousKitRelease(t *testing.T) {
 	}
 	runCommand = func(_ context.Context, home, path string, input []byte, args ...string) (string, error) {
 		if len(input) > 0 || strings.EqualFold(path, "powershell.exe") {
-			if err := os.WriteFile(target, []byte(args[len(args)-1]), 0700); err != nil {
+			version := args[len(args)-1]
+			if version == "latest" {
+				version = "2.1.306"
+			} else if version != "2.1.305" {
+				t.Fatalf("rollback argument: %q", version)
+			}
+			if err := os.WriteFile(target, []byte(version), 0o700); err != nil {
 				return "", err
 			}
 			return "", nil
@@ -202,6 +229,13 @@ func TestRollbackRestoresPreviousKitRelease(t *testing.T) {
 	if err := Apply(home, changes[:1]); err != nil {
 		t.Fatal(err)
 	}
+	h, err := load(home)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if h["claude"].Previous != "2.1.305" || h["claude"].Current != "2.1.306" {
+		t.Fatalf("history after latest install: %+v", h["claude"])
+	}
 	if err := Rollback(home); err != nil {
 		t.Fatal(err)
 	}
@@ -212,7 +246,7 @@ func TestRollbackRestoresPreviousKitRelease(t *testing.T) {
 	if string(b) != "2.1.305" {
 		t.Fatalf("rollback installed %s", b)
 	}
-	h, err := load(home)
+	h, err = load(home)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -221,7 +255,7 @@ func TestRollbackRestoresPreviousKitRelease(t *testing.T) {
 	}
 }
 
-func TestCodexPinAndVerificationFailure(t *testing.T) {
+func TestCodexLatestAndVerificationFailure(t *testing.T) {
 	home, _ := isolated(t)
 	oldFetch, oldRun := fetchScript, runCommand
 	t.Cleanup(func() { fetchScript, runCommand = oldFetch, oldRun })
@@ -229,10 +263,10 @@ func TestCodexPinAndVerificationFailure(t *testing.T) {
 	target := binPath(home, "codex")
 	runCommand = func(_ context.Context, home, path string, input []byte, args ...string) (string, error) {
 		if len(input) > 0 || strings.EqualFold(path, "powershell.exe") {
-			if args[len(args)-1] != "0.163.0" {
+			if args[len(args)-1] != "latest" {
 				t.Fatalf("wrong release argument: %v", args)
 			}
-			if err := os.WriteFile(target, []byte("codex"), 0700); err != nil {
+			if err := os.WriteFile(target, []byte("codex"), 0o700); err != nil {
 				return "", err
 			}
 			return "", nil
@@ -283,11 +317,11 @@ func TestApplyFailsClosedOnInstallerFailure(t *testing.T) {
 func TestStateSymlinkRejected(t *testing.T) {
 	home, _ := isolated(t)
 	path := statePath(home)
-	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		t.Fatal(err)
 	}
 	outside := filepath.Join(t.TempDir(), "private.json")
-	if err := os.WriteFile(outside, []byte(`{}`), 0600); err != nil {
+	if err := os.WriteFile(outside, []byte(`{}`), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.Symlink(outside, path); err != nil {
