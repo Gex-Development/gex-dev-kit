@@ -2,6 +2,20 @@
 
 Todas as mudanças relevantes do Kit de Desenvolvimento GEX ficam neste arquivo. O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e as versões usam [SemVer](https://semver.org/lang/pt-BR/).
 
+## [Não publicada]
+
+### Alterado
+
+- Claude Code e Codex passam à versão mais recente pelos instaladores oficiais, substituindo a ADR-0016. O kit consulta a versão antes de instalar e confere a versão observada.
+- Claude Code nativo oficial já instalado pode ser adotado pelo kit.
+- O banner mostra `versão mais recente: X`; o chat mostra `mais recente: X`.
+
+### Corrigido
+
+- O cartão do Doctor mostra primeiro os itens de atenção e fica em aviso.
+- Sem registro do agente no kit, o banner diz `não instalado pelo kit`.
+- Com dois agentes bloqueados, cada um mostra o próprio motivo.
+
 ## [0.3.1] - 2026-10-25
 
 As notas da publicação estão em [`docs/release-notes/v0.3.1.md`](docs/release-notes/v0.3.1.md).

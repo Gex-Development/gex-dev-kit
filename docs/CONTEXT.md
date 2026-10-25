@@ -129,9 +129,9 @@ _Avoid_: IA, assistente, ferramenta
 Agente cuja versão foi instalada pelo kit e está registrada no histórico de agentes.
 _Avoid_: agente oficial
 
-**Versão fixada**:
-Versão exata de um agente, instalada só pelo instalador oficial.
-_Avoid_: última versão
+**Versão mais recente**:
+Versão publicada mais nova de um agente, consultada antes de instalar e instalada só pelo instalador oficial.
+_Avoid_: versão fixada, versão pinada
 
 ### Interface
 
@@ -211,7 +211,7 @@ _Avoid_: atalho
 - Git hooks por projeto, só com `--repo` e confirmação.
 - `doctor` e `rollback` para ver e desfazer o que o kit gravou.
 - Catálogo de addons com fonte, licença, versão conferida e comandos oficiais; instalação opcional na TUI depois de confirmar.
-- Instalação e reversão da versão fixada de Claude Code e Codex, só pelo instalador oficial.
+- Instalação da versão mais recente de Claude Code e Codex pelo instalador oficial, com reversão pela versão exata anterior.
 
 ## Fora de escopo
 
