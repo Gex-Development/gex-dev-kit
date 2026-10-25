@@ -2,17 +2,24 @@
 
 Todas as mudanças relevantes do Kit de Desenvolvimento GEX ficam neste arquivo. O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e as versões usam [SemVer](https://semver.org/lang/pt-BR/).
 
-## [Não publicada]
+## [0.3.1] - 2026-10-25
+
+As notas da publicação estão em [`docs/release-notes/v0.3.1.md`](docs/release-notes/v0.3.1.md).
 
 ### Adicionado
 
 - **Instaladores de uma linha** por sistema: `scripts/install.sh` (macOS e Linux) e `scripts/install.ps1` (Windows). Escolhem o binário certo para o sistema e a arquitetura, conferem o SHA-256 antes de instalar, instalam como `gex-dev-kit` (`~/.local/bin` no macOS e Linux; `%LOCALAPPDATA%\Programs\gex-dev-kit` no Windows, com a pasta no PATH do usuário) e mostram a linha de PATH quando falta. Substituem o passo a passo manual de `gh release download`, `sha256sum` e `chmod`. Exigem o `gh` autenticado, porque a release é privada. O `install.ps1` não foi executado em Windows.
 - `scripts/test-install.sh`, com um `gh` falso, entra no `scripts/check.sh`.
 
+### Corrigido
+
+- **Colisão de executáveis no PATH:** quando há mais de uma cópia de `claude` ou `codex` no PATH, o motivo do bloqueio agora lista todos os caminhos encontrados, na ordem do PATH. Antes dizia só "múltiplos executáveis" e não mostrava quais remover. O bloqueio em si não mudou.
+- **Frase sobre o Core no chat:** com o Core alterado, o cartão mostrava "0/7 skills · alterado" e logo depois o chat dizia "Ainda não há Core instalado". Agora o chat conta os arquivos que precisam de atenção e manda rodar `/doctor`.
+
 ### Alterado
 
 - README reorganizado: instalação por sistema com badges de ícone (macOS, Linux, Windows), primeiro uso com diagrama do setup, receitas por tarefa, solução de problemas, glossário e referência recolhida. Texto reescrito em frases curtas; o maior parágrafo caiu de 124 para 37 palavras.
-- Banner animado do README (`docs/assets/readme/banner.svg`): SVG sem fontes externas, estático quando o sistema pede movimento reduzido.
+- Banner animado do README (`docs/assets/readme/banner.svg`): SVG sem fontes externas, estático quando o sistema pede movimento reduzido. Imagem para o social preview em `docs/assets/readme/social-preview.png`; o GitHub só aceita essa imagem em repositório público.
 
 ## [0.3.0] - 2026-10-25
 
@@ -77,6 +84,7 @@ Primeira entrega.
 - Claude Code `2.1.306` e Codex `0.163.0` fixados; a CLI só instala ou atualiza executáveis standalone próprios, pelos instaladores oficiais com versão exata.
 - Binários para macOS, Linux e Windows, em `arm64` e `amd64`.
 
+[0.3.1]: https://github.com/Gex-Development/gex-dev-kit/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/Gex-Development/gex-dev-kit/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/Gex-Development/gex-dev-kit/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/Gex-Development/gex-dev-kit/releases/tag/v0.1.0
