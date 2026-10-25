@@ -24,6 +24,7 @@ verifica_comentarios() {
   local falhou=0 arquivo linhas
   while IFS= read -r arquivo; do
     [[ -n $arquivo ]] || continue
+    [[ -f $arquivo ]] || continue
     case $arquivo in
       internal/catalog/assets/matt/*) continue ;;
       *.go)
