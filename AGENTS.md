@@ -20,6 +20,8 @@ Escopo, estado e uso para usuários estão em `README.md`.
 ## Comandos
 
 - `scripts/check.sh`: portão completo (formato, comentários, `go vet` com Windows, testes com `-race`, build e smoke). Rode antes de entregar.
+- `scripts/install.sh` / `scripts/install.ps1`: baixam a release adequada, conferem SHA-256 e instalam `gex-dev-kit` no PATH.
+- `scripts/test-install.sh`: testa o instalador sem rede, com `gh` falso e HOME descartável.
 - `go test ./internal/ui/screens -run TestGoldenChat -update` e `go test ./internal/ui/theme -run TestGolden -update`: regravam os goldens do chat e da paleta. Só ao mudar o visual de propósito; revise o diff.
 - `scripts/smoke.sh CAMINHO_DO_BINARIO`: instalação, doctor, hooks e rollback num HOME descartável.
 - `scripts/release.sh vX.Y.Z`: gera `dist/` local e exige `docs/release-notes/vX.Y.Z.md`. Publicar exige `--publish` e confirmação humana.
