@@ -1,0 +1,19 @@
+
+* Beleza, entendi que o seu harness é o OMP (oh-my-pi).
+
+* O OMP lê as skills de ~/.agents/skills; o kit já instala
+  lá.
+
+| Neste HOME (~)
+
+[?] Além do Core (obrigatório), o que mais você quer inst...
+> 1. [ ] Produto e Interface (1 opção)
+    -> Identidade visual
+
+  [ Pular (nenhuma marcada) ]
+up/down mover | espaco marca | enter confirma | esc voltar
+
++- [GEX] [OMP] [gex-dev-kit]--------- -- 57% -- Etapa 4/7--+
+| > ou digite um comando (/ajuda)                          |
++----------------------------------------------------------+
+setup · Extras    espaco marca | enter confirma | esc voltar

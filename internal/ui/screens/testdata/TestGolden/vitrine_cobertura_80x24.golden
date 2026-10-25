@@ -1,0 +1,24 @@
+ ◆ gex-dev-kit ds  · Cobertura Charm                                       0.3.0
+────────────────────────────────────────────────────────────────────────────────
+▸ Páginas                Demo                                                   
+  Identidade           Mapa de cobertura: 49 entradas                           
+  Bordas e cor         ┌───────────┬──────────────┬───────────────┬────────────┐
+  Layout               │ Lib       │ Recurso      │ Tela          │ Página     │
+  Medidas              ├───────────┼──────────────┼───────────────┼────────────┤
+  Terminal             │ bubbletea │ tea.Model,   │ chat_view.go  │ Identidade │
+  Programa             │           │ Update e     │               │            │
+  Movimento            │           │ View         │               │            │
+  Feedback             │ bubbletea │ tea.Tick     │ chat.go       │ Movimento  │
+  Navegação            │ bubbletea │ WindowSizeMs │ chat.go       │ Layout     │
+  Dados                │           │ g            │               │            │
+  Formulários          │ bubbletea │ alt screen   │ chat_view.go  │ Programa   │
+  Acessível            │ bubbletea │ mouse        │ chat_view.go  │ Programa   │
+  Bubbles              │ bubbletea │ foco e blur  │ chat.go       │ Programa   │
+  Testes               │ bubbletea │ tea.Batch e  │ chat.go       │ Programa   │
+│ Cobertura Charm      │           │ tea.Sequence │               │            │
+                       │ bubbletea │ tea.Println  │ showcase.go   │ Programa   │
+                       │           │ fora do alt  │               │            │
+                       │           │ screen       │               │            │
+                       │ bubbletea │ suspensão    │ chat.go       │ Programa   │
+                                                                                
+↑/k subir • ↓/j descer • enter escolher • esc voltar • q sair • ? ajuda …       

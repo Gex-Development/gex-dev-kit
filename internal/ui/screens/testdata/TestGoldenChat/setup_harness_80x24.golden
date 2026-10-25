@@ -1,0 +1,23 @@
+
+| /setup
+
+* Vamos configurar seu ambiente. São poucos passos: harness, destino, extras,
+  plugins, revisão e instalação. Você pode voltar com esc a qualquer momento.
+
+[?] Qual harness você usa?
+>          /###\  
+> 1. [ ]  <#####>  Claude Code
+>          || ||  
+
+           .---.  
+  2. [ ]  ( >_  )  Codex
+           '---'  
+
+  [ Marque uma opção ]
+< pagina 1/2 >
+up/down mover | left/right pagina | espaco marca | enter confirma | esc voltar
+
++- [GEX] [gex-dev-kit]----------------------------------- -- 14% -- Etapa 1/7--+
+| > ou digite um comando (/ajuda)                                              |
++------------------------------------------------------------------------------+
+setup · Harness   espaco marca | left/right pagina | enter confirma | esc voltar

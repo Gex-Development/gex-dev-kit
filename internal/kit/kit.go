@@ -14,8 +14,17 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/Gex-Development/gex-dev-kit/internal/catalog"
+)
+
+var (
+	ErrBusy       = errors.New("histórico ocupado")
+	ErrChanged    = errors.New("arquivo alterado desde a prévia")
+	ErrIncomplete = errors.New("operação anterior incompleta; execute rollback")
+	ErrConflict   = errors.New("rollback abortado: arquivo alterado depois da instalação")
+	ErrSymlink    = errors.New("link simbólico recusado")
 )
 
 type Plan struct {
@@ -39,12 +48,18 @@ type Status struct {
 }
 
 type entry struct {
-	Path       string      `json:"path"`
-	Before     []byte      `json:"before,omitempty"`
-	BeforeMode fs.FileMode `json:"before_mode,omitempty"`
-	Existed    bool        `json:"existed"`
-	After      []byte      `json:"after"`
-	AfterMode  fs.FileMode `json:"after_mode"`
+	Path         string      `json:"path"`
+	Existed      bool        `json:"existed"`
+	BeforeMode   fs.FileMode `json:"before_mode,omitempty"`
+	BeforeHash   string      `json:"before_hash,omitempty"`
+	BeforeSize   int         `json:"before_size,omitempty"`
+	AfterMode    fs.FileMode `json:"after_mode"`
+	AfterHash    string      `json:"after_hash,omitempty"`
+	AfterSize    int         `json:"after_size,omitempty"`
+	LegacyBefore []byte      `json:"before,omitempty"`
+	LegacyAfter  []byte      `json:"after,omitempty"`
+	Before       []byte      `json:"-"`
+	After        []byte      `json:"-"`
 }
 
 type record struct {
@@ -53,6 +68,7 @@ type record struct {
 	Pending     bool    `json:"pending,omitempty"`
 	RollingBack bool    `json:"rolling_back,omitempty"`
 	RolledBack  bool    `json:"rolled_back,omitempty"`
+	Pruned      bool    `json:"pruned,omitempty"`
 }
 
 type history struct {
@@ -61,6 +77,42 @@ type history struct {
 
 const historyDir = ".local/share/gex-dev-kit/history"
 const historyState = historyDir + "/state.json"
+const lockName = historyDir + "/.lock"
+const binDir = ".local/share/gex-dev-kit/bin/"
+const binarySniff = 8192
+
+type FileContent struct {
+	Path    string
+	Before  []byte
+	After   []byte
+	Existed bool
+	Binary  bool
+}
+
+type RollbackEntry struct {
+	Path    string
+	Action  string
+	Current []byte
+	Restore []byte
+	Binary  bool
+}
+
+type RollbackPlan struct {
+	ID        string
+	Entries   []RollbackEntry
+	Conflicts []string
+}
+
+type LockInfo struct {
+	PID     int
+	Started time.Time
+	Alive   bool
+}
+
+type lockFile struct {
+	PID     int    `json:"pid"`
+	Started string `json:"started"`
+}
 
 func digest(data []byte) string {
 	sum := sha256.Sum256(data)
@@ -107,7 +159,7 @@ func safePath(root *os.Root, p string) (fs.FileInfo, error) {
 			return nil, err
 		}
 		if info.Mode()&os.ModeSymlink != 0 {
-			return nil, fmt.Errorf("link simbólico recusado: %s", part)
+			return nil, fmt.Errorf("%w: %s", ErrSymlink, part)
 		}
 		if n < len(parts)-1 && !info.IsDir() {
 			return nil, fmt.Errorf("diretório inválido: %s", part)
@@ -178,7 +230,7 @@ func Preview(home string, files []catalog.File) (Plan, error) {
 			continue
 		}
 		saved := before
-		plan.entries = append(plan.entries, entry{Path: file.Path, Before: saved, BeforeMode: mode, Existed: existed, After: after, AfterMode: desiredMode})
+		plan.entries = append(plan.entries, blobNewEntry(file.Path, saved, mode, existed, after, desiredMode))
 		change := Change{Path: file.Path, Action: "criar", AfterHash: digest(after)}
 		if existed {
 			change.Action = "atualizar"
@@ -189,21 +241,27 @@ func Preview(home string, files []catalog.File) (Plan, error) {
 	return plan, nil
 }
 
-func checkEntry(root *os.Root, e entry, after bool, allowBefore bool) error {
+func matchesBefore(e entry, data []byte, mode fs.FileMode, exists bool) bool {
+	return exists == e.Existed && (!exists || digest(data) == e.BeforeHash && sameMode(mode, e.BeforeMode))
+}
+
+func matchesAfter(e entry, data []byte, mode fs.FileMode, exists bool) bool {
+	return exists && digest(data) == e.AfterHash && sameMode(mode, e.AfterMode)
+}
+
+func rollbackMatches(e entry, data []byte, mode fs.FileMode, exists bool, interrupted bool) bool {
+	return matchesAfter(e, data, mode, exists) || interrupted && matchesBefore(e, data, mode, exists)
+}
+
+func checkEntry(root *os.Root, e entry) error {
 	data, mode, exists, err := current(root, e.Path)
 	if err != nil {
 		return err
 	}
-	if after && exists && digest(data) == digest(e.After) && sameMode(mode, e.AfterMode) {
-		return nil
+	if !matchesBefore(e, data, mode, exists) {
+		return fmt.Errorf("%w: %s", ErrChanged, e.Path)
 	}
-	if allowBefore && exists == e.Existed && (!exists || digest(data) == digest(e.Before) && sameMode(mode, e.BeforeMode)) {
-		return nil
-	}
-	if !after && exists == e.Existed && (!exists || digest(data) == digest(e.Before) && sameMode(mode, e.BeforeMode)) {
-		return nil
-	}
-	return fmt.Errorf("arquivo alterado desde a prévia: %s", e.Path)
+	return nil
 }
 
 func readHistory(root *os.Root) (history, error) {
@@ -222,6 +280,7 @@ func readHistory(root *os.Root) (history, error) {
 	if err := json.Unmarshal(data, &h); err != nil {
 		return history{}, err
 	}
+	blobMigrate(&h)
 	return h, nil
 }
 
@@ -300,6 +359,15 @@ func saveHistory(root *os.Root, h history) error {
 	if info == nil || !privateMode(info.Mode(), 0700) {
 		return errors.New("histórico sem permissão privada")
 	}
+	for _, r := range h.Records {
+		for _, e := range r.Entries {
+			if e.Existed && e.Before != nil {
+				if err := blobPut(root, e.Before); err != nil {
+					return err
+				}
+			}
+		}
+	}
 	data, err := json.Marshal(h)
 	if err != nil {
 		return err
@@ -322,15 +390,23 @@ func lock(root *os.Root) (func(), error) {
 	if !privateMode(info.Mode(), 0700) {
 		return nil, errors.New("histórico sem permissão privada")
 	}
-	f, err := root.OpenFile(historyDir+"/.lock", os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
+	f, err := root.OpenFile(lockName, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
 	if err != nil {
-		return nil, fmt.Errorf("histórico ocupado: %w", err)
+		return nil, fmt.Errorf("%w: %w", ErrBusy, err)
 	}
-	if err := f.Close(); err != nil {
-		root.Remove(historyDir + "/.lock")
+	data, err := json.Marshal(lockFile{PID: os.Getpid(), Started: time.Now().UTC().Format(time.RFC3339)})
+	if err == nil {
+		_, err = f.Write(data)
+	}
+	closeErr := f.Close()
+	if err == nil {
+		err = closeErr
+	}
+	if err != nil {
+		root.Remove(lockName)
 		return nil, err
 	}
-	return func() { root.Remove(historyDir + "/.lock") }, nil
+	return func() { root.Remove(lockName) }, nil
 }
 
 func Apply(plan Plan) (string, error) {
@@ -363,11 +439,11 @@ func Apply(plan Plan) (string, error) {
 	}
 	for _, r := range h.Records {
 		if (r.Pending || r.RollingBack) && !r.RolledBack {
-			return "", errors.New("operação anterior incompleta; execute rollback")
+			return "", ErrIncomplete
 		}
 	}
 	for _, e := range plan.entries {
-		if err := checkEntry(root, e, false, false); err != nil {
+		if err := checkEntry(root, e); err != nil {
 			return "", err
 		}
 	}
@@ -388,7 +464,80 @@ func Apply(plan Plan) (string, error) {
 	if err := saveHistory(root, h); err != nil {
 		return "", fmt.Errorf("instalação concluída, histórico pendente; execute rollback: %w", err)
 	}
+	if err := blobRetain(root, &h); err != nil {
+		return "", fmt.Errorf("instalação concluída; limpeza do histórico falhou: %w", err)
+	}
 	return id, nil
+}
+
+func activeIndex(root *os.Root) (history, int, error) {
+	info, err := safePath(root, historyState)
+	if err != nil || info == nil {
+		return history{}, -1, err
+	}
+	h, err := readHistory(root)
+	if err != nil {
+		return history{}, -1, err
+	}
+	for n := len(h.Records) - 1; n >= 0; n-- {
+		if !h.Records[n].RolledBack {
+			return h, n, nil
+		}
+	}
+	return h, -1, nil
+}
+
+func rollbackConflicts(root *os.Root, r record) ([]string, error) {
+	var conflicts []string
+	for _, e := range r.Entries {
+		data, mode, exists, err := current(root, e.Path)
+		if err != nil {
+			return nil, err
+		}
+		if !rollbackMatches(e, data, mode, exists, r.Pending || r.RollingBack) {
+			conflicts = append(conflicts, e.Path)
+		}
+	}
+	return conflicts, nil
+}
+
+func RollbackPreview(home string) (RollbackPlan, error) {
+	root, err := openHome(home)
+	if err != nil {
+		return RollbackPlan{}, err
+	}
+	defer root.Close()
+	h, index, err := activeIndex(root)
+	if err != nil || index < 0 {
+		return RollbackPlan{}, err
+	}
+	r := h.Records[index]
+	conflicts, err := rollbackConflicts(root, r)
+	if err != nil {
+		return RollbackPlan{}, err
+	}
+	plan := RollbackPlan{ID: r.ID, Conflicts: conflicts}
+	for _, e := range r.Entries {
+		data, mode, exists, err := current(root, e.Path)
+		if err != nil {
+			return RollbackPlan{}, err
+		}
+		item := RollbackEntry{Path: e.Path, Action: "restaurar", Current: data, Binary: isStableBinary(e.Path) || binaryContent(data)}
+		if matchesBefore(e, data, mode, exists) {
+			item.Action = "inalterado"
+		} else if !e.Existed {
+			item.Action = "remover"
+		} else {
+			before, err := blobEntryBefore(root, e)
+			if err != nil {
+				return RollbackPlan{}, fmt.Errorf("%s: %w", e.Path, err)
+			}
+			item.Restore = before
+			item.Binary = item.Binary || binaryContent(before)
+		}
+		plan.Entries = append(plan.Entries, item)
+	}
+	return plan, nil
 }
 
 func Rollback(home string) (string, error) {
@@ -397,37 +546,29 @@ func Rollback(home string) (string, error) {
 		return "", err
 	}
 	defer root.Close()
-	info, err := safePath(root, historyState)
-	if err != nil {
+	if _, index, err := activeIndex(root); err != nil || index < 0 {
 		return "", err
-	}
-	if info == nil {
-		return "", nil
 	}
 	unlock, err := lock(root)
 	if err != nil {
 		return "", err
 	}
 	defer unlock()
-	h, err := readHistory(root)
+	h, index, err := activeIndex(root)
+	if err != nil || index < 0 {
+		return "", err
+	}
+	r := &h.Records[index]
+	conflicts, err := rollbackConflicts(root, *r)
 	if err != nil {
 		return "", err
 	}
-	index := -1
-	for n := len(h.Records) - 1; n >= 0; n-- {
-		if !h.Records[n].RolledBack {
-			index = n
-			break
-		}
+	if len(conflicts) > 0 {
+		return "", fmt.Errorf("%w: %s", ErrConflict, strings.Join(conflicts, ", "))
 	}
-	if index < 0 {
-		return "", nil
-	}
-	r := &h.Records[index]
-	for _, e := range r.Entries {
-		if err := checkEntry(root, e, true, r.Pending || r.RollingBack); err != nil {
-			return "", err
-		}
+	restores, err := blobRestoreSet(root, *r)
+	if err != nil {
+		return "", err
 	}
 	r.RollingBack = true
 	if err := saveHistory(root, h); err != nil {
@@ -438,11 +579,11 @@ func Rollback(home string) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		if exists == e.Existed && (!exists || digest(data) == digest(e.Before) && sameMode(mode, e.BeforeMode)) {
+		if matchesBefore(e, data, mode, exists) {
 			continue
 		}
 		if e.Existed {
-			if err := replace(root, e.Path, e.Before, e.BeforeMode); err != nil {
+			if err := replace(root, e.Path, restores[e.Path], e.BeforeMode); err != nil {
 				return "", err
 			}
 		} else if err := root.Remove(e.Path); err != nil {
@@ -451,10 +592,14 @@ func Rollback(home string) (string, error) {
 	}
 	r.RolledBack = true
 	r.RollingBack = false
+	id := r.ID
 	if err := saveHistory(root, h); err != nil {
 		return "", err
 	}
-	return r.ID, nil
+	if err := blobRetain(root, &h); err != nil {
+		return "", fmt.Errorf("rollback concluído; limpeza do histórico falhou: %w", err)
+	}
+	return id, nil
 }
 
 func Doctor(home string) ([]Status, error) {
@@ -463,18 +608,24 @@ func Doctor(home string) ([]Status, error) {
 		return nil, err
 	}
 	defer root.Close()
+	status, err := lockStatus(root)
+	if err != nil {
+		return nil, err
+	}
 	info, err := safePath(root, historyState)
 	if err != nil {
 		return nil, err
 	}
 	if info == nil {
+		if len(status) > 0 {
+			return status, nil
+		}
 		return []Status{{Path: historyState, State: "sem-historico", Detail: "Nenhuma instalação registrada."}}, nil
 	}
 	h, err := readHistory(root)
 	if err != nil {
 		return nil, err
 	}
-	status := []Status{}
 	latest := make(map[string]entry)
 	for _, r := range h.Records {
 		if r.RolledBack {
@@ -489,6 +640,10 @@ func Doctor(home string) ([]Status, error) {
 	}
 	for p, e := range latest {
 		data, mode, exists, err := current(root, p)
+		if errors.Is(err, ErrSymlink) {
+			status = append(status, Status{Path: p, State: "bloqueado", Detail: "link simbólico; o kit não segue links."})
+			continue
+		}
 		if err != nil {
 			return nil, err
 		}
@@ -496,11 +651,11 @@ func Doctor(home string) ([]Status, error) {
 		if !exists {
 			s.State = "ausente"
 			s.Detail = "Arquivo instalado ausente."
-		} else if digest(data) != digest(e.After) || !sameMode(mode, e.AfterMode) {
+		} else if digest(data) != e.AfterHash || !sameMode(mode, e.AfterMode) {
 			s.State = "alterado"
 			s.Detail = "Arquivo foi alterado."
 		}
-		if p == ".codex/hooks.json" && s.State == "ok" && strings.Contains(string(e.After), "hook commit-msg") && strings.Contains(string(e.After), "gex-dev-kit") {
+		if p == ".codex/hooks.json" && s.State == "ok" && kitHookHandler(data) {
 			s.State = "pendente"
 			s.Detail = "Confirme confiança do hook no Codex com /hooks; estado de confiança não verificável aqui."
 		}
@@ -508,7 +663,93 @@ func Doctor(home string) ([]Status, error) {
 	}
 	sort.Slice(status, func(i, j int) bool { return status[i].Path < status[j].Path })
 	if len(status) == 0 {
-		status = append(status, Status{Path: historyState, State: "sem-historico", Detail: "Nenhuma instalação ativa."})
+		status = append(status, Status{Path: historyState, State: "sem-historico", Detail: "Nenhuma instalação registrada."})
 	}
 	return status, nil
+}
+
+func lockStatus(root *os.Root) ([]Status, error) {
+	info, present, err := readLock(root)
+	if errors.Is(err, ErrSymlink) {
+		return []Status{{Path: lockName, State: "bloqueado", Detail: "link simbólico; o kit não segue links."}}, nil
+	}
+	if err != nil || !present {
+		return nil, err
+	}
+	if info.Alive {
+		return []Status{{Path: lockName, State: "bloqueado", Detail: fmt.Sprintf("Outra execução do kit (PID %d) está ativa; aguarde.", info.PID)}}, nil
+	}
+	detail := fmt.Sprintf("O lock é de um processo que não existe mais (PID %d, desde %s). Remova %s e rode de novo.", info.PID, info.Started.Format(time.RFC3339), lockName)
+	return []Status{{Path: lockName, State: "bloqueado", Detail: detail}}, nil
+}
+
+func readLock(root *os.Root) (LockInfo, bool, error) {
+	info, err := safePath(root, lockName)
+	if err != nil || info == nil {
+		return LockInfo{}, false, err
+	}
+	data, _, exists, err := current(root, lockName)
+	if err != nil || !exists {
+		return LockInfo{}, false, err
+	}
+	var lf lockFile
+	_ = json.Unmarshal(data, &lf)
+	started, _ := time.Parse(time.RFC3339, lf.Started)
+	return LockInfo{PID: lf.PID, Started: started, Alive: lockProcessAlive(lf.PID)}, true, nil
+}
+
+func Lock(home string) (LockInfo, bool, error) {
+	root, err := openHome(home)
+	if err != nil {
+		return LockInfo{}, false, err
+	}
+	defer root.Close()
+	return readLock(root)
+}
+
+func kitHookHandler(data []byte) bool {
+	var doc any
+	if json.Unmarshal(data, &doc) != nil {
+		return false
+	}
+	return hasKitHookText(doc)
+}
+
+func hasKitHookText(v any) bool {
+	switch x := v.(type) {
+	case string:
+		return strings.Contains(x, "gex-dev-kit") && strings.Contains(x, " hook")
+	case []any:
+		for _, item := range x {
+			if hasKitHookText(item) {
+				return true
+			}
+		}
+	case map[string]any:
+		for _, item := range x {
+			if hasKitHookText(item) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (p Plan) Contents() []FileContent {
+	out := make([]FileContent, 0, len(p.entries))
+	for _, e := range p.entries {
+		out = append(out, FileContent{Path: e.Path, Before: e.Before, After: e.After, Existed: e.Existed, Binary: isStableBinary(e.Path) || binaryContent(e.Before) || binaryContent(e.After)})
+	}
+	return out
+}
+
+func isStableBinary(p string) bool {
+	return strings.HasPrefix(p, binDir)
+}
+
+func binaryContent(data []byte) bool {
+	if len(data) > binarySniff {
+		data = data[:binarySniff]
+	}
+	return bytes.IndexByte(data, 0) >= 0
 }

@@ -1,0 +1,24 @@
+ ◆ gex-dev-kit ds  · Acessível                                             0.3.0
+────────────────────────────────────────────────────────────────────────────────
+▸ Páginas                Demo                                                   
+  Identidade           Versão Plain de Formulários: sem cor e sem símbolos decor
+  Bordas e cor         ativos                                                   
+  Layout                                                                        
+  Medidas                Core obrigatório                                       
+  Terminal                                                                      
+  Programa               O Core entra em toda instalação.                       
+  Movimento                                                                     
+  Feedback                                                                      
+  Navegação              Nome do projeto                                        
+  Dados                  > g                                                    
+  Formulários                                                                   
+│ Acessível              Caminho do repositório                                 
+  Bubbles                Informe um caminho absoluto.                           
+  Testes                 >                                                      
+  Cobertura Charm      erro: use caminho absoluto                               
+                                                                                
+                         Escolha o destino                                      
+                         > Global (HOME)                                        
+                           Repositório                                          
+                                                                                
+↑/k subir • ↓/j descer • enter escolher • esc voltar • q sair • ? ajuda …       

@@ -1,0 +1,291 @@
+package main
+
+import (
+	"bytes"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"github.com/Gex-Development/gex-dev-kit/internal/ui/terminal"
+)
+
+func flagsParse(args []string) (string, options, error) {
+	command, rest := splitCommand(args)
+	o, err := parseOptions(command, rest)
+	return command, o, err
+}
+
+func TestNoArgsNonTTYShowsHelp(t *testing.T) {
+	code, out, errors := invoke(t)
+	if code != 0 || errors != "" || !strings.Contains(out, "install") {
+		t.Fatalf("ajuda: exit=%d out=%q err=%q", code, out, errors)
+	}
+}
+
+func TestSubcommandHelpWritesOnlyStdout(t *testing.T) {
+	for _, args := range [][]string{
+		{"install", "--help"}, {"doctor", "-h"}, {"rollback", "--help"},
+		{"rollback-agents", "--help"}, {"skills", "--help"},
+		{"hooks", "-h"}, {"hook", "commit-msg", "--help"},
+		{"addons", "--help"}, {"githooks", "-h"}, {"ds", "--help"},
+	} {
+		code, out, errors := invoke(t, args...)
+		if code != 0 || errors != "" || !strings.Contains(out, args[0]) {
+			t.Fatalf("%v: exit=%d out=%q err=%q", args, code, out, errors)
+		}
+	}
+}
+
+func TestVersionShortFlag(t *testing.T) {
+	code, out, errors := invoke(t, "-v")
+	if code != 0 || strings.TrimSpace(out) != version || errors != "" {
+		t.Fatalf("-v: exit=%d out=%q err=%q", code, out, errors)
+	}
+}
+
+func TestParseOptionsTabela(t *testing.T) {
+	home := t.TempDir()
+	repo := t.TempDir()
+	casos := []struct {
+		nome    string
+		args    []string
+		comando string
+		erro    bool
+		ok      func(o options) bool
+	}{
+		{"instalação com opções depois do comando", []string{"install", "--yes", "--home", home, "--skill", "tdd", "--skill", "x", "--hook", "gex-conventional-commits", "--skip-agent-update"}, "install", false,
+			func(o options) bool {
+				return o.Yes && o.Home == home && len(o.Skills) == 2 && len(o.Hooks) == 1 && o.SkipAgentUpdate
+			}},
+		{"global antes do comando", []string{"--quiet", "install", "--yes"}, "install", false,
+			func(o options) bool { return o.Quiet && o.Yes }},
+		{"--ui=cli global", []string{"--ui=cli", "skills"}, "skills", false,
+			func(o options) bool { return o.UI == terminal.ModeCLI }},
+		{"githooks com repetíveis", []string{"githooks", "--repo", repo, "--hook", "gex-pre-push", "--run", "go test ./...", "--pre-commit-run", "go vet ./..."}, "githooks", false,
+			func(o options) bool {
+				return o.Repo == repo && len(o.PrePush) == 1 && len(o.PreCommit) == 1 && len(o.Hooks) == 1
+			}},
+		{"addons com nome e json", []string{"addons", "caveman", "--json"}, "addons", false,
+			func(o options) bool { return o.JSON && len(o.Args) == 1 && o.Args[0] == "caveman" }},
+		{"doctor json home", []string{"doctor", "--json", "--home", home}, "doctor", false,
+			func(o options) bool { return o.JSON && o.Home == home }},
+		{"skills json", []string{"skills", "--json"}, "skills", false,
+			func(o options) bool { return o.JSON }},
+		{"hooks json com no-anim", []string{"hooks", "--no-anim", "--json"}, "hooks", false,
+			func(o options) bool { return o.JSON && o.NoAnim }},
+		{"help com comando", []string{"help", "install"}, "help", false,
+			func(o options) bool { return len(o.Args) == 1 && o.Args[0] == "install" }},
+		{"hook aceita caminho", []string{"hook", "commit-msg", "/abs/COMMIT_EDITMSG"}, "hook", false,
+			func(o options) bool { return len(o.Args) == 2 }},
+		{"versão curta", []string{"-v"}, "", false,
+			func(o options) bool { return o.Version }},
+		{"help de raiz", []string{"--help"}, "", false,
+			func(o options) bool { return o.Help }},
+		{"json em install", []string{"install", "--json"}, "install", true, nil},
+		{"tui com quiet", []string{"--ui=tui", "install", "--quiet"}, "install", true, nil},
+		{"home relativo", []string{"install", "--home", "relativo"}, "install", true, nil},
+		{"repo relativo", []string{"doctor", "--repo", "relativo"}, "doctor", true, nil},
+		{"home e repo juntos", []string{"rollback", "--home", home, "--repo", repo}, "rollback", true, nil},
+		{"modo inválido", []string{"--ui=gui", "skills"}, "skills", true, nil},
+		{"opção raiz desconhecida", []string{"--invalid-flag"}, "", true, nil},
+		{"comando desconhecido", []string{"gizmo"}, "gizmo", true, nil},
+		{"argumento extra", []string{"install", "extra"}, "install", true, nil},
+		{"valor ausente", []string{"install", "--skill"}, "install", true, nil},
+		{"booleana com valor", []string{"install", "--yes=1"}, "install", true, nil},
+		{"yes em rollback-agents com skill", []string{"rollback-agents", "--skill", "x"}, "rollback-agents", true, nil},
+		{"help de comando desconhecido", []string{"help", "nope"}, "help", true, nil},
+	}
+	for _, caso := range casos {
+		comando, o, err := flagsParse(caso.args)
+		if comando != caso.comando {
+			t.Fatalf("%s: comando=%q; quero %q", caso.nome, comando, caso.comando)
+		}
+		if caso.erro {
+			if err == nil {
+				t.Fatalf("%s: esperado erro de uso, obteve opções %+v", caso.nome, o)
+			}
+			continue
+		}
+		if err != nil {
+			t.Fatalf("%s: erro inesperado: %v", caso.nome, err)
+		}
+		if !caso.ok(o) {
+			t.Fatalf("%s: opções incorretas %+v", caso.nome, o)
+		}
+	}
+}
+
+func TestComandoDesconhecidoListaValidos(t *testing.T) {
+	_, err := parseOptions("gizmo", nil)
+	u, ok := err.(usageError)
+	if !ok {
+		t.Fatalf("comando desconhecido sem erro de uso: %v", err)
+	}
+	if !strings.HasPrefix(u.action, "Comandos: addons, doctor, ds, githooks, help, hook, hooks, install,") {
+		t.Fatalf("ação não lista os comandos: %q", u.action)
+	}
+	if !strings.HasSuffix(u.action, "Use --help para opções.") || strings.Contains(u.action, "Você quis dizer") {
+		t.Fatalf("ação sem sugestão esperada: %q", u.action)
+	}
+}
+
+func TestComandoDesconhecidoSugereProximo(t *testing.T) {
+	_, err := parseOptions("instal", nil)
+	u, ok := err.(usageError)
+	if !ok {
+		t.Fatalf("comando desconhecido sem erro de uso: %v", err)
+	}
+	if !strings.HasSuffix(u.action, "Use --help para opções. Você quis dizer install?") {
+		t.Fatalf("ação sem sugestão: %q", u.action)
+	}
+}
+
+func TestDistanciaEdicao(t *testing.T) {
+	casos := []struct {
+		a, b string
+		quer int
+	}{
+		{"", "", 0},
+		{"install", "install", 0},
+		{"instal", "install", 1},
+		{"doctr", "doctor", 1},
+		{"hoks", "hooks", 1},
+		{"kitten", "sitting", 3},
+	}
+	for _, c := range casos {
+		if got := distanciaEdicao(c.a, c.b); got != c.quer {
+			t.Fatalf("distanciaEdicao(%q, %q) = %d; quero %d", c.a, c.b, got, c.quer)
+		}
+	}
+}
+
+func TestSugestaoValorRespeitaLimite(t *testing.T) {
+	validos := []string{"install", "doctor"}
+	if got := sugestaoValor("instll", validos); got != " Você quis dizer install?" {
+		t.Fatalf("distância 1: %q", got)
+	}
+	if got := sugestaoValor("xyz", validos); got != "" {
+		t.Fatalf("sem parecido deveria ser vazio: %q", got)
+	}
+}
+
+func TestFlagRaizDesconhecidaSaiComUso(t *testing.T) {
+	code, out, errors := invoke(t, "--invalid-flag")
+	if code != 2 || out != "" || !strings.Contains(errors, "opção desconhecida: --invalid-flag") || !strings.Contains(errors, "Use --help para opções.") {
+		t.Fatalf("--invalid-flag: exit=%d out=%q err=%q", code, out, errors)
+	}
+}
+
+func TestFlagHomeRelativoSaiComUso(t *testing.T) {
+	code, out, errors := invoke(t, "install", "--home", "relativo", "--yes")
+	if code != 2 || out != "" || !strings.Contains(errors, "--home") {
+		t.Fatalf("--home relativo: exit=%d out=%q err=%q", code, out, errors)
+	}
+	if filepath.IsAbs("relativo") {
+		t.Fatalf("caminho de teste deve ser relativo")
+	}
+}
+
+func TestFlagJSONSoEmComandosDeLeitura(t *testing.T) {
+	code, out, errors := invoke(t, "install", "--json")
+	if code != 2 || out != "" || errors == "" {
+		t.Fatalf("--json em install: exit=%d out=%q err=%q", code, out, errors)
+	}
+}
+
+func TestFlagUITuiComYesSaiComUso(t *testing.T) {
+	code, out, errors := invoke(t, "--ui=tui", "install", "--yes")
+	if code != 2 || out != "" || !strings.Contains(errors, "--ui=tui") {
+		t.Fatalf("--ui=tui com --yes: exit=%d out=%q err=%q", code, out, errors)
+	}
+}
+
+func TestFlagUITuiSemTerminalPedeCLI(t *testing.T) {
+	var out, errors bytes.Buffer
+	code := run([]string{"--ui=tui"}, strings.NewReader(""), &out, &errors)
+	if code != 2 || out.Len() != 0 || !strings.Contains(errors.String(), "use --ui=cli") {
+		t.Fatalf("--ui=tui sem TTY: exit=%d out=%q err=%q", code, out.String(), errors.String())
+	}
+}
+
+func TestFlagHomeERepoPermitidosEmGithooksEDoctor(t *testing.T) {
+	home := t.TempDir()
+	repo := t.TempDir()
+	casos := [][]string{
+		{"githooks", "--home", home, "--repo", repo, "--hook", "gex-pre-commit"},
+		{"doctor", "--home", home, "--repo", repo},
+	}
+	for _, args := range casos {
+		comando, rest := splitCommand(args)
+		o, err := parseOptions(comando, rest)
+		if err != nil {
+			t.Fatalf("%s com --home e --repo: erro inesperado: %v", comando, err)
+		}
+		if o.Home != home || o.Repo != repo {
+			t.Fatalf("%s: home=%q repo=%q", comando, o.Home, o.Repo)
+		}
+	}
+}
+
+func TestFlagHomeERepoRecusadosEmRollback(t *testing.T) {
+	home := t.TempDir()
+	repo := t.TempDir()
+	if _, err := parseOptions("rollback", []string{"--home", home, "--repo", repo}); err == nil {
+		t.Fatalf("rollback com --home e --repo: esperado erro de uso")
+	}
+}
+
+func TestHelpTemDoisAQuatroExemplos(t *testing.T) {
+	for comando, spec := range helpSpecs {
+		if n := len(spec.exemplos); n < 2 || n > 4 {
+			t.Fatalf("%s: %d exemplos; quero de 2 a 4", comando, n)
+		}
+	}
+}
+
+func TestValorDeFlagNaoPodeSerOutraFlag(t *testing.T) {
+	casos := [][]string{
+		{"install", "--hook", "--home=/x"},
+		{"install", "--skill", "--yes"},
+		{"githooks", "--repo", "--hook"},
+		{"githooks", "--run", "--yes"},
+		{"doctor", "--home", "--json"},
+		{"--ui", "--quiet", "skills"},
+	}
+	for _, args := range casos {
+		_, _, err := flagsParse(args)
+		if err == nil || !strings.Contains(err.Error(), "exige um valor") {
+			t.Fatalf("%v: erro = %v; quero erro de uso \"exige um valor\"", args, err)
+		}
+	}
+}
+
+func TestUIVazioEhErroDeUso(t *testing.T) {
+	_, _, err := flagsParse([]string{"--ui=", "skills"})
+	if _, ok := err.(usageError); !ok {
+		t.Fatalf("--ui= vazio: erro = %v; quero erro de uso", err)
+	}
+	if !strings.Contains(err.Error(), "--ui") {
+		t.Fatalf("--ui= vazio: mensagem sem a opção: %q", err.Error())
+	}
+}
+
+func TestUsoGlobalExplicaUIAuto(t *testing.T) {
+	if !strings.Contains(usage, "auto: TUI em terminal interativo; texto em pipe, CI, --yes, --quiet ou --json") {
+		t.Fatalf("ajuda global sem a explicação de --ui=auto:\n%s", usage)
+	}
+}
+
+func TestAjudaDoHookListaCincoSubcomandos(t *testing.T) {
+	subcomandos := []string{"commit-msg", "sensitive-action", "pre-pr", "session-start", "pre-commit"}
+	for _, texto := range []string{usage, commandHelp("hook")} {
+		for _, nome := range subcomandos {
+			if !strings.Contains(texto, nome) {
+				t.Fatalf("ajuda sem o subcomando %s:\n%s", nome, texto)
+			}
+		}
+	}
+	if !strings.Contains(commandHelp("hook"), "chamado por Claude Code, Codex e Git") {
+		t.Fatalf("ajuda do hook não diz quem chama:\n%s", commandHelp("hook"))
+	}
+}

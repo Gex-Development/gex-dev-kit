@@ -1,7 +1,10 @@
 package agents
 
 import (
+	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -27,7 +30,7 @@ func isolated(t *testing.T) (string, string) {
 	t.Setenv("PATH", path)
 	t.Setenv("HOME", home)
 	original := windowsUserPathReady
-	windowsUserPathReady = func(string, string) bool { return true }
+	windowsUserPathReady = func(string, string) (bool, error) { return true, nil }
 	t.Cleanup(func() { windowsUserPathReady = original })
 	t.Setenv("USERPROFILE", home)
 	return home, bin
@@ -135,7 +138,7 @@ func TestApplyAndRollbackUseExactVersions(t *testing.T) {
 	t.Cleanup(func() { fetchScript, runCommand = previousFetch, previousRun })
 	fetchScript = func(url string) ([]byte, error) { return []byte("official installer"), nil }
 	target := filepath.Join(bin, executable("claude"))
-	runCommand = func(home, path string, input []byte, args ...string) (string, error) {
+	runCommand = func(_ context.Context, home, path string, input []byte, args ...string) (string, error) {
 		if len(input) > 0 || strings.EqualFold(path, "powershell.exe") {
 			version := args[len(args)-1]
 			if err := os.WriteFile(target, []byte(version), 0700); err != nil {
@@ -179,7 +182,7 @@ func TestRollbackRestoresPreviousKitRelease(t *testing.T) {
 	if err := save(home, history{"claude": {Current: "2.1.305"}}); err != nil {
 		t.Fatal(err)
 	}
-	runCommand = func(home, path string, input []byte, args ...string) (string, error) {
+	runCommand = func(_ context.Context, home, path string, input []byte, args ...string) (string, error) {
 		if len(input) > 0 || strings.EqualFold(path, "powershell.exe") {
 			if err := os.WriteFile(target, []byte(args[len(args)-1]), 0700); err != nil {
 				return "", err
@@ -224,7 +227,7 @@ func TestCodexPinAndVerificationFailure(t *testing.T) {
 	t.Cleanup(func() { fetchScript, runCommand = oldFetch, oldRun })
 	fetchScript = func(string) ([]byte, error) { return []byte("official installer"), nil }
 	target := binPath(home, "codex")
-	runCommand = func(home, path string, input []byte, args ...string) (string, error) {
+	runCommand = func(_ context.Context, home, path string, input []byte, args ...string) (string, error) {
 		if len(input) > 0 || strings.EqualFold(path, "powershell.exe") {
 			if args[len(args)-1] != "0.163.0" {
 				t.Fatalf("wrong release argument: %v", args)
@@ -261,7 +264,9 @@ func TestApplyFailsClosedOnInstallerFailure(t *testing.T) {
 	oldFetch, oldRun := fetchScript, runCommand
 	t.Cleanup(func() { fetchScript, runCommand = oldFetch, oldRun })
 	fetchScript = func(string) ([]byte, error) { return []byte("installer"), nil }
-	runCommand = func(string, string, []byte, ...string) (string, error) { return "", errors.New("network unavailable") }
+	runCommand = func(context.Context, string, string, []byte, ...string) (string, error) {
+		return "", errors.New("network unavailable")
+	}
 	changes, err := Preview(home)
 	if err != nil {
 		t.Fatal(err)
@@ -312,8 +317,44 @@ func TestFailedCommandDoesNotRevealOutput(t *testing.T) {
 		t.Skip("shell Unix")
 	}
 	home, _ := isolated(t)
-	_, err := runCommand(home, "/bin/sh", nil, "-c", "echo synthetic-canary >&2; exit 7")
+	_, err := runCommand(context.Background(), home, "/bin/sh", nil, "-c", "echo synthetic-canary >&2; exit 7")
 	if err == nil || strings.Contains(err.Error(), "synthetic-canary") {
 		t.Fatalf("saída do comando exposta: %v", err)
+	}
+}
+
+func TestLockRecordsOwnerPID(t *testing.T) {
+	home, _ := isolated(t)
+	unlock, err := requireLock(home)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lock := filepath.Join(filepath.Dir(statePath(home)), "agent-updates.lock")
+	b, err := os.ReadFile(filepath.Join(lock, "owner.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var owner lockOwner
+	if err := json.Unmarshal(b, &owner); err != nil {
+		t.Fatal(err)
+	}
+	if owner.PID != os.Getpid() || owner.Started == "" {
+		t.Fatalf("dono do lock inválido: %+v", owner)
+	}
+	if _, err := requireLock(home); err == nil {
+		t.Fatal("segundo lock aceito enquanto o primeiro existe")
+	}
+	unlock()
+	if _, err := os.Stat(lock); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("lock não liberado: %v", err)
+	}
+}
+
+func TestProbeReasonMarksTimeout(t *testing.T) {
+	if got := probeReason(fmt.Errorf("claude --version: %w", errCommandTimeout)); got != "não verificado (tempo esgotado)" {
+		t.Fatalf("motivo de tempo esgotado: %q", got)
+	}
+	if got := probeReason(errors.New("falha")); got != "falha" {
+		t.Fatalf("motivo comum alterado: %q", got)
 	}
 }

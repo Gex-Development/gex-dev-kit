@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1280, height=720">
+  <title>GEX Dev Kit · guia em vídeo</title>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; width: 1280px; height: 720px; overflow: hidden; background: #071529; }
+    #root { position: relative; width: 100%; height: 100%; overflow: hidden; color: #f2f7ff; font-family: ui-sans-serif, system-ui, sans-serif; }
+    .clip { position: absolute; inset: 0; }
+    .panel { position: absolute; inset: 0; padding: 36px 40px; display: flex; align-items: center; gap: 36px; }
+    .shot { height: 620px; width: auto; border-radius: 14px; box-shadow: 0 24px 50px rgba(0, 0, 0, .35); flex: none; }
+    .copy { display: flex; flex-direction: column; gap: 14px; max-width: 300px; }
+    .step { color: #7fc3ef; font: 700 15px ui-monospace, monospace; letter-spacing: .12em; }
+    h1 { font-size: 56px; line-height: 1.05; letter-spacing: -.035em; margin: 0; }
+    h2 { font-size: 34px; line-height: 1.12; letter-spacing: -.03em; margin: 0; }
+    p { color: #c3d1e3; font-size: 21px; line-height: 1.45; margin: 0; }
+    code { font: 600 17px ui-monospace, monospace; color: #9ad3ff; }
+    .proof { border-top: 1px solid #2b4869; color: #8eaac5; font: 13px ui-monospace, monospace; padding-top: 14px; }
+    .intro { flex-direction: column; align-items: flex-start; justify-content: center; padding-left: 80px; gap: 28px; }
+    .boxes { display: flex; gap: 22px; margin-top: 10px; }
+    .box { width: 300px; padding: 22px; border-radius: 14px; background: #0d1729; border: 1px solid #29486c; }
+    .box b { display: block; font-size: 22px; margin-bottom: 8px; color: #eaf3ff; }
+    .box span { color: #c3d1e3; font-size: 17px; line-height: 1.4; }
+    .box.core { border-color: #73d2a2; }
+    .close { flex-direction: column; align-items: flex-start; justify-content: center; padding-left: 80px; gap: 18px; }
+    .close ul { margin: 0; padding-left: 22px; color: #c3d1e3; font-size: 24px; line-height: 1.7; }
+  </style>
+</head>
+<body>
+  <div id="root" data-composition-id="guia-gex-dev-kit" data-start="0" data-duration="105" data-width="1280" data-height="720">
+
+    <section class="clip" data-start="0" data-duration="12">
+      <div class="panel intro">
+        <span class="step">GEX DEV KIT · GUIA DA CLI</span>
+        <h1>O que é o kit</h1>
+        <p>Um instalador guiado para as skills e os hooks do Claude Code e do Codex.</p>
+        <div class="boxes">
+          <div class="box core"><b>Core</b><span>Instruções e 7 skills. Sempre instalado.</span></div>
+          <div class="box"><b>Especializações</b><span>Opcionais, por grupo. Nada entra sozinho.</span></div>
+          <div class="box"><b>Hooks</b><span>Opcionais. Mostram a prévia antes de gravar.</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="clip" data-start="12" data-duration="4">
+      <div class="panel">
+        <img class="shot" src="assets/screens/home-entrada.png" alt="Tela inicial da CLI com o menu de instalação">
+        <div class="copy"><span class="step">01 · HOME</span><h2>Abra a CLI</h2><p>O menu mostra o estado do Core e dos agentes.</p><span class="proof">EXECUÇÃO REAL · HOME ISOLADO</span></div>
+      </div>
+    </section>
+    <section class="clip" data-start="16" data-duration="4">
+      <div class="panel">
+        <img class="shot" src="assets/screens/home-pronta.png" alt="Tela inicial com o estado do Core e dos agentes">
+        <div class="copy"><span class="step">01 · HOME</span><h2>Veja o estado</h2><p>Core, hooks e versão aparecem antes de qualquer ação.</p><span class="proof">EXECUÇÃO REAL · HOME ISOLADO</span></div>
+      </div>
+    </section>
+    <section class="clip" data-start="20" data-duration="4">
+      <div class="panel">
+        <img class="shot" src="assets/screens/home-ajuda.png" alt="Ajuda com os atalhos de teclado">
+        <div class="copy"><span class="step">01 · HOME</span><h2>Peça ajuda</h2><p>A tecla <code>?</code> lista os atalhos.</p><span class="proof">EXECUÇÃO REAL · HOME ISOLADO</span></div>
+      </div>
+    </section>
+
+    <section class="clip" data-start="24" data-duration="4">
+      <div class="panel">
+        <img class="shot" src="assets/screens/assistente.png" alt="Primeira etapa da instalação guiada, com o destino da instalação">
+        <div class="copy"><span class="step">02 · INSTALAÇÃO</span><h2>Escolha em etapas</h2><p>Core obrigatório. Depois, skills e hooks por grupo.</p><span class="proof">EXECUÇÃO REAL · HOME ISOLADO</span></div>
+      </div>
+    </section>
+    <section class="clip" data-start="28" data-duration="5">
+      <div class="panel">
+        <img class="shot" src="assets/screens/previa.png" alt="Prévia com a lista de arquivos que serão criados">
+        <div class="copy"><span class="step">02 · INSTALAÇÃO</span><h2>Veja a prévia</h2><p>Cada arquivo novo aparece na lista antes da gravação.</p><span class="proof">EXECUÇÃO REAL · HOME ISOLADO</span></div>
+      </div>
+    </section>
+    <section class="clip" data-start="33" data-duration="3">
+      <div class="panel">
+        <img class="shot" src="assets/screens/confirmar.png" alt="Pergunta de confirmação antes de aplicar as alterações">
+        <div class="copy"><span class="step">02 · INSTALAÇÃO</span><h2>Confirme</h2><p>Nada é gravado sem a sua confirmação.</p><span class="proof">EXECUÇÃO REAL · HOME ISOLADO</span></div>
+      </div>
+    </section>
+    <section class="clip" data-start="36" data-duration="3">
+      <div class="panel">
+        <img class="shot" src="assets/screens/gravando.png" alt="Gravação em etapas">
+        <div class="copy"><span class="step">02 · INSTALAÇÃO</span><h2>Grava em etapas</h2><p>A tela mostra cada etapa da gravação.</p><span class="proof">EXECUÇÃO REAL · HOME ISOLADO</span></div>
+      </div>
+    </section>
+    <section class="clip" data-start="39" data-duration="5">
+      <div class="panel">
+        <img class="shot" src="assets/screens/concluido.png" alt="Tela final com o histórico e o comando equivalente">
+        <div class="copy"><span class="step">02 · INSTALAÇÃO</span><h2>Fim com histórico</h2><p>A instalação ganha um histórico, usado pelo rollback.</p><span class="proof">EXECUÇÃO REAL · HOME ISOLADO</span></div>
+      </div>
+    </section>
+
+    <section class="clip" data-start="44" data-duration="4">
+      <div class="panel">
+        <img class="shot" src="assets/screens/cli-skills.png" alt="Catálogo de skills no modo CLI">
+        <div class="copy"><span class="step">03 · MODO CLI</span><h2>Liste as skills</h2><p><code>skills</code> mostra o catálogo sem abrir a tela.</p><span class="proof">EXECUÇÃO REAL · HOME ISOLADO</span></div>
+      </div>
+    </section>
+    <section class="clip" data-start="48" data-duration="5">
+      <div class="panel">
+        <img class="shot" src="assets/screens/cli-install.png" alt="Saída do comando install com --yes">
+        <div class="copy"><span class="step">03 · MODO CLI</span><h2>Instale com <code>--yes</code></h2><p>A prévia continua aparecendo antes de gravar.</p><span class="proof">EXECUÇÃO REAL · HOME ISOLADO</span></div>
+      </div>
+    </section>
+    <section class="clip" data-start="53" data-duration="4">
+      <div class="panel">
+        <img class="shot" src="assets/screens/cli-json.png" alt="Saída JSON do comando doctor">
+        <div class="copy"><span class="step">03 · MODO CLI</span><h2>Saída em JSON</h2><p><code>doctor --json</code> para scripts e CI.</p><span class="proof">EXECUÇÃO REAL · HOME ISOLADO</span></div>
+      </div>
+    </section>
+
+    <section class="clip" data-start="57" data-duration="5">
+      <div class="panel">
+        <img class="shot" src="assets/screens/doctor.png" alt="Diagnóstico do doctor com itens íntegros">
+        <div class="copy"><span class="step">04 · DIAGNÓSTICO</span><h2>Rode o doctor</h2><p>Confere os arquivos gravados e o estado dos agentes.</p><span class="proof">EXECUÇÃO REAL · HOME ISOLADO</span></div>
+      </div>
+    </section>
+    <section class="clip" data-start="62" data-duration="5">
+      <div class="panel">
+        <img class="shot" src="assets/screens/rollback.png" alt="Prévia e restauração do rollback">
+        <div class="copy"><span class="step">04 · REVERSÃO</span><h2>Reverta</h2><p><code>rollback</code> mostra a prévia e restaura o estado anterior.</p><span class="proof">EXECUÇÃO REAL · HOME ISOLADO</span></div>
+      </div>
+    </section>
+
+    <section class="clip" data-start="67" data-duration="4">
+      <div class="panel">
+        <img class="shot" src="assets/screens/catalogo.png" alt="Catálogo da CLI com contagem de skills">
+        <div class="copy"><span class="step">05 · CATÁLOGO</span><h2>Explore o catálogo</h2><p>Skills, hooks e referências em uma lista.</p><span class="proof">EXECUÇÃO REAL · HOME ISOLADO</span></div>
+      </div>
+    </section>
+    <section class="clip" data-start="71" data-duration="4">
+      <div class="panel">
+        <img class="shot" src="assets/screens/addons.png" alt="Catálogo de addons com o comando oficial">
+        <div class="copy"><span class="step">05 · ADDONS</span><h2>Addons</h2><p>O kit mostra o comando oficial e não o executa.</p><span class="proof">EXECUÇÃO REAL · HOME ISOLADO</span></div>
+      </div>
+    </section>
+    <section class="clip" data-start="75" data-duration="3">
+      <div class="panel">
+        <img class="shot" src="assets/screens/ds.png" alt="Vitrine do Design System">
+        <div class="copy"><span class="step">05 · DESIGN SYSTEM</span><h2>Vitrine</h2><p>Componentes e padrões visuais para referência.</p><span class="proof">EXECUÇÃO REAL · HOME ISOLADO</span></div>
+      </div>
+    </section>
+
+    <section class="clip" data-start="78" data-duration="5">
+      <div class="panel">
+        <img class="shot" src="assets/screens/githooks-previa.png" alt="Prévia dos git hooks de um repositório">
+        <div class="copy"><span class="step">06 · GIT HOOKS</span><h2>Prévia por repositório</h2><p>Os git hooks só são gravados com <code>--repo</code> e confirmação.</p><span class="proof">EXECUÇÃO REAL · HOME ISOLADO</span></div>
+      </div>
+    </section>
+
+    <section class="clip" data-start="83" data-duration="22">
+      <div class="panel close">
+        <span class="step">07 · SEGURANÇA</span>
+        <h2>O que o kit faz</h2>
+        <ul>
+          <li>Mostra a prévia antes de gravar qualquer arquivo.</li>
+          <li>Grava somente depois de confirmação.</li>
+          <li>Guarda histórico e permite reverter.</li>
+          <li>Pede aprovação do Codex em /hooks antes de ativar um hook.</li>
+        </ul>
+        <span class="proof">CAPTURAS EM HOME ISOLADO</span>
+      </div>
+    </section>
+  </div>
+  <script>
+    const timeline = gsap.timeline({ paused: true });
+    document.querySelectorAll('#root > .clip').forEach(clip => {
+      const start = Number(clip.dataset.start);
+      const duration = Number(clip.dataset.duration);
+      const panel = clip.querySelector('.panel');
+      timeline.fromTo(panel, { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.3, ease: 'power2.out' }, start);
+      timeline.to(panel, { opacity: 0, duration: 0.25, ease: 'power1.in' }, start + duration - 0.3);
+    });
+    window.__timelines["guia-gex-dev-kit"] = timeline;
+  </script>
+</body>
+</html>

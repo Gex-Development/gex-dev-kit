@@ -1,0 +1,8 @@
+#!/bin/sh
+set -e
+bin='/exemplo/.local/share/gex-dev-kit/bin/gex-dev-kit'
+if [ ! -x "$bin" ]; then
+  echo 'gex-dev-kit: executável do HOME ausente; hook pre-commit ignorado' >&2
+  exit 0
+fi
+"$bin" hook pre-commit

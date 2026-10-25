@@ -1,0 +1,24 @@
+ ◆ gex-dev-kit ds  · Programa                                              0.3.0
+────────────────────────────────────────────────────────────────────────────────
+▸ Páginas                Demo                                                   
+  Identidade           Programa: recursos de runtime do bubbletea               
+  Bordas e cor         modo: inline                                             
+  Layout               tamanho: 80×24                                           
+  Medidas              janela com foco: não                                     
+  Terminal             cliques: 0 · último evento de mouse: —                   
+│ Programa             ticks de 1 s (tea.Tick): 0                               
+  Movimento            Batch: —                                                 
+  Feedback             Sequence: —                                              
+  Navegação            linhas impressas com tea.Println: 0                      
+  Dados                quadros de movimento: 0                                  
+  Formulários          ctrl+z suspende (ativo)                                  
+  Acessível            tecla e gera um erro tipado                              
+  Bubbles              teclas: a alt screen · p println (só inline) · 1 batch · 
+  Testes               2 sequence · e erro                                      
+  Cobertura Charm                                                               
+                       tea.NewView liga AltScreen na prévia.                    
+                       modo: alt screen (a alterna para inline)                 
+                       Na gravação, a tela volta ao modo inline.                
+                                                                                
+                                                                                
+↑/k subir • ↓/j descer • enter escolher • esc voltar • q sair • ? ajuda …       

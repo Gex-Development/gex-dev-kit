@@ -1,1 +1,4 @@
 dist/
+/gex-dev-kit
+docs/guides/composition/.hyperframes/
+docs/guides/composition/node_modules/

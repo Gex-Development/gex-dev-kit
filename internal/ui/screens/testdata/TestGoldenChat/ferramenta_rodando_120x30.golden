@@ -1,0 +1,29 @@
+* Beleza, entendi que o seu harness é o OMP (oh-my-pi).                                 GEX - DEV KIT
+                                                                                        
+* O OMP lê as skills de ~/.agents/skills; o kit já instala lá.                          AMBIENTE
+                                                                                        [i] Claude Code
+| Neste HOME (~)                                                                          não detectado
+                                                                                        [i] Codex
+| Só o Core                                                                               não detectado
+                                                                                        [i] Core
+* Plugins (caveman, ponytail…) são para Claude Code e Codex; como você escolheu só o      0/7 skills · não instalado
+  OMP, pulo esta etapa.                                                                 ETAPAS
+                                                                                        [ok] Harness
+* Resumo da instalação:                                                                 [ok] Agentes
+    • Harness: OMP (oh-my-pi)                                                           [ok] Destino
+    • Destino: ~                                                                        [ok] Extras
+    • Core GEX + 0 skill(s) e 0 hook(s) opcionais                                       [ok] Plugins
+    • Agentes: manter versões                                                           > Plano
+                                                                                        [ ] Instalação
+* Agora vou planejar a instalação.                                                      
+                                                                                        
++- * Planejar instala??o ~ -----------------------------------------------------------+ 
+| [ok] Montando as regras do Core                                                     | 
+| * Selecionando as skills?                                                           | 
+| [ ] Comparando com o que j? existe                                                  | 
++-------------------------------------------------------------------------------- 1s -+ 
+* Selecionando as skills… - 0s                                              ctrl+c sair 
++- [GEX] [OMP] [gex-dev-kit]------------------------------------ -- 86% -- Etapa 6/7--+ 
+| > GEX está trabalhando…                                                             | 
++-------------------------------------------------------------------------------------+ 
+setup · Plano                                                                        enter pula a animacao - ctrl+c sair

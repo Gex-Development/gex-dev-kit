@@ -1,0 +1,12 @@
+{
+  "name": "guia-gex-dev-kit",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "npx --yes hyperframes@0.8.181 check",
+    "render": "npx --yes hyperframes@0.8.181 render --quality looks --output ../guia.mp4"
+  },
+  "devDependencies": {
+    "hyperframes": "0.8.181"
+  }
+}

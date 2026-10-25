@@ -1,0 +1,29 @@
+* Ainda não há Core instalado neste HOME.                                               GEX - DEV KIT
+                                                                                        
+* Digite / para ver o que posso fazer. Para configurar o ambiente, use /setup.          AMBIENTE
+                                                                                        [i] Claude Code
+| /setup                                                                                  não detectado
+                                                                                        [i] Codex
+* Vamos configurar seu ambiente. São poucos passos: harness, destino, extras, plugins,    não detectado
+  revisão e instalação. Você pode voltar com esc a qualquer momento.                    [i] Core
+                                                                                          0/7 skills · não instalado
+[?] Qual harness você usa?                                                              ETAPAS
+>          /###\                                                                        > Harness
+> 1. [ ]  <#####>  Claude Code                                                          [ ] Agentes
+>          || ||                                                                        [ ] Destino
+                                                                                        [ ] Extras
+           .---.                                                                        [ ] Plugins
+  2. [ ]  ( >_  )  Codex                                                                [ ] Plano
+           '---'                                                                        [ ] Instalação
+                                                                                        
+         ---------                                                                      
+  3. [ ]   [PI]    OMP (oh-my-pi)                                                       
+         ---------                                                                      
+                                                                                        
+  [ Marque uma opção ]                                                                  
+up/down mover | espaco marca | enter confirma | esc voltar                              
+                                                                                        
++- [GEX] [gex-dev-kit]------------------------------------------ -- 14% -- Etapa 1/7--+ 
+| > ou digite um comando (/ajuda)                                                     | 
++-------------------------------------------------------------------------------------+ 
+setup · Harness                                                               espaco marca | enter confirma | esc voltar

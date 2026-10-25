@@ -1,0 +1,29 @@
+| Só o Core                                                                             GEX - DEV KIT
+                                                                                        
+* Plugins (caveman, ponytail…) são para Claude Code e Codex; como você escolheu só o    AMBIENTE
+  OMP, pulo esta etapa.                                                                 [i] Claude Code
+                                                                                          não detectado
+* Resumo da instalação:                                                                 [i] Codex
+    • Harness: OMP (oh-my-pi)                                                             não detectado
+    • Destino: ~                                                                        [i] Core
+    • Core GEX + 0 skill(s) e 0 hook(s) opcionais                                         0/7 skills · não instalado
+    • Agentes: manter versões                                                           ETAPAS
+                                                                                        [ok] Harness
+* Agora vou planejar a instalação.                                                      [ok] Agentes
+                                                                                        [ok] Destino
++- v Planejar instala??o ~ -----------------------------------------------------------+ [ok] Extras
+| 1 arquivo(s) ? 0 agente(s) a atualizar                                              | [ok] Plugins
+| criar .claude/CLAUDE.md ? novo                                                      | > Plano
++-------------------------------------------------------------------------------------+ [ ] Instalação
+                                                                                        
+[?] Aplico essas alterações?                                                            
+> 1. Sim, aplicar                                                                       
+  2. Ver diff completo                                                                  
+  3. Mudar escolhas                                                                     
+  4. Cancelar                                                                           
+up/down mover | 1-9 escolher | enter confirmar | esc voltar                             
+                                                                                        
++- [GEX] [OMP] [gex-dev-kit]------------------------------------ -- 86% -- Etapa 6/7--+ 
+| > ou digite um comando (/ajuda)                                                     | 
++-------------------------------------------------------------------------------------+ 
+setup · Plano                                                                 up/down mover | enter escolhe | esc voltar
