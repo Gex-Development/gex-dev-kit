@@ -4,23 +4,21 @@ CLI para preparar Claude Code e Codex com instruções globais e sete skills de 
 
 ## Estado
 
-- **v0.2.0:** publicada na release do GitHub.
-- **v0.3.0:** preparada localmente e não publicada. Não há release, tag, push nem PR. Publicar exige confirmação explícita do responsável.
+- **v0.2.0:** última release publicada no GitHub. Não tem as sete skills Core, as especializações nem o chat da TUI.
+- **v0.3.0:** binários gerados localmente em `dist/` com `scripts/release.sh v0.3.0`, ainda não publicados. Não há tag, release, push nem PR. Os comandos de download abaixo só funcionam depois que a release existir; publicar exige confirmação explícita do responsável. As notas estão em [`docs/release-notes/v0.3.0.md`](docs/release-notes/v0.3.0.md).
 
-## Baixar a v0.2.0
+## Baixar a v0.3.0
 
 Repositório privado da organização: é preciso acesso à Gex-Development e autenticação no `gh`. Baixe o executável correspondente ao sistema na [release](https://github.com/Gex-Development/gex-dev-kit/releases). Os alvos publicados são `darwin_{arm64,amd64}`, `linux_{arm64,amd64}` (Ubuntu/Fedora) e `windows_{arm64,amd64}` (PowerShell). Confira `SHA256SUMS` antes de executar.
 
 ```sh
-gh release download v0.2.0 --repo Gex-Development/gex-dev-kit --dir .
+gh release download v0.3.0 --repo Gex-Development/gex-dev-kit --dir .
 sha256sum -c SHA256SUMS
-chmod +x gex-dev-kit_v0.2.0_linux_amd64
-./gex-dev-kit_v0.2.0_linux_amd64
+chmod +x gex-dev-kit_v0.3.0_linux_amd64
+./gex-dev-kit_v0.3.0_linux_amd64
 ```
 
 No macOS, confira checksums com `shasum -a 256 -c SHA256SUMS` e troque `linux_amd64` por `darwin_arm64` ou `darwin_amd64`. No PowerShell, baixe o executável Windows correspondente, confira hash com `Get-FileHash` e execute-o.
-
-A release v0.2.0 não contém as sete skills Core, as especializações nem o chat da TUI desta branch. Para avaliar essas mudanças, use o código da branch, não o binário publicado.
 
 ## Piloto local (v0.3.0)
 
@@ -55,13 +53,13 @@ A prévia aparece antes de qualquer gravação. Confirme no terminal. Em automa�
 ## Usar
 
 ```sh
-./gex-dev-kit_v0.2.0_linux_amd64 skills
-./gex-dev-kit_v0.2.0_linux_amd64 install --skill tdd --hook gex-conventional-commits
-./gex-dev-kit_v0.2.0_linux_amd64 doctor
-./gex-dev-kit_v0.2.0_linux_amd64 rollback
+./gex-dev-kit_v0.3.0_linux_amd64 skills
+./gex-dev-kit_v0.3.0_linux_amd64 install --skill tdd --hook gex-conventional-commits
+./gex-dev-kit_v0.3.0_linux_amd64 doctor
+./gex-dev-kit_v0.3.0_linux_amd64 rollback
 ```
 
-Os exemplos acima são da v0.2.0. Para a branch local, troque o executável por `./gex-dev-kit`.
+Para o código da branch, troque o executável por `./gex-dev-kit`.
 
 ### Modos de interface
 
@@ -123,6 +121,7 @@ Regras de uso:
 - `--skill` e `--hook` podem ser repetidos.
 - Sem seleção extra, `install` grava o Core e tenta atualizar os agentes elegíveis. `--skip-agent-update` não toca em rede nem nos binários dos agentes.
 - `--json` em `skills`, `hooks`, `addons` e `doctor` imprime só JSON na saída padrão.
+- O schema de `skills --json` é `gex-dev-kit.skills/v1`. Ele estreia na v0.3.0 e as especializações não têm o campo `credentials`: as skills de API de gateway ficaram fora do catálogo. A v0.2.0 não tinha `skills --json`.
 
 ### Códigos de saída
 
@@ -139,6 +138,9 @@ Com sinal durante uma gravação, o kit termina a gravação em curso antes de s
 
 ## O que mudou desde a v0.2.0
 
+- A TUI virou um chat com o assistente GEX; setup, catálogo, doctor, rollback, git hooks e addons são fluxos dele, abertos por comandos com barra.
+- O kit instala os plugins opcionais `caveman`, `ponytail`, `superpowers` e `spec-kit` depois da sua confirmação, no setup e em `/addons`.
+- Sete skills Core obrigatórias e sete especializações opcionais, com explicação de cada skill e hook.
 - `rollback` mostra prévia com diff e pede confirmação. Em automação, use `--yes`.
 - A prévia de `install` mostra o diff com dados sensíveis mascarados.
 - `doctor` não sai mais com código 1 por agente que o kit não gerencia. Esse caso vira aviso.
@@ -165,7 +167,7 @@ O catálogo tem 4 hooks de agente, 3 git hooks e 25 referências de hooks de ter
 
 As 18 skills Matt Pocock são cópias offline do commit [`5beb35b0`](https://github.com/mattpocock/skills/tree/5beb35b040e3de97e54fa9e386d7e42d15c295c2), sob [licença MIT](https://github.com/mattpocock/skills/blob/5beb35b040e3de97e54fa9e386d7e42d15c295c2/LICENSE). Instalar uma skill só copia os arquivos; não a executa. Há 11 referências de skill que ficam só no catálogo, como `setup-matt-pocock-skills`, `implement-spec` e `ask-matt`. Elas alteram projeto, labels ou dependem de outras partes do catálogo. Skills que criam issues, labels, branches ou alteram projetos exigem autorização separada quando forem usadas.
 
-Os quatro plugins opcionais são `caveman` (respostas curtas), `ponytail` (menor mudança completa), `superpowers` (métodos de brainstorming, testes e revisão) e `spec-kit` (fluxo de especificação). Na etapa **Plugins** do `/setup`, entre Extras e Plano, ou em `/addons`, selecione destinos Claude Code/Codex, confira comandos exatos, fonte, licença e conflitos e confirme antes de executar. A CLI `addons` só consulta o catálogo; `install` não instala plugins. A instalação roda cada comando sem shell, com timeout e HOME escolhido. Se faltar um executável, o passo é pulado e mostrado como instrução manual. `superpowers` no Codex exige `/plugins` interativo; `spec-kit` exige `specify init` manual por projeto. Depois de instalar hooks no Codex, abra `/hooks` e aprove-os. O rollback do kit não desfaz plugins: remova-os no próprio Claude Code ou Codex.
+Os quatro plugins opcionais são `caveman` (respostas curtas), `ponytail` (menor mudança completa), `superpowers` (métodos de brainstorming, testes e revisão) e `spec-kit` (fluxo de especificação). Na etapa **Plugins** do `/setup`, entre Extras e Plano, ou em `/addons`, selecione destinos Claude Code/Codex, confira os comandos exatos e os conflitos com o Core e confirme antes de executar; fonte e licença ficam no card de `/addons`. A CLI `addons` só consulta o catálogo; `install` não instala plugins. A instalação roda cada comando sem shell, com timeout e HOME escolhido. Se faltar um executável, o passo é pulado e mostrado como instrução manual. `superpowers` no Codex exige `/plugins` interativo; `spec-kit` exige `specify init` manual por projeto. Depois de instalar hooks no Codex, abra `/hooks` e aprove-os. O rollback do kit não desfaz plugins: remova-os no próprio Claude Code ou Codex.
 
 ## Agentes
 
@@ -190,7 +192,7 @@ go build -o /tmp/gex-dev-kit-piloto ./cmd/gex-dev-kit
 
 - `scripts/check.sh` roda o conjunto completo: formato, comentários, `go vet`, testes, build e smoke.
 - `scripts/smoke.sh CAMINHO_DO_BINARIO` instala, roda `doctor`, testa hook e rollback em HOME descartável.
-- `scripts/release.sh vX.Y.Z` compila seis alvos e gera `dist/SHA256SUMS` e `dist/THIRD_PARTY_LICENSES.txt`. Não publica. Publicar exige a opção `--publish`, versão aprovada e confirmação explícita.
+- `scripts/release.sh vX.Y.Z` compila seis alvos (limite de 16 MiB por binário) e gera `dist/SHA256SUMS` e `dist/THIRD_PARTY_LICENSES.txt`. Exige `docs/release-notes/vX.Y.Z.md`. Não publica. Publicar exige a opção `--publish`, versão aprovada e confirmação explícita.
 
 Mudanças seguem Conventional Commits. Não há CI remoto nesta fase: testes locais não substituem a proteção contínua das branches.
 
