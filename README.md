@@ -1,185 +1,173 @@
 # Kit de Desenvolvimento GEX
 
-CLI para preparar Claude Code e Codex com instruções globais e sete skills de trabalho GEX obrigatórias. Skills Matt Pocock, especializações e um hook de Conventional Commits entram por escolha. A TUI também instala plugins opcionais; MCPs e arquivos de projetos não são alterados pelo Core.
+Prepara Claude Code e Codex para o trabalho GEX: instala instruções e sete skills Core no HOME, oferece skills e hooks opcionais e conduz a configuração por chat ou CLI.
 
-## Estado
+![Versão v0.3.0](https://img.shields.io/badge/Vers%C3%A3o-v0.3.0-6f42c1?style=flat-square) ![Go 1.25.8](https://img.shields.io/badge/Go-1.25.8-00ADD8?style=flat-square) ![Plataformas macOS Linux Windows](https://img.shields.io/badge/Plataformas-macOS%20%7C%20Linux%20%7C%20Windows-555555?style=flat-square) ![Arquiteturas arm64 amd64](https://img.shields.io/badge/Arquiteturas-arm64%20%7C%20amd64-555555?style=flat-square) ![Interface TUI CLI](https://img.shields.io/badge/Interface-TUI%20%2B%20CLI-2088aa?style=flat-square) ![Agentes Claude Code e Codex](https://img.shields.io/badge/Agentes-Claude%20Code%20%2B%20Codex-2088aa?style=flat-square) ![Conventional Commits](https://img.shields.io/badge/Commits-Conventional-2088aa?style=flat-square)
 
-- **v0.2.0:** release anterior. Não tem as sete skills Core, as especializações nem o chat da TUI.
-- **v0.3.0:** última release publicada no GitHub, com o chat da TUI, o instalador de plugins e os seis binários. As notas estão em [`docs/release-notes/v0.3.0.md`](docs/release-notes/v0.3.0.md).
+[Instalar](#instalação) · [Primeiro uso](#primeiro-uso) · [Comandos](#comandos-no-chat) · [Plugins](#plugins-opcionais) · [Desenvolvimento](#desenvolvimento) · [Changelog](CHANGELOG.md)
 
-## Baixar a v0.3.0
+## Visão geral
 
-Repositório privado da organização: é preciso acesso à Gex-Development e autenticação no `gh`. Baixe o executável correspondente ao sistema na [release](https://github.com/Gex-Development/gex-dev-kit/releases). Os alvos publicados são `darwin_{arm64,amd64}`, `linux_{arm64,amd64}` (Ubuntu/Fedora) e `windows_{arm64,amd64}` (PowerShell). Confira `SHA256SUMS` antes de executar.
+- **Core obrigatório:** instruções globais para Claude Code/Codex e sete skills `gex-*`. Opcionalmente, sete especializações, 18 skills Matt Pocock, hooks de agente e git hooks por repositório.
+- **Sem alterações implícitas no projeto:** o Core não modifica MCPs nem arquivos de projeto. Git hooks exigem seleção do repositório; plugins de terceiros só rodam após prévia e confirmação no **chat**. A CLI `install` não instala plugins.
+- **Antes de gravar:** prévia de arquivos, versões, conflitos e diff; `--yes` dispensa a pergunta, não a prévia. Há histórico das cinco gravações mais recentes e `rollback` com prévia e confirmação. O rollback do kit **não remove plugins**.
+- **Execução dos plugins:** comandos sem shell, em grupo de processos próprio, HOME escolhido, ambiente reduzido e timeout de cinco minutos por passo. Ainda são código de terceiros executado com seus privilégios: revise fonte, licença e comandos antes de confirmar. O chat segue roteiro local; não chama um modelo de IA.
+
+## Instalação
+
+A [release privada v0.3.0](https://github.com/Gex-Development/gex-dev-kit/releases) exige acesso à organização Gex-Development e autenticação no `gh`. Há seis binários: `darwin_{arm64,amd64}`, `linux_{arm64,amd64}` e `windows_{arm64,amd64}`. Os alvos Linux e Windows foram compilados e verificados com `go vet`, **não exercitados em execução**; os testes rodaram em macOS. Confira o checksum antes de executar.
 
 ```sh
+# Linux amd64; troque linux_amd64 pelo alvo do seu sistema.
 gh release download v0.3.0 --repo Gex-Development/gex-dev-kit --dir .
 sha256sum -c SHA256SUMS
 chmod +x gex-dev-kit_v0.3.0_linux_amd64
 ./gex-dev-kit_v0.3.0_linux_amd64
 ```
 
-No macOS, confira checksums com `shasum -a 256 -c SHA256SUMS` e troque `linux_amd64` por `darwin_arm64` ou `darwin_amd64`. No PowerShell, baixe o executável Windows correspondente, confira hash com `Get-FileHash` e execute-o.
+No macOS, use `shasum -a 256 -c SHA256SUMS` e execute `gex-dev-kit_v0.3.0_darwin_arm64` ou `darwin_amd64`. No PowerShell, baixe o binário `windows_arm64.exe` ou `windows_amd64.exe`, compare o resultado de `Get-FileHash .\gex-dev-kit_v0.3.0_windows_amd64.exe -Algorithm SHA256` com a linha correspondente de `SHA256SUMS` e execute o `.exe`. Avisos das dependências acompanham a release em `THIRD_PARTY_LICENSES.txt`.
 
-## Piloto local (v0.3.0)
+### Primeiro uso
 
-Use sempre um HOME descartável. Estes comandos só alteram o HOME temporário:
+Execute o binário em um terminal interativo. Boas-vindas → `Enter` ou clique → verificação do ambiente → digite `/setup`. O roteiro tem **Harness, Agentes, Destino, Extras, Plugins, Plano e Instalação**. Escolha Claude Code/Codex, revise destino e opcionais, confira comandos, conflitos e diff e confirme **Sim, aplicar**. **Agora não** na pergunta sobre agentes evita atualizar seus executáveis. A entrada fica travada enquanto o assistente escreve ou executa uma ferramenta.
+
+Para experimentar sem tocar no seu HOME, compile e use um HOME descartável:
 
 ```sh
-go build -o ./gex-dev-kit ./cmd/gex-dev-kit
+go build -o /tmp/gex-dev-kit-piloto ./cmd/gex-dev-kit
 PILOT_HOME="$(mktemp -d)"
-HOME="$PILOT_HOME" ./gex-dev-kit
-./gex-dev-kit doctor --home "$PILOT_HOME"
-./gex-dev-kit rollback --home "$PILOT_HOME"
+HOME="$PILOT_HOME" /tmp/gex-dev-kit-piloto
+/tmp/gex-dev-kit-piloto doctor --home "$PILOT_HOME"
+/tmp/gex-dev-kit-piloto rollback --home "$PILOT_HOME"
 ```
 
-No terminal interativo, `gex-dev-kit` abre boas-vindas e verifica o ambiente; `Enter` ou clique inicia o chat do assistente GEX. Quando está ocioso, digite `/` para abrir a paleta de comandos. `/setup` começa com um roteiro curto: Harness, Agentes, Destino, Extras, Plugins, Plano e Instalação. Após escolher os harnesses, o kit os reconhece numa frase e mostra um banner para cada Claude Code ou Codex escolhido, sem verificação separada por ferramenta. Para testar sem atualizar executáveis, escolha **Agora não** na pergunta sobre agentes.
+Se o ambiente exportar `CI` ou `NO_COLOR`, remova-os ao testar as cores da TUI: `env -u CI -u NO_COLOR HOME="$PILOT_HOME" /tmp/gex-dev-kit-piloto`. `scripts/demo.sh` também abre a TUI com HOME descartável.
 
-Na conversa, a barra escura mostra GEX, o primeiro harness detectado e sua versão, o caminho do projeto (diretório atual) e, quando disponível, o branch Git (`*N` arquivos modificados, `?N` não rastreados). O HOME de instalação aparece apenas quando difere do HOME real. A régua fica na borda superior rosa da caixa de entrada: fora do setup mostra o Core instalado (`N/7`) e a versão do kit; durante o setup, porcentagem e `Etapa N/7`. Não há divisória separada acima da transcrição. `GEX_NO_POWERLINE=1` troca os separadores decorativos por `›`; terminais em modo Plain usam ASCII.
+### Demonstração
 
-Com animação ativa, cada resposta chega por palavras inteiras num cronograma determinístico a 60 fps: base de 55 caracteres por segundo, intervalos irregulares, pausas de pontuação e aceleração proporcional para limitar textos longos a cerca de 9 s. Entre mensagens há uma batida de 450 ms (700 ms após mais de 300 runas). A linha de trabalho mostra spinner, tempo e brilho móvel no rótulo da fase atual. Cada ferramenta tem cartão de cantos arredondados, estado colorido, resultado alinhado e tempo na borda inferior; enquanto executa, seu corpo exibe checklist de fases de 1 s. Em “Verificar ambiente”, HOME, Claude Code, Codex e Core substituem suas fases pelas linhas reais ao fim de cada etapa; nas outras ferramentas, o checklist cede lugar ao resultado final. A retenção visual dura no máximo 6 s; progresso real chega imediatamente. `Enter` ou espaço pula a animação atual; a entrada permanece travada enquanto o assistente escreve ou uma ferramenta executa. Depois que a gravação real termina, a exibição pode continuar sem adiar `Ctrl+C`. Com `--no-anim`, respostas e resultados aparecem imediatamente, sem checklist.
+Trecho de uma sessão real da v0.3.0 em terminal, com HOME descartável (sem Core instalado); resultados de agentes dependem do PATH de cada máquina:
 
-`ACCESSIBLE=1` ou `TERM=dumb` usam menu e confirmação em texto. `NO_COLOR=1` remove apenas as cores; com terminal interativo, o chat continua.
+```text
+◆ Olá! Eu sou o assistente do Kit GEX. Vou configurar seu ambiente de desenvolvimento com você.
 
-Para escolher opções sem o formulário:
+╭─ ✓ Verificar ambiente ~ ─────────────────────────────────────────────────────────────────────────╮
+│ ✓ HOME         ~                                                                                 │
+│ ! Claude Code  bloqueado · múltiplos executáveis no PATH; resolver colisão antes da instalação   │
+│ ! Codex        bloqueado · múltiplos executáveis no PATH; resolver colisão antes da instalação   │
+│ i Core         0/7 skills · não instalado                                                        │
+╰───────────────────────────────────────────────────────────────────────────────────────────── 4s ─╯
 
-```sh
-./gex-dev-kit install --home "$PILOT_HOME" --skip-agent-update --skill tdd --hook gex-conventional-commits
+◆ Ainda não há Core instalado neste HOME.
+
+◆ Digite / para ver o que posso fazer. Para configurar o ambiente, use /setup.
 ```
 
-A prévia aparece antes de qualquer gravação. Confirme no terminal. Em automação isolada, `--yes` pula a pergunta, mas a prévia continua sendo mostrada.
+Sem capturas antigas: elas mostram a interface anterior. No chat, a barra mostra harness detectado, projeto e branch Git (com contagens `*N` modificados e `?N` não rastreados); o HOME de instalação aparece quando difere do HOME real. A borda do prompt indica `Core N/7` ou progresso `Etapa N/7`. `GEX_NO_POWERLINE=1` troca os separadores por `›`; modo Plain usa ASCII. Com animação, texto chega por palavras (~55 caracteres/s, com pausas e teto aproximado de 9 s para textos longos), há intervalo entre mensagens e cartões de ferramenta exibem fases, resultado e duração. `Enter` ou espaço pula a animação; `--no-anim` exibe tudo imediatamente.
 
-`doctor` pode sair com código 1 quando encontrar alteração em arquivo do kit. Agente externo que o kit não gerencia aparece como aviso e não muda o código de saída.
+## Comandos no chat
 
-## Usar
-
-```sh
-./gex-dev-kit_v0.3.0_linux_amd64 skills
-./gex-dev-kit_v0.3.0_linux_amd64 install --skill tdd --hook gex-conventional-commits
-./gex-dev-kit_v0.3.0_linux_amd64 doctor
-./gex-dev-kit_v0.3.0_linux_amd64 rollback
-```
-
-Para o código da branch, troque o executável por `./gex-dev-kit`.
-
-### Modos de interface
-
-| Situação | Interface usada |
-|---|---|
-| Terminal interativo, sem opção extra | Chat (TUI) |
-| `--yes`, `--quiet` ou `--json` | CLI |
-| `--ui=cli` | CLI |
-| `--ui=tui` sem terminal interativo | Erro de uso (código 2) |
-| `ACCESSIBLE=1` ou `TERM=dumb` | Menu e confirmação em texto |
-| `NO_COLOR=1` em terminal interativo | Chat sem cores |
-
-### Comandos dentro do chat
+Digite `/` para abrir a paleta (`↑`/`↓` escolhem, `Tab` completa). Também aceita buscas como “instalar”, “skill”, “verificar”, “desfazer”, “agente”, “git hook” e “addon”.
 
 | Comando | Ação |
 |---|---|
 | `/setup` | Configurar ou atualizar o kit |
-| `/catalogo` | Ver skills e hooks com “O que faz”, “Quando usar” e “Analogia” |
+| `/catalogo` | Explorar skills e hooks com “O que faz”, “Quando usar” e “Analogia” |
 | `/doctor` | Verificar a integridade |
 | `/rollback` | Desfazer a última instalação |
 | `/agentes` | Restaurar versões anteriores dos agentes |
 | `/githooks` | Configurar git hooks |
 | `/addons` | Ver e instalar plugins de terceiros após revisão e confirmação |
-| `/menu` | Mostrar as opções como lista, quando necessário |
+| `/menu` | Mostrar as opções como lista |
 | `/voltar` | Voltar uma etapa |
 | `/ajuda` | Listar comandos e atalhos |
 | `/limpar` | Limpar a conversa atual |
 | `/sair` | Encerrar |
 
-Na paleta, `↑`/`↓` escolhem e `Tab` completa. Também é possível digitar palavras como “instalar”, “skill”, “verificar”, “desfazer”, “agente”, “git hook” e “addon”. Nas perguntas com várias opções, espaço e números `1`–`9` marcam itens; `Enter` confirma a seleção. Se uma escolha obrigatória ainda não estiver marcada, `Enter` escolhe o item sob o cursor. O botão **Confirmar (N)** ou **Pular (nenhuma marcada)** também confirma com clique; sem Extras selecionados, não há skills ou hooks opcionais.
+**Atalhos:** espaço ou `1`–`9` marca itens, `Enter` confirma (ou escolhe o item sob o cursor quando obrigatório). Clique em **Confirmar (N)** ou **Pular (nenhuma marcada)** para avançar; Extras vazios não instalam opcionais. `Esc` limpa a entrada ou volta; `/voltar` volta etapa. `←`/`→`, `PageUp`/`PageDown` ou clique nas setas trocam a página de escolhas longas (`‹ página i/n ›`); marcações persistem, números valem na página atual. Com texto digitado, setas movem o cursor. Sem escolha paginada, roda e `PageUp`/`PageDown` rolam a conversa. Paleta e navegador de pastas mostram `… mais N`: digite para filtrar. `Tab` completa caminhos, `Enter` abre pasta destacada e é possível colar pelo terminal. `Ctrl+O` ou clique no título expande um cartão; `Ctrl+C` sai. O catálogo separa Core, Engenharia, Produtividade, Especializações e Referências.
 
-Listas mostram só os itens que cabem, preservando ao menos quatro linhas da conversa. Escolhas longas exibem `‹ página i/n ›`: `←`/`→`, `PageUp`/`PageDown` ou clique em `‹`/`›` trocam a página; números `1`–`9` valem na página atual e marcações persistem. Com texto digitado, `←`/`→` movem o cursor. Sem escolha paginada, `PageUp`/`PageDown` e a roda continuam rolando a conversa. A paleta e o navegador de pastas mostram `… mais N` quando não cabem; digite para filtrar. Em `/catalogo`, Skills são divididas em Core, Engenharia, Produtividade e Especializações (Dados e Plataforma / Produto e Interface); Referências, em Skills de terceiros e Hooks candidatos. `Esc` volta um nível.
+## CLI e automação
 
-Em **Extras**, a pergunta `Além do Core (obrigatório), o que mais você quer instalar?` lista grupos opcionais; apenas os grupos marcados abrem suas opções. Depois, **Plugins** permite selecionar instaladores para Claude Code/Codex. O resumo antes da prévia mostra harness, destino, Core, extras, agentes e plugins escolhidos. Confira comandos, conflitos, prévia e diff; só **Sim, aplicar** executa. `Esc` limpa a entrada ou volta à etapa anterior; `/voltar` também volta. Perguntas de caminho oferecem navegador de pastas (`Tab` completa, `Enter` abre a pasta destacada); é possível colar com `Cmd+V` ou `Ctrl+V`, conforme o terminal. Clique no título de uma ferramenta ou use `Ctrl+O` para expandir o bloco; a roda navega escolhas ou conversa. A partir de 120 colunas e 30 linhas, a barra lateral mostra ambiente e sete etapas. Enquanto GEX escreve ou executa ferramenta, o campo fica travado: entradas digitadas não são guardadas. `Enter` ou espaço apenas termina de revelar texto em curso.
-
-### Comandos
+```sh
+gex-dev-kit skills
+gex-dev-kit install --skill tdd --hook gex-conventional-commits
+gex-dev-kit doctor
+gex-dev-kit rollback
+```
 
 | Comando | Para que serve |
 |---|---|
-| `install` | Mostra a prévia, pede confirmação e grava o Core e as escolhas |
-| `doctor` | Confere o HOME (`--home`) ou os git hooks de um repositório (`--repo`) |
-| `rollback` | Desfaz a última gravação do HOME ou do repositório |
-| `rollback-agents` | Restaura a versão anterior de Claude Code e Codex, com confirmação |
-| `skills` | Lista as skills do Core, as especializações e as referências |
-| `hooks` | Lista os hooks de agente, os git hooks e as referências |
-| `addons [NOME]` | Lista os Addons ou mostra o comando oficial de um deles (não executa) |
-| `githooks --repo CAMINHO` | Mostra a prévia dos git hooks; grava só com `--repo` e confirmação |
-| `ds` | Abre a vitrine do Design System (`--ui=cli` mostra em texto) |
-| `version` | Mostra a versão |
-| `help [COMANDO]` | Mostra a ajuda geral ou a de um comando |
+| `install` | Mostra prévia, pede confirmação e grava Core e escolhas |
+| `doctor` | Confere HOME (`--home`) ou git hooks de repositório (`--repo`) |
+| `rollback` | Desfaz última gravação do HOME ou repositório, com prévia |
+| `rollback-agents` | Restaura versão anterior de Claude Code/Codex, com confirmação |
+| `skills` | Lista Core, opcionais e referências |
+| `hooks` | Lista hooks de agente, git hooks e referências |
+| `addons [NOME]` | Lista plugins ou mostra comando oficial; **não instala** |
+| `githooks --repo CAMINHO` | Prévia dos git hooks; grava com confirmação |
+| `ds` | Vitrine do Design System (`--ui=cli` mostra em texto) |
+| `version` | Mostra versão |
+| `help [COMANDO]` | Ajuda geral ou por comando |
 
-Opções globais: `--ui=auto|tui|cli`, `--no-anim`, `--quiet`, `--json` (em `skills`, `hooks`, `addons` e `doctor`), `-h` e `-v`.
+| Situação | Interface |
+|---|---|
+| Terminal interativo, sem opção extra | Chat (TUI) |
+| `--yes`, `--quiet`, `--json` ou `--ui=cli` | CLI |
+| `--ui=tui` sem terminal interativo | Erro de uso (código 2) |
+| `ACCESSIBLE=1` ou `TERM=dumb` | Menu e confirmação em texto |
+| `NO_COLOR=1` em terminal interativo | Chat sem cores |
 
-Regras de uso:
+Opções globais: `--ui=auto|tui|cli`, `--no-anim`, `--quiet`, `--json` (em `skills`, `hooks`, `addons`, `doctor`), `-h`/`--help` e `-v`/`--version`. `--home` (em `install`, `doctor`, `rollback`, `rollback-agents`, `githooks`) e `--repo` aceitam apenas caminho absoluto. `--skill` e `--hook` podem ser repetidos. Sem Extras, `install` grava o Core e tenta atualizar os agentes elegíveis; `--skip-agent-update` evita rede e mudanças nos binários dos agentes. `--yes` confirma após a prévia. `--json` imprime apenas JSON no stdout; `skills --json` usa `gex-dev-kit.skills/v1`, introduzido na v0.3.0, sem `credentials` nas especializações (skills de API de gateway não fazem parte do catálogo; o kit não pede nem grava essas chaves).
 
-- `--home` e `--repo` aceitam só caminho absoluto. Caminho relativo sai com código 2.
-- `--home` vale para `install`, `doctor`, `rollback` e `rollback-agents`.
-- `install` mostra arquivos e versões afetadas e depois pede confirmação. `--yes` confirma em automação, depois da prévia.
-- `--skill` e `--hook` podem ser repetidos.
-- Sem seleção extra, `install` grava o Core e tenta atualizar os agentes elegíveis. `--skip-agent-update` não toca em rede nem nos binários dos agentes.
-- `--json` em `skills`, `hooks`, `addons` e `doctor` imprime só JSON na saída padrão.
-- O schema de `skills --json` é `gex-dev-kit.skills/v1`. Ele estreia na v0.3.0 e as especializações não têm o campo `credentials`: as skills de API de gateway ficaram fora do catálogo. A v0.2.0 não tinha `skills --json`.
-
-### Códigos de saída
-
-| Código | Quando acontece |
+| Saída | Significado |
 |---|---|
 | `0` | Concluído sem falha |
-| `1` | Falha de execução ou de verificação (por exemplo, `doctor` com arquivo alterado) |
-| `2` | Uso inválido: opção ou comando desconhecido, valor de flag ausente, caminho relativo em `--home`, skill ou hook desconhecido, `--repo` que não é repositório Git, `--run` ou `--pre-commit-run` sem o hook correspondente |
+| `1` | Falha de execução ou verificação, por exemplo arquivo alterado no `doctor` |
+| `2` | Uso inválido: comando/flag desconhecido, valor ausente, caminho relativo, skill/hook desconhecido, `--repo` sem Git ou `--run`/`--pre-commit-run` sem hook correspondente |
 | `129` | SIGHUP (terminal fechado) |
 | `130` | Ctrl+C (SIGINT) |
 | `143` | SIGTERM |
 
-Com sinal durante uma gravação, o kit termina a gravação em curso antes de sair.
+Durante gravação, um sinal aguarda a gravação em curso terminar antes de encerrar. Agente externo não gerenciado gera aviso no `doctor`, sem alterar seu código de saída.
 
-## O que mudou desde a v0.2.0
+## O que o kit instala
 
-- A TUI virou um chat com o assistente GEX; setup, catálogo, doctor, rollback, git hooks e addons são fluxos dele, abertos por comandos com barra.
-- O kit instala os plugins opcionais `caveman`, `ponytail`, `superpowers` e `spec-kit` depois da sua confirmação, no setup e em `/addons`.
-- Sete skills Core obrigatórias e sete especializações opcionais, com explicação de cada skill e hook.
-- `rollback` mostra prévia com diff e pede confirmação. Em automação, use `--yes`.
-- A prévia de `install` mostra o diff com dados sensíveis mascarados.
-- `doctor` não sai mais com código 1 por agente que o kit não gerencia. Esse caso vira aviso.
-- Reinstalar sempre atualiza o executável dos hooks.
-- O histórico guarda o conteúdo fora do JSON e alcança as 5 gravações mais recentes.
-- Merge de hooks é aditivo: o kit não remove hooks que já existiam.
-- Hooks de política (`gex-conventional-commits`, `gex-pre-pr`, `gex-sensitive-action-warning`) só agem em repositório com remote de uma destas organizações: `Gex-Development`, `Gex-Integrations`, `gex-data-architecture-org` ou `gex-data-architecture` (sem diferenciar maiúsculas). Também agem com `git config gex.policy true`; `false` desliga. Outras organizações podem ser incluídas no arquivo `orgs` da pasta de configuração do usuário. `doctor` mostra a lista efetiva.
-- Corrigido o falso positivo do hook de commit.
-- Em `claude -p`, as perguntas de `gex-sensitive-action-warning` e `gex-pre-pr` viram negação (comportamento do Claude Code). Não instale esses hooks em máquinas de automação.
+**Core:** instruções em `~/.claude/CLAUDE.md` e `~/.codex/AGENTS.md`; sete skills em `~/.claude/skills/` e `~/.agents/skills/`:
 
-## Core, especializações e skills Matt
+`gex-abrir-issue`, `gex-auto-revisao`, `gex-fluxo-desenvolvimento`, `gex-preparar-pr`, `gex-regras-de-negocio`, `gex-revisar-pr`, `gex-verificar-mudanca`.
 
-O Core escreve instruções em `~/.claude/CLAUDE.md` e `~/.codex/AGENTS.md`. Instala 7 skills `gex-*` em `~/.claude/skills/` e `~/.agents/skills/`.
+**Especializações opcionais (7):**
 
-São 7 especializações opcionais, nos grupos Dados e Plataforma e Produto e Interface. Instalar uma skill apenas copia seus arquivos; atividades externas exigem permissões próprias.
+| Grupo | Skills |
+|---|---|
+| Dados e Plataforma | `gex-local-spark-tests`, `gex-canonical-prod-readiness`, `gex-hub-gold-refresh-prod`, `gex-gateway-audit`, `gex-pr-review` |
+| Produto e Interface | `gex-design-system`, `gex-hub-design-system` |
 
-O hook `gex-conventional-commits` usa `PreToolUse` nos dois agentes. Ele bloqueia commit com mensagem fora de Conventional Commits, quando a mensagem é literal. É orientação local: não substitui validação Git por projeto nem proteção remota.
+Algumas especializações exigem credenciais/permissões externas e autorização própria para agir em produção; copiar a skill não executa essas ações. `gex-pr-review` requer `gex-local-spark-tests`.
 
-No Codex, abra `/hooks`, revise e confie na definição instalada. O kit não faz essa confirmação por você.
+**Matt Pocock (18, opcionais):** cópias offline do [commit `5beb35b0`](https://github.com/mattpocock/skills/tree/5beb35b040e3de97e54fa9e386d7e42d15c295c2), sob [MIT da fonte](https://github.com/mattpocock/skills/blob/5beb35b040e3de97e54fa9e386d7e42d15c295c2/LICENSE): `code-review`, `codebase-design`, `diagnosing-bugs`, `domain-modeling`, `grill-me`, `grill-with-docs`, `grilling`, `handoff`, `improve-codebase-architecture`, `pr`, `prototype`, `research`, `retro`, `tdd`, `teach`, `to-questionnaire`, `wait-what`, `writing-for-agents`. Instalá-las apenas copia arquivos; usar skills que criam issues, labels, branches ou modificam projetos exige autorização separada. Outras 11 (`setup-matt-pocock-skills`, `implement-spec`, `ask-matt` etc.) são **somente referências**, não instaláveis.
 
-Configurações existentes são preservadas. Login e modelo não são alterados.
+**Hooks de agente (4, por escolha):** `gex-conventional-commits` (bloqueia mensagem literal fora do padrão), `gex-sensitive-action-warning` (pede confirmação de ação sensível), `gex-pre-pr` (confirma PR), `gex-session-start` (contexto ao iniciar, opt-in). Os hooks de política só agem com remote de `Gex-Development`, `Gex-Integrations`, `gex-data-architecture-org`, `gex-data-architecture` (sem distinguir maiúsculas) ou `git config gex.policy true`; `false` desliga. Organizações extras entram no arquivo `orgs` da configuração do usuário; `doctor` mostra a lista efetiva. No Codex, os dois hooks que pediriam confirmação não são suportados; aprove hooks instalados em `/hooks`. Em `claude -p`, perguntas de `gex-sensitive-action-warning` e `gex-pre-pr` viram negação: não instale esses hooks em máquinas de automação. Há ainda **25 referências** de hooks de terceiros, não instaladas.
 
-O catálogo tem 4 hooks de agente, 3 git hooks e 25 referências de hooks de terceiros. As referências não são instaladas.
+**Git hooks (3, por repositório):** `gex-commit-msg` valida Conventional Commits, `gex-pre-commit` procura possíveis credenciais no diff e roda comandos rápidos documentados pelo projeto, `gex-pre-push` roda comandos documentados passados com `--run`. O hook de agente `gex-conventional-commits` não substitui validação por Git nem proteção remota. Configurações existentes são preservadas; merge de hooks é aditivo e reinstalação atualiza o executável dos hooks.
 
-As 18 skills Matt Pocock são cópias offline do commit [`5beb35b0`](https://github.com/mattpocock/skills/tree/5beb35b040e3de97e54fa9e386d7e42d15c295c2), sob [licença MIT](https://github.com/mattpocock/skills/blob/5beb35b040e3de97e54fa9e386d7e42d15c295c2/LICENSE). Instalar uma skill só copia os arquivos; não a executa. Há 11 referências de skill que ficam só no catálogo, como `setup-matt-pocock-skills`, `implement-spec` e `ask-matt`. Elas alteram projeto, labels ou dependem de outras partes do catálogo. Skills que criam issues, labels, branches ou alteram projetos exigem autorização separada quando forem usadas.
+## Plugins opcionais
 
-Os quatro plugins opcionais são `caveman` (respostas curtas), `ponytail` (menor mudança completa), `superpowers` (métodos de brainstorming, testes e revisão) e `spec-kit` (fluxo de especificação). Na etapa **Plugins** do `/setup`, entre Extras e Plano, ou em `/addons`, selecione destinos Claude Code/Codex, confira os comandos exatos e os conflitos com o Core e confirme antes de executar; fonte e licença ficam no card de `/addons`. A CLI `addons` só consulta o catálogo; `install` não instala plugins. A instalação roda cada comando sem shell, em grupo próprio e sem terminal de controle, com timeout, ambiente reduzido, HOME escolhido e versões fixadas; Claude Code usa tag porque seu marketplace não aceita commit, e superpowers segue o pin do marketplace oficial da Anthropic, sujeito a atualizações. Se faltar um executável, o passo é pulado e mostrado como instrução manual. `superpowers` no Codex exige `/plugins` interativo; `spec-kit` exige `specify init` manual por projeto. Depois de instalar hooks no Codex, abra `/hooks` e aprove-os. O rollback do kit não desfaz plugins: remova-os no próprio Claude Code ou Codex.
+Só a etapa **Plugins** de `/setup` ou `/addons` no chat instala plugins. Escolha Claude Code e/ou Codex, confira comandos e conflitos com o Core e confirme. A CLI `addons` apenas consulta o catálogo; a CLI `install` não instala plugins.
 
-## Agentes
+| Plugin | Para quê | Instalação pelo chat | Passo manual |
+|---|---|---|---|
+| `caveman` | Respostas curtas | Claude Code por tag `v4.0.1`; Codex via `npx` por commit | Aprovar hook no Codex em `/hooks` |
+| `ponytail` | Menor mudança completa | Claude Code por tag `v5.3.2`; Codex por commit | Aprovar hooks no Codex em `/hooks` |
+| `superpowers` | Brainstorming, TDD, planos e revisão | Claude Code via marketplace oficial | No Codex, `/plugins` → superpowers → Install Plugin |
+| `spec-kit` | Fluxo de especificação | `uv tool install` por commit verificado | `specify init . --integration claude` ou `codex` em cada projeto |
 
-Claude Code `2.1.306` e Codex `0.163.0` são as versões fixadas nesta release. A CLI só instala ou atualiza executáveis standalone próprios, no perfil do usuário, pelos instaladores oficiais com versão exata.
+As tags de `caveman` e `ponytail` no Claude Code **não são** os commits conferidos do catálogo; o marketplace não aceita commit como referência. O pin de `superpowers` depende do marketplace oficial e pode mudar. `spec-kit` requer Python 3.11+ e `uv`. Instaladores ausentes viram instrução manual. Um plugin pode alterar `settings.json`/`hooks.json` após o Core, causando conflito no `rollback` ou aviso no `doctor`. O kit reduz as variáveis passadas (tokens como `GH_TOKEN`/`NPM_TOKEN` não chegam ao instalador), mas a filtragem da saída não cobre todos os formatos de segredo/caracteres de controle. Revise a [análise completa de segurança e fixação nas notas v0.3.0](docs/release-notes/v0.3.0.md). **Rollback não desfaz plugins**: remova-os no próprio Claude Code/Codex.
 
-Brew, npm, winget, apt, dnf, binários não gerenciados, PATH ambíguo e atualização automática nativa que saia do pin ficam bloqueados. Nesses casos, o Core ainda pode ser instalado, mas o comando retorna erro e não afirma atualização.
+## Agentes e git hooks por projeto
 
-`rollback-agents` pede confirmação e reverte só um upgrade já gerenciado, com versão anterior registrada. A primeira instalação não tem versão anterior e não é desinstalada automaticamente.
+Versões fixadas nesta release: **Claude Code 2.1.306** e **Codex 0.163.0**. O kit só instala/atualiza executáveis standalone que gerencia, no perfil do usuário, por instaladores oficiais e versão exata. Brew, npm, winget, apt, dnf, binários não gerenciados, PATH ambíguo e atualização nativa fora do pin bloqueiam essa operação: o Core ainda pode ser instalado, mas o comando retorna erro e não afirma atualização. `rollback-agents` só reverte upgrade gerenciado com versão anterior registrada; a primeira instalação não é desinstalada automaticamente. Login e modelo não são alterados.
 
-## Git hooks por projeto
-
-`githooks` mostra a prévia dos git hooks de um repositório. Só grava com `--repo` e confirmação. `rollback --repo` desfaz a gravação.
+`githooks --repo CAMINHO_ABSOLUTO` mostra prévia e grava somente após confirmação; `rollback --repo CAMINHO_ABSOLUTO` desfaz a gravação. Use `--hook gex-pre-commit --pre-commit-run "go vet ./..."` ou `--hook gex-pre-push --run "go test ./..."` apenas quando esses comandos estiverem documentados no projeto.
 
 ## Desenvolvimento
 
@@ -190,10 +178,22 @@ go build -o /tmp/gex-dev-kit-piloto ./cmd/gex-dev-kit
 ./scripts/smoke.sh /tmp/gex-dev-kit-piloto
 ```
 
-- `scripts/check.sh` roda o conjunto completo: formato, comentários, `go vet`, testes, build e smoke.
-- `scripts/smoke.sh CAMINHO_DO_BINARIO` instala, roda `doctor`, testa hook e rollback em HOME descartável.
-- `scripts/release.sh vX.Y.Z` compila seis alvos (limite de 16 MiB por binário) e gera `dist/SHA256SUMS` e `dist/THIRD_PARTY_LICENSES.txt`. Exige `docs/release-notes/vX.Y.Z.md`. Não publica. Publicar exige a opção `--publish`, versão aprovada e confirmação explícita.
+- `scripts/check.sh`: formato, comentários, vet, testes, build e smoke local.
+- `scripts/smoke.sh CAMINHO_DO_BINARIO`: instalação, doctor, hook e rollback em HOME descartável.
+- `scripts/demo.sh`: compila e abre a TUI em HOME descartável.
+- `scripts/release.sh vX.Y.Z`: compila seis alvos (máximo 16 MiB cada), gera `dist/SHA256SUMS` e avisos das dependências; exige `docs/release-notes/vX.Y.Z.md`. Não publica sem `--publish` e confirmação explícita.
 
-Mudanças seguem Conventional Commits. Não há CI remoto nesta fase: testes locais não substituem a proteção contínua das branches.
+| Pasta | Responsabilidade |
+|---|---|
+| `cmd/gex-dev-kit` | Entrada da CLI, comandos, sinais e JSON |
+| `internal/app` | Casos de uso compartilhados por CLI e TUI |
+| `internal/catalog` | Catálogo Core, opcionais, plugins e hooks |
+| `internal/kit` | Gravação segura e histórico no HOME |
+| `internal/agents` | Controle dos binários dos agentes |
+| `internal/hooks` | Hooks de agente |
+| `internal/githooks` | Git hooks por projeto |
+| `internal/ui` | Tema, componentes e chat; `ds` separado |
 
-Fontes de compatibilidade: [hooks Claude Code](https://code.claude.com/docs/en/hooks), [hooks Codex](https://developers.openai.com/codex/hooks), [instalação Claude Code](https://code.claude.com/docs/en/setup), [instalação Codex](https://developers.openai.com/codex/cli). Estado e decisões do kit: `kit-desenvolvimento-gex-acompanhamento.html` na documentação visual da equipe.
+Commits seguem Conventional Commits. Não há CI remoto nesta fase. Consulte [CHANGELOG](CHANGELOG.md), [notas da v0.3.0](docs/release-notes/v0.3.0.md), [decisões (ADR)](docs/ADR.md), [arquitetura](docs/ARCHITECTURE.md), [contexto](docs/CONTEXT.md) e [auditoria de UX](docs/AUDITORIA-UX.md) para histórico e detalhes.
+
+Fontes de compatibilidade: [hooks Claude Code](https://code.claude.com/docs/en/hooks), [hooks Codex](https://developers.openai.com/codex/hooks), [instalação Claude Code](https://code.claude.com/docs/en/setup), [instalação Codex](https://developers.openai.com/codex/cli).
