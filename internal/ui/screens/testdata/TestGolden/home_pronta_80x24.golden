@@ -1,24 +1,24 @@
-GEX DEV KIT · ~                                                            0.3.0
+[GEX DEV KIT] · ~                                                          0.3.0
 --------------------------------------------------------------------------------
-########  ########  ##    ##                                                    
-##  ####  ####        ####                                                      
-########  ########  ##    ##                                                    
-DEV KIT                                                                         
-                                                                                
-... rodando Claude Code · lendo…                                                
-... rodando Codex · lendo…                                                      
-... rodando Core · ?/7 skills · lendo…                                          
-... rodando Hooks · lendo…                                                      
-[i] info    Versão · 0.3.0                                                      
-> Instalar  prévia e instalação guiada do Core                                  
-  Catálogo  skills, hooks e referências                                         
-  Doctor  conferir integridade e agentes                                        
-  Reverter Core  restaurar arquivos do kit                                      
-  Reverter agentes  restaurar versões anteriores                                
-  Addons  ferramentas opcionais, sem instalação automática                      
-  Git hooks  hooks por repositório, com prévia                                  
-  Vitrine DS  componentes e padrões visuais                                     
-  Ajuda  atalhos de teclado                                                     
-  Sair  fechar o Kit GEX                                                        
+############  ############  ############
+####  ######  ##########        ####    
+############  ############  ############
+D E V   K I T                           
+
+... rodando Claude Code · lendo…      
+... rodando Codex · lendo…            
+... rodando Core · ?/7 skills · lendo…
+... rodando Hooks · lendo…            
+[i] info    Versão · 0.3.0            
+> Instalar          prévia e instalação guiada do Core                          
+  Catálogo          skills, hooks e referências
+  Doctor            conferir integridade e agentes
+  Reverter Core     restaurar arquivos do kit
+  Reverter agentes  restaurar versões anteriores
+  Addons            ferramentas opcionais, sem instalação automática
+  Git hooks         hooks por repositório, com prévia
+  Vitrine DS        componentes e padrões visuais
+  Ajuda             atalhos de teclado
+  Sair              fechar o Kit GEX
                                                                                 
 ↑/k subir • ↓/j descer • enter escolher • esc voltar • q sair • ? ajuda …       

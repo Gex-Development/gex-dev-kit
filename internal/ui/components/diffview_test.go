@@ -102,7 +102,7 @@ func TestDiffViewShowsDiffOnlyForExpandedChanges(t *testing.T) {
 	if strings.Contains(collapsed, "conteúdo oculto") {
 		t.Fatalf("arquivo recolhido mostrou o diff:\n%s", collapsed)
 	}
-	if !strings.Contains(collapsed, "atualizar a.md") {
+	if !strings.Contains(diffviewWords(collapsed), "atualizar a.md") {
 		t.Fatalf("resumo do arquivo recolhido ausente:\n%s", collapsed)
 	}
 	expanded := ansi.Strip(DiffView(filetreeTestTheme(), 80, groups, map[string]bool{"a.md": true}))
@@ -117,7 +117,7 @@ func TestDiffViewWithoutGroupsIsEmpty(t *testing.T) {
 	}
 }
 
-func TestDiffviewLabelCoversEveryAction(t *testing.T) {
+func TestChangeLabelCoversEveryAction(t *testing.T) {
 	want := map[ChangeAction]string{
 		ChangeCreate:    "criar",
 		ChangeUpdate:    "atualizar",
@@ -127,9 +127,12 @@ func TestDiffviewLabelCoversEveryAction(t *testing.T) {
 		ChangeUnchanged: "sem mudança",
 	}
 	for action, label := range want {
-		if got := diffviewLabel(action); got != label {
+		if got := ChangeLabel(action); got != label {
 			t.Fatalf("rótulo da ação %d: %q, esperado %q", action, got, label)
 		}
+	}
+	if got := ChangeLabel(ChangeAction(-1)); got != "sem mudança" {
+		t.Fatalf("rótulo desconhecido: %q", got)
 	}
 }
 

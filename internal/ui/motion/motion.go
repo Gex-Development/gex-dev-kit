@@ -32,6 +32,7 @@ type Preset struct{ Frequency, Damping float64 }
 var (
 	Snappy = Preset{Frequency: 9, Damping: 1}
 	Gentle = Preset{Frequency: 6, Damping: 0.85}
+	Intro  = Preset{Frequency: 2.4, Damping: 1}
 )
 
 type Spring struct {

@@ -28,10 +28,27 @@ const (
 type Confirm struct {
 	title, body, yes, no string
 	keys                 Keys
+	buttons              Buttons
 }
 
 func NewConfirm(title, body, yes, no string) Confirm {
-	return Confirm{title: title, body: body, yes: yes, no: no, keys: DefaultKeys()}
+	return Confirm{
+		title: title, body: body, yes: yes, no: no, keys: DefaultKeys(),
+		buttons: NewButtons(Button{ID: "yes", Label: yes}, Button{ID: "no", Label: no}),
+	}
+}
+
+func (c Confirm) Place(t theme.Theme, width, height int) Confirm {
+	modal := c.box(t, min(width-1, confirmMaxWidth))
+	x, y := max((width-lipgloss.Width(modal))/2, 0), max((height-lipgloss.Height(modal))/2, 0)
+	buttons := ansi.Strip(c.buttons.View(t))
+	for row, line := range strings.Split(ansi.Strip(modal), "\n") {
+		if col := strings.Index(line, buttons); col >= 0 {
+			c.buttons = c.buttons.Place(x+ansi.StringWidth(line[:col]), y+row)
+			break
+		}
+	}
+	return c
 }
 
 func (c Confirm) Visible(width, height int) bool {
@@ -39,15 +56,28 @@ func (c Confirm) Visible(width, height int) bool {
 }
 
 func (c Confirm) Update(msg tea.Msg, visible bool) (Confirm, Decision) {
-	press, ok := msg.(tea.KeyPressMsg)
-	if !visible || !ok {
+	if !visible {
 		return c, DecisionNone
 	}
-	switch {
-	case key.Matches(press, c.keys.Yes):
-		return c, DecisionYes
-	case key.Matches(press, c.keys.No, c.keys.Back):
-		return c, DecisionNo
+	if press, ok := msg.(tea.KeyPressMsg); ok {
+		switch {
+		case key.Matches(press, c.keys.Yes):
+			return c, DecisionYes
+		case key.Matches(press, c.keys.No, c.keys.Back):
+			return c, DecisionNo
+		case press.String() == "enter":
+			return c, DecisionNone
+		}
+	}
+	var cmd tea.Cmd
+	c.buttons, cmd = c.buttons.Update(msg)
+	if cmd != nil {
+		if pressed, ok := cmd().(ButtonPressMsg); ok {
+			if pressed.Button.ID == "yes" {
+				return c, DecisionYes
+			}
+			return c, DecisionNo
+		}
 	}
 	return c, DecisionNone
 }
@@ -56,7 +86,7 @@ func (c Confirm) View(t theme.Theme, width int) string {
 	if width <= 0 {
 		return ""
 	}
-	return c.box(t, min(width, confirmMaxWidth))
+	return confirmFit(c.box(t, min(width, confirmMaxWidth)), width, 100, confirmTail(t))
 }
 
 func (c Confirm) Overlay(t theme.Theme, base string, width, height int) string {
@@ -108,7 +138,7 @@ func (c Confirm) box(t theme.Theme, w int) string {
 func (c Confirm) content(t theme.Theme) string {
 	hints := t.KeyHintKey.Render("s/y") + " " + t.KeyHintDesc.Render(c.yes) +
 		"    " + t.KeyHintKey.Render("n/esc") + " " + t.KeyHintDesc.Render(c.no)
-	return strings.Join([]string{t.Title.Render(c.title), "", c.body, "", hints}, "\n")
+	return strings.Join([]string{t.Title.Render(c.title), "", c.body, "", c.buttons.View(t), hints}, "\n")
 }
 
 func confirmShadow(t theme.Theme, w, h int) string {

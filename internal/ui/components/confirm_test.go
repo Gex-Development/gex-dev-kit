@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/colorprofile"
 	"github.com/charmbracelet/x/ansi"
 
+	tea "charm.land/bubbletea/v2"
 	"github.com/Gex-Development/gex-dev-kit/internal/ui/theme"
 )
 
@@ -126,5 +127,26 @@ func TestConfirmOverlaySemEspacoMostraSoModal(t *testing.T) {
 	c := confirmTestDialog()
 	if got, quer := c.Overlay(tema, "base", 20, 8), c.View(tema, 20); got != quer {
 		t.Fatalf("sem espaço o overlay deveria mostrar só o modal")
+	}
+}
+
+func TestConfirmClickEmBotoes(t *testing.T) {
+	c := confirmTestDialog().Place(keysTheme(), 80, 24)
+	theme := keysTheme()
+	base := strings.TrimSuffix(strings.Repeat(strings.Repeat(".", 80)+"\n", 24), "\n")
+	lines := strings.Split(ansi.Strip(c.Overlay(theme, base, 80, 24)), "\n")
+	for _, tc := range []struct {
+		label string
+		want  Decision
+	}{{"Aplicar", DecisionYes}, {"Cancelar", DecisionNo}} {
+		for y, line := range lines {
+			if x := strings.Index(line, tc.label); x >= 0 && strings.Contains(line, "Cancelar") && strings.Contains(line, "Aplicar") {
+				_, got := c.Update(tea.MouseClickMsg{X: x, Y: y, Button: tea.MouseLeft}, true)
+				if got != tc.want {
+					t.Fatalf("clique em %s: %v, quero %v", tc.label, got, tc.want)
+				}
+				break
+			}
+		}
 	}
 }

@@ -1,4 +1,4 @@
-GEX DEV KIT · ~                                        0.3.0
+[GEX DEV KIT] · ~                                      0.3.0
 ------------------------------------------------------------
 GEX - DEV KIT
 +----------------------------------------------------------+
@@ -8,13 +8,13 @@ GEX - DEV KIT
 | Ação: Rode gex-dev-kit doctor e envie a saída ao         |
 | responsável                                              |
 +----------------------------------------------------------+
-> Instalar
-  Catálogo
-  Doctor
-  Reverter Core
+> Instalar                                                  
+  Catálogo        
+  Doctor          
+  Reverter Core   
   Reverter agentes
-  Addons
-  Git hooks
-  Vitrine DS
+  Addons          
+  Git hooks       
+  Vitrine DS      
                                                             
 ↑/k subir • ↓/j descer • enter escolher • esc voltar …      

@@ -166,8 +166,8 @@ func TestMenuMarcaItemAtivoEMostraDescricaoSoQuandoPedida(t *testing.T) {
 	m := NewMenu(menuTestItems(), false)
 	tema := keysTheme()
 	comDescricao := ansi.Strip(m.View(tema, 60, true))
-	if !strings.Contains(comDescricao, "▸ Alfa") {
-		t.Fatalf("item ativo deveria ter o marcador ▸: %q", comDescricao)
+	if !strings.Contains(comDescricao, "▌ Alfa") {
+		t.Fatalf("item ativo deveria ter o marcador ▌: %q", comDescricao)
 	}
 	if !strings.Contains(comDescricao, "terceiro") {
 		t.Fatalf("descrição pedida não apareceu: %q", comDescricao)

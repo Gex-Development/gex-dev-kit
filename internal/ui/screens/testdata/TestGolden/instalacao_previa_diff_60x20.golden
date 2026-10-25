@@ -1,11 +1,11 @@
-GEX / DEV KIT · Instalação                             0.3.0
+[GEX / DEV KIT] · Instalação                           0.3.0
 ------------------------------------------------------------
 2 arquivo(s) · 0 agente(s) a atualizar
-Alterações                                                  
-criar .claude/CLAUDE.md · novo, 2 linhas                    
+Alterações  2 arquivos                                      
+    criar     .claude/CLAUDE.md · novo, 2 linhas            
 +# Regras                                                   
 +linha                                                      
-atualizar .claude/settings.json · 1 linha                   
+  atualizar   .claude/settings.json · 1 linha               
  {                                                          
 +  "env": {"API_TOKEN": "•••"}                              
  }                                                          

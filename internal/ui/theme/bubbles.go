@@ -9,8 +9,8 @@ import (
 func (t Theme) Help() help.Styles {
 	p := t.Palette
 	s := help.DefaultStyles(t.Dark)
-	s.ShortKey = s.ShortKey.Foreground(p.Accent)
-	s.FullKey = s.FullKey.Foreground(p.Accent)
+	s.ShortKey = t.Keycap
+	s.FullKey = t.Keycap
 	s.ShortDesc = s.ShortDesc.Foreground(p.TextSecondary)
 	s.FullDesc = s.FullDesc.Foreground(p.TextSecondary)
 	s.ShortSeparator = s.ShortSeparator.Foreground(p.TextFaint)

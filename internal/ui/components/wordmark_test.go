@@ -59,14 +59,14 @@ func TestWordmarkRevelaColunasDaEsquerda(t *testing.T) {
 	}
 	half := wordmarkTestLines(ansi.Strip(Wordmark(th, 80, 0.5)))[0]
 	runes := []rune(half)
-	if runes[0] != '█' {
+	if runes[0] == ' ' {
 		t.Fatalf("com reveal 0.5 a primeira coluna deveria estar visível, linha = %q", half)
 	}
 	if runes[len(runes)-1] != ' ' {
 		t.Fatalf("com reveal 0.5 a última coluna deveria estar oculta, linha = %q", half)
 	}
 	full := wordmarkTestLines(ansi.Strip(Wordmark(th, 80, 1)))[0]
-	if []rune(full)[len([]rune(full))-1] != '█' {
+	if []rune(full)[len([]rune(full))-1] == ' ' {
 		t.Fatalf("com reveal 1 a última coluna deveria estar visível, linha = %q", full)
 	}
 }

@@ -161,13 +161,16 @@ func (m Menu) choose() (Menu, tea.Cmd) {
 }
 
 func (m Menu) row(t theme.Theme, width, i int, item MenuItem, descriptions bool) string {
-	pointer := theme.StateRunning.Symbol(t.Plain)
 	active := i == int(math.Round(m.spring.Value()))
-	lead := strings.Repeat(" ", ansi.StringWidth(pointer))
-	if active {
-		lead = pointer
+	marker := "▌"
+	if t.Plain {
+		marker = ">"
 	}
-	text := lead + " " + item.Title
+	if !active {
+		marker = " "
+	}
+	title := item.Title + strings.Repeat(" ", max(m.titleWidth()-ansi.StringWidth(item.Title), 0))
+	text := marker + " " + title
 	if descriptions && item.Description != "" {
 		text += "  " + item.Description
 	}
@@ -176,10 +179,21 @@ func (m Menu) row(t theme.Theme, width, i int, item MenuItem, descriptions bool)
 	case item.Disabled:
 		return t.Faint.Render(text)
 	case active:
-		return t.Selected.Render(text)
-	default:
+		return t.BarFocus.Width(width).Render(text)
+	}
+	if !descriptions || item.Description == "" {
 		return t.Unselected.Render(text)
 	}
+	head := ansi.Truncate(text, 2+ansi.StringWidth(title), "")
+	return t.Unselected.Render(head) + t.Secondary.Render(ansi.TruncateLeft(text, ansi.StringWidth(head), ""))
+}
+
+func (m Menu) titleWidth() int {
+	w := 0
+	for _, item := range m.items {
+		w = max(w, ansi.StringWidth(item.Title))
+	}
+	return w
 }
 
 func menuTail(t theme.Theme) string {

@@ -9,12 +9,17 @@ import (
 	"github.com/Gex-Development/gex-dev-kit/internal/ui/theme"
 )
 
-const wordmarkBreakpoint = 60
+const (
+	wordmarkBreakpoint = 60
+	wordmarkPixelWidth = 2
+	wordmarkGap        = 2
+	wordmarkGlowCols   = 4
+)
 
 var wordmarkFont = map[rune][]string{
-	'G': {"####", "# ##", "####"},
-	'E': {"####", "##  ", "####"},
-	'X': {"#  #", " ## ", "#  #"},
+	'G': {".#####", "##....", "##.###", "##..##", "##..##", ".#####"},
+	'E': {"######", "##....", "#####.", "##....", "##....", "######"},
+	'X': {"##..##", ".####.", "..##..", "..##..", ".####.", "##..##"},
 }
 
 func Wordmark(t theme.Theme, width int, reveal float64) string {
@@ -30,9 +35,16 @@ func Wordmark(t theme.Theme, width int, reveal float64) string {
 	for _, row := range rows {
 		lines = append(lines, wordmarkPaint(t, row, reveal))
 	}
-	label := wordmarkPad("DEV KIT", len([]rune(rows[0])))
+	label := wordmarkPad(wordmarkLabel(t.Plain), len([]rune(rows[0])))
 	lines = append(lines, wordmarkPaint(t, label, reveal))
 	return strings.Join(lines, "\n")
+}
+
+func wordmarkLabel(plain bool) string {
+	if plain {
+		return "D E V   K I T"
+	}
+	return "D E V   K I T  ·  GEX"
 }
 
 func wordmarkClamp(v float64) float64 {
@@ -58,28 +70,45 @@ func wordmarkTagline(plain bool) string {
 }
 
 func wordmarkRows(plain bool) []string {
-	fill := "██"
-	if plain {
-		fill = "##"
+	var grid [6][]bool
+	for r := range grid {
+		for i, letter := range "GEX" {
+			if i > 0 {
+				for range wordmarkGap {
+					grid[r] = append(grid[r], false)
+				}
+			}
+			for _, cell := range wordmarkFont[letter][r] {
+				for range wordmarkPixelWidth {
+					grid[r] = append(grid[r], cell == '#')
+				}
+			}
+		}
 	}
 	rows := make([]string, 3)
 	for r := range rows {
 		var b strings.Builder
-		for i, letter := range "GEX" {
-			if i > 0 {
-				b.WriteString("  ")
-			}
-			for _, cell := range wordmarkFont[letter][r] {
-				if cell == '#' {
-					b.WriteString(fill)
-				} else {
-					b.WriteString("  ")
-				}
-			}
+		for c := range grid[0] {
+			top, bottom := grid[2*r][c], grid[2*r+1][c]
+			b.WriteRune(wordmarkCell(top, bottom, plain))
 		}
 		rows[r] = b.String()
 	}
 	return rows
+}
+
+func wordmarkCell(top, bottom, plain bool) rune {
+	switch {
+	case plain && (top || bottom):
+		return '#'
+	case top && bottom:
+		return '█'
+	case top:
+		return '▀'
+	case bottom:
+		return '▄'
+	}
+	return ' '
 }
 
 func wordmarkPad(s string, n int) string {
@@ -99,7 +128,7 @@ func wordmarkPaint(t theme.Theme, line string, reveal float64) string {
 			b.WriteRune(' ')
 			continue
 		}
-		b.WriteString(wordmarkStyle(t, colors, i).Render(string(r)))
+		b.WriteString(wordmarkStyle(t, colors, i, visible, reveal < 1).Render(string(r)))
 	}
 	return b.String()
 }
@@ -111,7 +140,10 @@ func wordmarkColors(t theme.Theme, n int) []color.Color {
 	return t.Blend(n)
 }
 
-func wordmarkStyle(t theme.Theme, colors []color.Color, i int) lipgloss.Style {
+func wordmarkStyle(t theme.Theme, colors []color.Color, i, visible int, sweeping bool) lipgloss.Style {
+	if sweeping && visible-i <= wordmarkGlowCols {
+		return t.Glow
+	}
 	if i < len(colors) && colors[i] != nil {
 		return t.Title.Foreground(colors[i])
 	}

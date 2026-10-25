@@ -9,6 +9,8 @@ import (
 	"github.com/charmbracelet/x/ansi"
 )
 
+const diffviewBadgeWidth = 13
+
 type ChangeAction int
 
 const (
@@ -51,11 +53,13 @@ type ChangeGroup struct {
 func DiffView(t theme.Theme, width int, groups []ChangeGroup, expanded map[string]bool) string {
 	var blocks []string
 	for _, group := range groups {
-		blocks = append(blocks, t.Title.Render(diffviewWrap(diffviewText(group.Title), width)))
+		title := diffviewText(group.Title)
+		count := fmt.Sprintf("%d %s", len(group.Changes), diffviewPlural(len(group.Changes), "arquivo", "arquivos"))
+		blocks = append(blocks, t.Title.Render(ansi.Truncate(title, max(1, width), "…"))+"  "+t.Secondary.Render(count))
 		for _, change := range group.Changes {
 			blocks = append(blocks, diffviewSummary(t, width, change))
-			if expanded[change.Path] {
-				blocks = append(blocks, DiffBody(t, width, change))
+			if body := DiffBody(t, width, change); expanded[change.Path] && body != "" {
+				blocks = append(blocks, body)
 			}
 		}
 		blocks = append(blocks, "")
@@ -80,11 +84,30 @@ func DiffBody(t theme.Theme, width int, c Change) string {
 }
 
 func diffviewSummary(t theme.Theme, width int, c Change) string {
-	text := diffviewLabel(c.Action) + " " + diffviewText(c.Path)
+	badge := diffviewBadge(t, c.Action)
+	room := max(1, width-diffviewBadgeWidth-1)
+	text := diffviewText(c.Path)
 	if detail := diffviewText(c.Detail); detail != "" {
 		text += " · " + detail
 	}
-	return diffviewActionStyle(t, c.Action).Render(diffviewWrap(text, width))
+	lines := strings.Split(ansi.Wrap(text, room, " "), "\n")
+	indent := strings.Repeat(" ", diffviewBadgeWidth+1)
+	for i, line := range lines {
+		prefix := indent
+		if i == 0 {
+			prefix = badge + " "
+		}
+		lines[i] = prefix + t.Text.Render(line)
+	}
+	return strings.Join(lines, "\n")
+}
+
+func diffviewBadge(t theme.Theme, action ChangeAction) string {
+	style := diffviewActionStyle(t, action).Width(diffviewBadgeWidth).Align(lipgloss.Center)
+	if t.Rich {
+		style = style.Reverse(true)
+	}
+	return style.Render(ChangeLabel(action))
 }
 
 func diffviewLine(t theme.Theme, width int, line DiffLine) string {
@@ -128,7 +151,7 @@ func diffviewActionStyle(t theme.Theme, action ChangeAction) lipgloss.Style {
 	}
 }
 
-func diffviewLabel(action ChangeAction) string {
+func ChangeLabel(action ChangeAction) string {
 	switch action {
 	case ChangeCreate:
 		return "criar"

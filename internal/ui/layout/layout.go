@@ -121,20 +121,39 @@ func BodySize(s Size) Size {
 	return Size{Width: max(s.Width, 0), Height: max(s.Height-layoutChromeRows, 0)}
 }
 
+func Header(t theme.Theme, width int, f Frame) string { return layoutHeader(t, width, f) }
+
+func Divider(t theme.Theme, width int) string { return layoutDivider(t, width) }
+
 func layoutHeader(t theme.Theme, width int, f Frame) string {
-	left := t.Title.Render(f.Title)
+	mark := "◆ " + f.Title
+	if t.Plain {
+		mark = "[" + f.Title + "]"
+	}
+	left := t.Pill.Render(mark)
+	if t.Plain {
+		left = mark
+	}
 	if f.Context != "" {
 		left += " " + t.Secondary.Render("· "+f.Context)
 	}
-	return Columns(t, width, left, t.Secondary.Render(f.Version))
+	return Columns(t, width, left, t.Faint.Render(f.Version))
 }
 
 func layoutDivider(t theme.Theme, width int) string {
-	char := "─"
+	width = max(width, 0)
 	if t.Plain {
-		char = "-"
+		return t.Divider.Render(strings.Repeat("-", width))
 	}
-	return t.Divider.Render(strings.Repeat(char, max(width, 0)))
+	if !t.Rich || width == 0 {
+		return t.Divider.Render(strings.Repeat("─", width))
+	}
+	colors := t.Blend(width)
+	var b strings.Builder
+	for i := range width {
+		b.WriteString(t.Divider.Foreground(colors[i]).Render("━"))
+	}
+	return b.String()
 }
 
 func layoutFooter(t theme.Theme, width int, keys string) string {

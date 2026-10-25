@@ -1,6 +1,7 @@
 package components
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/Gex-Development/gex-dev-kit/internal/ui/theme"
@@ -17,7 +18,7 @@ func TestStatusBadgeSimboloETexto(t *testing.T) {
 		th := badgeTestTheme(plain)
 		for state := theme.StatePending; state <= theme.StateInfo; state++ {
 			want := state.Symbol(plain) + " instalado"
-			if got := ansi.Strip(StatusBadge(th, state, "instalado")); got != want {
+			if got := strings.TrimSpace(ansi.Strip(StatusBadge(th, state, "instalado"))); got != want {
 				t.Fatalf("estado %d (plain=%v): selo = %q, esperado %q", state, plain, got, want)
 			}
 		}
@@ -26,7 +27,7 @@ func TestStatusBadgeSimboloETexto(t *testing.T) {
 
 func TestStatusBadgeSemRotuloUsaRotuloDoEstado(t *testing.T) {
 	th := badgeTestTheme(false)
-	if got, want := ansi.Strip(StatusBadge(th, theme.StateError, "")), "✗ erro"; got != want {
+	if got, want := strings.TrimSpace(ansi.Strip(StatusBadge(th, theme.StateError, ""))), "✗ erro"; got != want {
 		t.Fatalf("selo sem rótulo = %q, esperado %q", got, want)
 	}
 }

@@ -1,7 +1,7 @@
-GEX / ROLLBACK · Reverter agentes                                          0.3.0
+[GEX / ROLLBACK] · Reverter agentes                                        0.3.0
 --------------------------------------------------------------------------------
 0 alterações previstas
-Arquivos
+Arquivos  0 arquivos
 
 
 
@@ -11,11 +11,11 @@ Arquivos
           |                                                          |.
           |  Claude e Codex voltam à versão anterior ao kit.         |.
           |                                                          |.
+          |  > confirmar <  [ cancelar ]                             |.
           |  s/y confirmar    n/esc cancelar                         |.
           |                                                          |.
           +----------------------------------------------------------+.
            ............................................................
-
 
 
 

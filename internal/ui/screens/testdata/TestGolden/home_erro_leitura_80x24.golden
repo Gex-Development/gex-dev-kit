@@ -1,9 +1,9 @@
-GEX DEV KIT · ~                                                            0.3.0
+[GEX DEV KIT] · ~                                                          0.3.0
 --------------------------------------------------------------------------------
-########  ########  ##    ##
-##  ####  ####        ####  
-########  ########  ##    ##
-DEV KIT                     
+############  ############  ############
+####  ######  ##########        ####    
+############  ############  ############
+D E V   K I T                           
 
 ... rodando Claude Code · lendo…                 
 ... rodando Codex · lendo…                       
@@ -16,9 +16,9 @@ DEV KIT
 | Causa: permission denied                                                     |
 | Ação: Rode gex-dev-kit doctor e envie a saída ao responsável                 |
 +------------------------------------------------------------------------------+
-> Instalar  prévia e instalação guiada do Core
-  Catálogo  skills, hooks e referências
-  Doctor  conferir integridade e agentes
-  Reverter Core  restaurar arquivos do kit
+> Instalar          prévia e instalação guiada do Core                          
+  Catálogo          skills, hooks e referências
+  Doctor            conferir integridade e agentes
+  Reverter Core     restaurar arquivos do kit
                                                                                 
 ↑/k subir • ↓/j descer • enter escolher • esc voltar • q sair • ? ajuda …       

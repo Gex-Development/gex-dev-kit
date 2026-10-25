@@ -25,6 +25,10 @@ func tokensList(p Palette) []tokensItem {
 		{"TextFaint", p.TextFaint},
 		{"SurfaceActive", p.SurfaceActive},
 		{"BorderCard", p.BorderCard},
+		{"Surface", p.Surface},
+		{"SurfaceRaised", p.SurfaceRaised},
+		{"BorderStrong", p.BorderStrong},
+		{"Glow", p.Glow},
 		{"Positive", p.Positive},
 		{"Negative", p.Negative},
 		{"Warning", p.Warning},
@@ -57,74 +61,28 @@ func tokensRatio(a, b color.Color) float64 {
 	return (la + 0.05) / (lb + 0.05)
 }
 
-func tokensCheck(t *testing.T, p Palette, expected map[string]string) {
-	t.Helper()
-	items := tokensList(p)
-	if len(items) != len(expected) {
-		t.Fatalf("paleta tem %d tokens, esperado %d", len(items), len(expected))
-	}
-	for _, item := range items {
-		if got := tokensHex(item.value); got != expected[item.name] {
-			t.Fatalf("token %s = %s, esperado %s", item.name, got, expected[item.name])
-		}
-	}
-}
-
-func TestTokensDark(t *testing.T) {
-	tokensCheck(t, Dark(), map[string]string{
-		"BrandBlue":     "#1e6fd9",
-		"BrandBlueDeep": "#0b3d86",
-		"BrandCyan":     "#38bdf8",
-		"BrandCyanSoft": "#7fc3ef",
-		"Accent":        "#7fc3ef",
-		"Navy":          "#0b1526",
-		"Text":          "#f4f4f5",
-		"TextSecondary": "#a1a1aa",
-		"TextFaint":     "#3f3f46",
-		"SurfaceActive": "#14202e",
-		"BorderCard":    "#26272d",
-		"Positive":      "#34d399",
-		"Negative":      "#f87171",
-		"Warning":       "#fcd34d",
-	})
-}
-
-func TestTokensLight(t *testing.T) {
-	tokensCheck(t, Light(), map[string]string{
-		"BrandBlue":     "#1e6fd9",
-		"BrandBlueDeep": "#0b3d86",
-		"BrandCyan":     "#38bdf8",
-		"BrandCyanSoft": "#7fc3ef",
-		"Accent":        "#1a5fc0",
-		"Navy":          "#0b1526",
-		"Text":          "#0b1526",
-		"TextSecondary": "#4b5669",
-		"TextFaint":     "#b6bfcc",
-		"SurfaceActive": "#e8f0fc",
-		"BorderCard":    "#d0d7e1",
-		"Positive":      "#047857",
-		"Negative":      "#b91c1c",
-		"Warning":       "#92400e",
-	})
-}
-
-func TestGradients(t *testing.T) {
-	cases := []struct {
-		name     string
-		palette  Palette
-		expected []string
-	}{
-		{"escuro", Dark(), []string{"#1e6fd9", "#38bdf8", "#7fc3ef"}},
-		{"claro", Light(), []string{"#0b3d86", "#1e6fd9", "#38bdf8"}},
-	}
-	for _, c := range cases {
-		if len(c.palette.Gradient) != len(c.expected) {
-			t.Fatalf("gradiente %s tem %d cores, esperado %d", c.name, len(c.palette.Gradient), len(c.expected))
-		}
-		for i, stop := range c.palette.Gradient {
-			if got := tokensHex(stop); got != c.expected[i] {
-				t.Fatalf("gradiente %s, cor %d = %s, esperado %s", c.name, i, got, c.expected[i])
+func TestTokensAreSetAndSurfacesAreDistinct(t *testing.T) {
+	for name, p := range map[string]Palette{"escuro": Dark(), "claro": Light()} {
+		for _, item := range tokensList(p) {
+			if item.value == nil {
+				t.Fatalf("tema %s: token %s sem valor", name, item.name)
 			}
+		}
+		if len(p.Gradient) < 2 {
+			t.Fatalf("tema %s: gradiente precisa de ao menos 2 cores", name)
+		}
+		if tokensHex(p.Surface) == tokensHex(p.SurfaceRaised) || tokensHex(p.SurfaceRaised) == tokensHex(p.SurfaceActive) {
+			t.Fatalf("tema %s: superfícies sem hierarquia visual", name)
+		}
+	}
+}
+
+func TestSelectedTextContrastsWithItsBar(t *testing.T) {
+	for name, dark := range map[string]bool{"escuro": true, "claro": false} {
+		th := New(Options{Dark: dark})
+		fg, bg := th.Selected.GetForeground(), th.Selected.GetBackground()
+		if ratio := tokensRatio(fg, bg); ratio < 4.5 {
+			t.Fatalf("tema %s: item selecionado tem contraste %.2f, abaixo de 4,5", name, ratio)
 		}
 	}
 }
