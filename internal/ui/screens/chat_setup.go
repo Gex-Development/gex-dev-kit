@@ -352,6 +352,10 @@ func (m chatModel) setupFailure(err error, apply bool) chatModel {
 func (m chatModel) setupConfirm() chatModel {
 	m = m.setupStep(len(m.steps) - 2)
 	opts := []components.ChoiceOption{{ID: "apply", Label: "Sim, aplicar"}, {ID: "diff", Label: "Ver diff completo"}, {ID: "back", Label: "Mudar escolhas"}, {ID: "cancel", Label: "Cancelar"}}
+	if len(m.addonNames) > 0 {
+		m = m.say(fmt.Sprintf("Depois do Core vou rodar %d comando(s) de terceiros (%s); os comandos exatos estão na revisão da etapa Plugins.", len(m.addonPlan.Steps), strings.Join(m.addonNames, ", ")))
+		opts = []components.ChoiceOption{{ID: "cancel", Label: "Cancelar"}, {ID: "apply", Label: "Sim, aplicar"}, {ID: "diff", Label: "Ver diff completo"}, {ID: "back", Label: "Mudar escolhas"}}
+	}
 	return m.askFor(chatAsk{hasChoice: true, question: "Aplico essas alterações?", choice: components.NewChoice("Aplico essas alterações?", opts, false, true), options: opts, onAnswer: func(m chatModel, a chatAnswer) chatModel {
 		switch a.IDs[0] {
 		case "apply":

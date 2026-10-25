@@ -120,7 +120,7 @@ func (m chatModel) reviewAddons(names, harnesses []string, next func(chatModel, 
 }
 
 func (m chatModel) confirmAddons(plan app.AddonPlan) chatModel {
-	opts := []components.ChoiceOption{{ID: "install", Label: "Sim, instalar"}, {ID: "cancel", Label: "Cancelar"}}
+	opts := []components.ChoiceOption{{ID: "cancel", Label: "Cancelar"}, {ID: "install", Label: "Sim, instalar"}}
 	return m.askFor(chatAsk{hasChoice: true, question: "Rodo estes comandos?", choice: components.NewChoice("Rodo estes comandos?", opts, false, false), options: opts, onAnswer: func(m chatModel, answer chatAnswer) chatModel {
 		if answer.IDs[0] == "cancel" {
 			return m.flowAddons()
@@ -236,7 +236,7 @@ func addonsCard(t theme.Theme, a catalog.Addon, width int) string {
 		addonsField(t, "Resumo", a.Summary, width),
 		addonsField(t, "Fonte", a.Source, width),
 		addonsField(t, "Licença", a.License, width),
-		addonsField(t, "Versão conferida em "+a.CheckedAt, a.Release+" · commit "+addonsShortRevision(a.Revision), width),
+		addonsField(t, "Versões conferidas em "+a.CheckedAt, "release "+a.Release+" · commit conferido "+addonsShortRevision(a.Revision), width),
 		addonsCommand(t, "Comando oficial no Claude Code", a.InstallClaude, width),
 		addonsCommand(t, "Comando oficial no Codex", a.InstallCodex, width),
 		t.Warning.Width(width).Render(addonsDisclaimer),

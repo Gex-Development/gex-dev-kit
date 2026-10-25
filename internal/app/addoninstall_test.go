@@ -5,7 +5,7 @@ import (
 	"errors"
 	"os"
 	"os/exec"
-	"reflect"
+	"path/filepath"
 	"runtime"
 	"slices"
 	"strings"
@@ -23,10 +23,10 @@ func TestPlanAddonsDeduplicatesSharedCLIAndIgnoresOMP(t *testing.T) {
 		display = append(display, step.Display)
 	}
 	want := []string{
-		"uv tool install specify-cli --from git+https://github.com/github/spec-kit.git@v1.2.2",
-		"claude plugin marketplace add JuliusBrussee/caveman",
+		"uv tool install specify-cli --from git+https://github.com/github/spec-kit.git@dc2cec4f568d0f6e2cdfb8571c69116bc55c1aaf",
+		"claude plugin marketplace add JuliusBrussee/caveman#v4.0.1",
 		"claude plugin install caveman@caveman",
-		"npx -y github:JuliusBrussee/caveman -- --only codex",
+		"npx -y github:JuliusBrussee/caveman#bad48a0e1df55e05e3f52249afa35ecc1909ee76 -- --only codex",
 	}
 	if !slices.Equal(display, want) || len(plan.Manual) != 2 {
 		t.Fatalf("plan = %+v; want display %v and two manual notes", plan, want)
@@ -53,7 +53,7 @@ func TestInstallAddonsFailureSkipsDependentStepsButContinuesOtherAddons(t *testi
 	}
 	var calls []string
 	var events []AddonStepResult
-	result := InstallAddons(plan, os.Getenv("HOME"), func(_ context.Context, argv, _ []string) (string, error) {
+	result := InstallAddons(plan, os.Getenv("HOME"), func(_ context.Context, _ string, argv, _ []string) (string, error) {
 		calls = append(calls, strings.Join(argv, " "))
 		if len(calls) == 1 {
 			return "falhou", errors.New("erro")
@@ -76,7 +76,10 @@ func TestInstallAddonsUnavailableSkipsWithoutInvokingRunner(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result := InstallAddons(plan, os.Getenv("HOME"), func(context.Context, []string, []string) (string, error) { t.Fatal("runner invoked"); return "", nil }, nil)
+	result := InstallAddons(plan, os.Getenv("HOME"), func(context.Context, string, []string, []string) (string, error) {
+		t.Fatal("runner invoked")
+		return "", nil
+	}, nil)
 	if len(result.Steps) != 1 || result.Steps[0].Status != AddonSkipped || len(result.Manual) != 1 {
 		t.Fatalf("result = %+v", result)
 	}
@@ -88,10 +91,13 @@ func TestInstallAddonsIsolatesHomeAndSanitizesOutput(t *testing.T) {
 		t.Fatal(err)
 	}
 	home := t.TempDir()
-	result := InstallAddons(plan, home, func(_ context.Context, _ []string, env []string) (string, error) {
-		for _, name := range []string{"HOME", "USERPROFILE", "XDG_CONFIG_HOME", "XDG_DATA_HOME"} {
-			if !slices.Contains(env, name+"="+home) {
-				t.Errorf("%s not isolated", name)
+	result := InstallAddons(plan, home, func(_ context.Context, dir string, _ []string, env []string) (string, error) {
+		if dir != home {
+			t.Errorf("working directory = %q; want %q", dir, home)
+		}
+		for _, entry := range []string{"HOME=" + home, "USERPROFILE=" + home, "XDG_CONFIG_HOME=" + filepath.Join(home, ".config"), "XDG_DATA_HOME=" + filepath.Join(home, ".local", "share")} {
+			if !slices.Contains(env, entry) {
+				t.Errorf("isolated environment missing %s", entry)
 			}
 		}
 		if !slices.ContainsFunc(env, func(s string) bool { return strings.HasPrefix(s, "PATH=") }) {
@@ -105,24 +111,47 @@ func TestInstallAddonsIsolatesHomeAndSanitizesOutput(t *testing.T) {
 	}
 }
 
-func TestInstallAddonsKeepsEnvironmentForRealHome(t *testing.T) {
-	plan := AddonPlan{Steps: []AddonPlanStep{{Addon: "test", Harness: "claude", Argv: []string{"test"}, Available: true}}}
-	home := os.Getenv("HOME")
-	InstallAddons(plan, home, func(_ context.Context, _ []string, env []string) (string, error) {
-		if !reflect.DeepEqual(env, os.Environ()) {
-			t.Fatal("environment changed for real HOME")
+func TestAddonEnvironmentFiltersSecretsAndKeepsRealHome(t *testing.T) {
+	home := t.TempDir()
+	environ := []string{"Path=/bin", "HTTP_PROXY=https://proxy", "TERM=xterm", "GH_TOKEN=secret", "NPM_TOKEN=secret", "CLAUDE_CONFIG_DIR=/external", "CODEX_HOME=/external", "HOME=/original", "XDG_CONFIG_HOME=/original/config"}
+	got := addonEnvironment(environ, home, filepath.Join(home, "."))
+	for _, entry := range []string{"Path=/bin", "HTTP_PROXY=https://proxy", "TERM=xterm", "HOME=/original", "XDG_CONFIG_HOME=/original/config", "CLAUDE_CONFIG_DIR=" + filepath.Join(home, ".claude"), "CODEX_HOME=" + filepath.Join(home, ".codex"), "GIT_TERMINAL_PROMPT=0"} {
+		if !slices.Contains(got, entry) {
+			t.Errorf("missing %s: %v", entry, got)
 		}
-		return "", nil
-	}, nil)
+	}
+	for _, entry := range got {
+		if strings.Contains(entry, "secret") || strings.Contains(entry, "/external") {
+			t.Errorf("leaked secret or external configuration: %s", entry)
+		}
+	}
+}
+
+func TestAddonEnvironmentIsolatedHome(t *testing.T) {
+	home := t.TempDir()
+	got := addonEnvironment([]string{"HOME=/real", "USERPROFILE=/real", "XDG_DATA_HOME=/real/data", "GH_TOKEN=secret", "nPm_CoNfIg_userconfig=/real/npmrc"}, home, "/real")
+	for _, entry := range []string{"HOME=" + home, "USERPROFILE=" + home, "XDG_CONFIG_HOME=" + filepath.Join(home, ".config"), "XDG_DATA_HOME=" + filepath.Join(home, ".local", "share"), "XDG_CACHE_HOME=" + filepath.Join(home, ".cache"), "XDG_STATE_HOME=" + filepath.Join(home, ".local", "state"), "XDG_BIN_HOME=" + filepath.Join(home, ".local", "bin"), "CLAUDE_CONFIG_DIR=" + filepath.Join(home, ".claude"), "CODEX_HOME=" + filepath.Join(home, ".codex"), "GIT_TERMINAL_PROMPT=0"} {
+		if !slices.Contains(got, entry) {
+			t.Errorf("missing %s: %v", entry, got)
+		}
+	}
+	for _, entry := range got {
+		if strings.Contains(entry, "/real") || strings.Contains(entry, "secret") {
+			t.Errorf("leaked environment: %s", entry)
+		}
+	}
 }
 
 func TestInstallAddonsRunnerSeesTimeout(t *testing.T) {
-	plan := AddonPlan{Steps: []AddonPlanStep{{Addon: "test", Harness: "claude", Argv: []string{"test"}, Available: true}}}
-	result := installAddonsWithTimeout(plan, os.Getenv("HOME"), func(ctx context.Context, _, _ []string) (string, error) {
+	plan := AddonPlan{Steps: []AddonPlanStep{
+		{Addon: "test", Harness: "claude", Argv: []string{"test"}, Available: true},
+		{Addon: "test", Harness: "claude", Argv: []string{"test", "next"}, Available: true},
+	}}
+	result := installAddonsWithTimeout(plan, t.TempDir(), func(ctx context.Context, _ string, _, _ []string) (string, error) {
 		<-ctx.Done()
-		return "", ctx.Err()
+		return "signal: killed", ctx.Err()
 	}, nil, time.Millisecond)
-	if result.Steps[0].Status != AddonFailed || !strings.Contains(result.Steps[0].Output, "deadline exceeded") {
+	if result.Steps[0].Status != AddonFailed || result.Steps[0].Output != "tempo esgotado (1ms)" || result.Steps[1].Status != AddonSkipped {
 		t.Fatalf("timeout = %+v", result.Steps)
 	}
 }
@@ -131,7 +160,7 @@ func TestExecAddonRunnerDoesNotInvokeShell(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("echo não é um executável no Windows")
 	}
-	output, err := ExecAddonRunner(context.Background(), []string{"echo", "ok", "&&", "echo", "bad"}, os.Environ())
+	output, err := ExecAddonRunner(context.Background(), t.TempDir(), []string{"echo", "ok", "&&", "echo", "bad"}, os.Environ())
 	if err != nil || strings.TrimSpace(output) != "ok && echo bad" {
 		t.Fatalf("argv deve chegar literal, sem shell: %q, %v", output, err)
 	}
@@ -139,11 +168,42 @@ func TestExecAddonRunnerDoesNotInvokeShell(t *testing.T) {
 
 func TestInstallAddonsLimitsLargeOutputToTwoKilobytes(t *testing.T) {
 	plan := AddonPlan{Steps: []AddonPlanStep{{Addon: "test", Harness: "claude", Argv: []string{"test"}, Available: true}}}
-	result := InstallAddons(plan, os.Getenv("HOME"), func(context.Context, []string, []string) (string, error) {
+	result := InstallAddons(plan, os.Getenv("HOME"), func(context.Context, string, []string, []string) (string, error) {
 		return strings.Repeat("a", 3000) + "token=private", nil
 	}, nil)
 	output := result.Steps[0].Output
 	if len(output) > 2048 || strings.Contains(output, "private") || !strings.HasSuffix(output, "token=[oculto]") {
 		t.Fatalf("unsafe output length %d, suffix %q", len(output), output[len(output)-40:])
+	}
+}
+
+func TestInstallAddonsExecutesFakeCLIInIsolatedHome(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("shell fixture requires Unix")
+	}
+	bin, home := t.TempDir(), t.TempDir()
+	script := filepath.Join(bin, "claude")
+	if err := os.WriteFile(script, []byte("#!/bin/sh\npwd > \"$HOME/pwd\"\nenv > \"$HOME/env\"\n"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+	t.Setenv("GH_TOKEN", "hidden")
+	t.Setenv("CLAUDE_CONFIG_DIR", "/external")
+	plan, err := PlanAddons([]string{"superpowers"}, []string{"claude"}, exec.LookPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result := InstallAddons(plan, home, ExecAddonRunner, nil)
+	if result.Steps[0].Status != AddonOK {
+		t.Fatalf("fake CLI failed: %+v", result.Steps)
+	}
+	pwd, err := os.ReadFile(filepath.Join(home, "pwd"))
+	resolved, resolveErr := filepath.EvalSymlinks(home)
+	if err != nil || resolveErr != nil || strings.TrimSpace(string(pwd)) != resolved {
+		t.Fatalf("working directory %q, %v, %v", pwd, err, resolveErr)
+	}
+	env, err := os.ReadFile(filepath.Join(home, "env"))
+	if err != nil || strings.Contains(string(env), "GH_TOKEN") || strings.Contains(string(env), "/external") || !strings.Contains(string(env), "CLAUDE_CONFIG_DIR="+filepath.Join(home, ".claude")) {
+		t.Fatalf("unsafe environment: %q, %v", env, err)
 	}
 }

@@ -149,3 +149,9 @@ Por decisão explícita do usuário, a TUI instala os quatro plugins opcionais n
 ## ADR-0037: Limite de tamanho do binário em 16 MiB
 
 Esta decisão substitui a ADR-0031. O windows/amd64 passou de 12,2 MiB (12.753.408 bytes, antes do chat) para 14,1 MiB (14.783.488 bytes) e estourou o limite de 14 MiB do `scripts/release.sh`. `go.mod` e `go.sum` não mudaram: o crescimento vem do código próprio do chat, dos componentes e dos textos das explicações. Por decisão explícita do usuário, o limite sobe para 16 MiB, o que deixa cerca de 1,9 MiB de margem sobre o maior binário. Um crescimento grande continua reprovado pelo script.
+
+## ADR-0038: Endurecimento do executor de plugins
+
+O runner executa instaladores em grupo próprio e sem terminal de controle; prazo vencido encerra também os filhos. Só repassa ambiente permitido, com HOME isolado e diretórios XDG próprios, mantendo configurações Claude/Codex no destino escolhido.
+Instaladores usam commits conferidos quando a CLI aceita; Claude Code usa tag porque `marketplace add` não aceita SHA. `Revision` conferido não corresponde necessariamente ao commit da tag `Release`; superpowers mantém o pin do marketplace oficial, que pode mudar.
+Como executar terceiros não tem rollback pelo kit, `Cancelar` é a opção inicial nas confirmações de plugins.

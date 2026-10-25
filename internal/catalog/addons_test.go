@@ -125,20 +125,20 @@ func TestAddonArquivoNaoImportaExecucaoDeComando(t *testing.T) {
 func TestAddonInstallStepsAndDisplay(t *testing.T) {
 	want := map[string]map[string][][]string{
 		"caveman": {
-			"claude": {{"claude", "plugin", "marketplace", "add", "JuliusBrussee/caveman"}, {"claude", "plugin", "install", "caveman@caveman"}},
-			"codex":  {{"npx", "-y", "github:JuliusBrussee/caveman", "--", "--only", "codex"}},
+			"claude": {{"claude", "plugin", "marketplace", "add", "JuliusBrussee/caveman#v4.0.1"}, {"claude", "plugin", "install", "caveman@caveman"}},
+			"codex":  {{"npx", "-y", "github:JuliusBrussee/caveman#bad48a0e1df55e05e3f52249afa35ecc1909ee76", "--", "--only", "codex"}},
 		},
 		"ponytail": {
-			"claude": {{"claude", "plugin", "marketplace", "add", "DietrichGebert/ponytail"}, {"claude", "plugin", "install", "ponytail@ponytail"}},
-			"codex":  {{"codex", "plugin", "marketplace", "add", "DietrichGebert/ponytail"}, {"codex", "plugin", "add", "ponytail@ponytail"}},
+			"claude": {{"claude", "plugin", "marketplace", "add", "DietrichGebert/ponytail#v5.3.2"}, {"claude", "plugin", "install", "ponytail@ponytail"}},
+			"codex":  {{"codex", "plugin", "marketplace", "add", "DietrichGebert/ponytail@09c434ab73ca43761c5d8b0c5d341926c2fba710"}, {"codex", "plugin", "add", "ponytail@ponytail"}},
 		},
 		"superpowers": {
 			"claude": {{"claude", "plugin", "install", "superpowers@claude-plugins-official"}},
 			"codex":  {},
 		},
 		"spec-kit": {
-			"claude": {{"uv", "tool", "install", "specify-cli", "--from", "git+https://github.com/github/spec-kit.git@v1.2.2"}},
-			"codex":  {{"uv", "tool", "install", "specify-cli", "--from", "git+https://github.com/github/spec-kit.git@v1.2.2"}},
+			"claude": {{"uv", "tool", "install", "specify-cli", "--from", "git+https://github.com/github/spec-kit.git@dc2cec4f568d0f6e2cdfb8571c69116bc55c1aaf"}},
+			"codex":  {{"uv", "tool", "install", "specify-cli", "--from", "git+https://github.com/github/spec-kit.git@dc2cec4f568d0f6e2cdfb8571c69116bc55c1aaf"}},
 		},
 	}
 	for _, addon := range Addons() {
@@ -154,6 +154,20 @@ func TestAddonInstallStepsAndDisplay(t *testing.T) {
 					if strings.ContainsAny(arg, ";&|") {
 						t.Fatalf("%s/%s: argumento de shell: %q", addon.Name, harness, arg)
 					}
+					if strings.HasPrefix(arg, "github:") || strings.HasPrefix(arg, "git+") {
+						if !strings.HasSuffix(arg, addon.Revision) {
+							t.Fatalf("%s/%s: referência não fixa revisão conferida: %q", addon.Name, harness, arg)
+						}
+					}
+					if len(step.Argv) >= 4 && step.Argv[1] == "plugin" && step.Argv[2] == "marketplace" && step.Argv[3] == "add" {
+						pin := "@" + addon.Revision
+						if harness == "claude" {
+							pin = "#" + addon.Release
+						}
+						if !strings.HasSuffix(arg, pin) && arg == step.Argv[len(step.Argv)-1] {
+							t.Fatalf("%s/%s: marketplace não fixado: %q", addon.Name, harness, arg)
+						}
+					}
 				}
 			}
 			if !reflect.DeepEqual(got, want[addon.Name][harness]) {
@@ -167,6 +181,20 @@ func TestAddonInstallStepsAndDisplay(t *testing.T) {
 			}
 			if !slices.Equal(addon.DisplayCommands(harness), display) {
 				t.Fatalf("%s/%s: display = %v; quer %v", addon.Name, harness, addon.DisplayCommands(harness), display)
+			}
+		}
+	}
+}
+
+func TestAddonDeterministicoNaoDependeDeTag(t *testing.T) {
+	for _, addon := range Addons() {
+		for harness, install := range addon.Install {
+			for _, step := range install.Steps {
+				for _, arg := range step.Argv {
+					if addon.Deterministic && strings.HasSuffix(arg, "#"+addon.Release) {
+						t.Fatalf("%s/%s é marcado como determinístico mas fixa a tag mutável %s", addon.Name, harness, addon.Release)
+					}
+				}
 			}
 		}
 	}

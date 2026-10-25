@@ -41,6 +41,12 @@ func TestChatSetupPluginsReviewAndCoreFirst(t *testing.T) {
 	}
 	m = chatSetupChoose(t, m, "caveman")
 	m = chatSetupQuestion(t, m, "Aplico essas alterações?")
+	if m.ask.options[0].ID != "cancel" || m.ask.options[1].ID != "apply" {
+		t.Fatalf("confirmação de terceiros não priorizou cancelar: %+v", m.ask.options)
+	}
+	if !strings.Contains(chatTestTranscript(m), "Depois do Core vou rodar 2 comando(s) de terceiros (caveman); os comandos exatos estão na revisão da etapa Plugins.") {
+		t.Fatal("aviso de execução de terceiros ausente")
+	}
 	transcript := chatTestTranscript(m)
 	for _, text := range []string{"claude plugin marketplace add JuliusBrussee/caveman", "Atenção:", "Muda o estilo de todas as respostas", "• Plugins: caveman (Claude Code)"} {
 		if !strings.Contains(transcript, text) {

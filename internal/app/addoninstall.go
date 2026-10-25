@@ -2,14 +2,17 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
-	"os/exec"
+	"path/filepath"
 	"regexp"
+	"runtime"
 	"slices"
 	"strings"
 	"time"
 
+	"github.com/Gex-Development/gex-dev-kit/internal/agents"
 	"github.com/Gex-Development/gex-dev-kit/internal/catalog"
 )
 
@@ -91,7 +94,7 @@ type AddonResult struct {
 	Manual []AddonManual
 }
 
-type AddonRunner func(ctx context.Context, argv []string, env []string) (string, error)
+type AddonRunner func(ctx context.Context, dir string, argv, env []string) (string, error)
 
 func InstallAddons(plan AddonPlan, home string, run AddonRunner, progress func(AddonStepResult)) AddonResult {
 	return installAddonsWithTimeout(plan, home, run, progress, 5*time.Minute)
@@ -99,20 +102,11 @@ func InstallAddons(plan AddonPlan, home string, run AddonRunner, progress func(A
 
 func installAddonsWithTimeout(plan AddonPlan, home string, run AddonRunner, progress func(AddonStepResult), timeout time.Duration) AddonResult {
 	result := AddonResult{Manual: slices.Clone(plan.Manual)}
-	env := os.Environ()
-	if home != os.Getenv("HOME") {
-		overrides := []string{"HOME=", "USERPROFILE=", "XDG_CONFIG_HOME=", "XDG_DATA_HOME="}
-		filtered := make([]string, 0, len(env)+len(overrides))
-		for _, entry := range env {
-			if !slices.ContainsFunc(overrides, func(prefix string) bool { return strings.HasPrefix(entry, prefix) }) {
-				filtered = append(filtered, entry)
-			}
-		}
-		for _, prefix := range overrides {
-			filtered = append(filtered, prefix+home)
-		}
-		env = filtered
+	realHome, err := os.UserHomeDir()
+	if err != nil {
+		realHome = ""
 	}
+	env := addonEnvironment(os.Environ(), home, realHome)
 	failed := make(map[string]bool)
 	for _, step := range plan.Steps {
 		item := AddonStepResult{Step: step, Status: AddonPending}
@@ -124,8 +118,13 @@ func installAddonsWithTimeout(plan AddonPlan, home string, run AddonRunner, prog
 			item.Status = AddonSkipped
 		} else {
 			ctx, cancel := context.WithTimeout(context.Background(), timeout)
-			output, err := run(ctx, step.Argv, env)
+			output, err := run(ctx, home, step.Argv, env)
+			expired := errors.Is(ctx.Err(), context.DeadlineExceeded)
 			cancel()
+			if expired {
+				output = fmt.Sprintf("tempo esgotado (%s)", timeout)
+				err = context.DeadlineExceeded
+			}
 			if err != nil {
 				failed[key] = true
 				item.Status = AddonFailed
@@ -178,15 +177,67 @@ func (t *addonTail) Write(p []byte) (int, error) {
 	return n, nil
 }
 
-func ExecAddonRunner(ctx context.Context, argv []string, env []string) (string, error) {
+func ExecAddonRunner(ctx context.Context, dir string, argv, env []string) (string, error) {
 	if len(argv) == 0 {
 		return "", fmt.Errorf("comando de addon vazio")
 	}
-	cmd := exec.CommandContext(ctx, argv[0], argv[1:]...)
-	cmd.Env = env
-	cmd.WaitDelay = 2 * time.Second
 	var tail addonTail
-	cmd.Stdout, cmd.Stderr = &tail, &tail
-	err := cmd.Run()
+	err := agents.RunDetached(ctx, dir, argv, env, &tail)
 	return string(tail.bytes), err
+}
+
+func addonEnvironment(environ []string, home, realHome string) []string {
+	allow := map[string]bool{}
+	for _, key := range []string{"PATH", "PATHEXT", "SYSTEMROOT", "WINDIR", "COMSPEC", "PROCESSOR_ARCHITECTURE", "PROCESSOR_ARCHITEW6432", "LANG", "LC_ALL", "LC_CTYPE", "TERM", "TMPDIR", "TEMP", "TMP", "SSL_CERT_FILE", "SSL_CERT_DIR", "NODE_EXTRA_CA_CERTS", "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "NO_PROXY"} {
+		allow[key] = true
+	}
+	real := realHome != "" && filepath.Clean(home) == filepath.Clean(realHome)
+	if real {
+		for _, key := range []string{"HOME", "USERPROFILE", "HOMEDRIVE", "HOMEPATH", "APPDATA", "LOCALAPPDATA", "XDG_CONFIG_HOME", "XDG_DATA_HOME", "XDG_CACHE_HOME", "XDG_STATE_HOME", "XDG_BIN_HOME"} {
+			allow[key] = true
+		}
+	}
+	env := make([]string, 0, len(environ))
+	index := make(map[string]int)
+	for _, entry := range environ {
+		key, _, ok := strings.Cut(entry, "=")
+		upper := strings.ToUpper(key)
+		if !ok || !allow[upper] {
+			continue
+		}
+		if n, exists := index[upper]; exists {
+			env[n] = entry
+		} else {
+			index[upper] = len(env)
+			env = append(env, entry)
+		}
+	}
+	set := func(key, value string) {
+		if n, ok := index[key]; ok {
+			env[n] = key + "=" + value
+		} else {
+			index[key] = len(env)
+			env = append(env, key+"="+value)
+		}
+	}
+	if !real {
+		set("HOME", home)
+		set("USERPROFILE", home)
+		set("APPDATA", filepath.Join(home, "AppData", "Roaming"))
+		set("LOCALAPPDATA", filepath.Join(home, "AppData", "Local"))
+		set("XDG_CONFIG_HOME", filepath.Join(home, ".config"))
+		set("XDG_DATA_HOME", filepath.Join(home, ".local", "share"))
+		set("XDG_CACHE_HOME", filepath.Join(home, ".cache"))
+		set("XDG_STATE_HOME", filepath.Join(home, ".local", "state"))
+		set("XDG_BIN_HOME", filepath.Join(home, ".local", "bin"))
+		if runtime.GOOS == "windows" {
+			volume := filepath.VolumeName(home)
+			set("HOMEDRIVE", volume)
+			set("HOMEPATH", strings.TrimPrefix(home, volume))
+		}
+	}
+	set("CLAUDE_CONFIG_DIR", filepath.Join(home, ".claude"))
+	set("CODEX_HOME", filepath.Join(home, ".codex"))
+	set("GIT_TERMINAL_PROMPT", "0")
+	return env
 }

@@ -51,6 +51,12 @@ func TestChatAddonsConfirmAndCancel(t *testing.T) {
 	}
 	m = chatSetupChoose(t, m, "claude")
 	m = chatSetupQuestion(t, m, "Rodo estes comandos?")
+	if m.ask.options[0].ID != "cancel" || m.ask.options[1].ID != "install" {
+		t.Fatalf("confirmação não priorizou cancelar: %+v", m.ask.options)
+	}
+	if !strings.Contains(chatTestTranscript(m), "release v4.0.1 · commit conferido bad48a0") {
+		t.Fatal("card confunde tag e revisão conferida")
+	}
 	if calls != 0 || !strings.Contains(chatTestTranscript(m), "claude plugin marketplace add JuliusBrussee/caveman") || !strings.Contains(chatTestTranscript(m), "Atenção:") {
 		t.Fatalf("revisão deve vir antes da instalação: %s", chatTestTranscript(m))
 	}
