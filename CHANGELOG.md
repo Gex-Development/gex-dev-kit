@@ -2,9 +2,9 @@
 
 Todas as mudanças relevantes do Kit de Desenvolvimento GEX ficam neste arquivo. O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e as versões usam [SemVer](https://semver.org/lang/pt-BR/).
 
-## [0.3.0] - não publicada
+## [0.3.0] - 2026-10-25
 
-Binários gerados localmente com `scripts/release.sh v0.3.0`; ainda sem tag nem release. As notas da publicação estão em [`docs/release-notes/v0.3.0.md`](docs/release-notes/v0.3.0.md).
+As notas da publicação estão em [`docs/release-notes/v0.3.0.md`](docs/release-notes/v0.3.0.md).
 
 ### Adicionado
 

@@ -4,8 +4,8 @@ CLI para preparar Claude Code e Codex com instruções globais e sete skills de 
 
 ## Estado
 
-- **v0.2.0:** última release publicada no GitHub. Não tem as sete skills Core, as especializações nem o chat da TUI.
-- **v0.3.0:** binários gerados localmente em `dist/` com `scripts/release.sh v0.3.0`, ainda não publicados. Não há tag, release, push nem PR. Os comandos de download abaixo só funcionam depois que a release existir; publicar exige confirmação explícita do responsável. As notas estão em [`docs/release-notes/v0.3.0.md`](docs/release-notes/v0.3.0.md).
+- **v0.2.0:** release anterior. Não tem as sete skills Core, as especializações nem o chat da TUI.
+- **v0.3.0:** última release publicada no GitHub, com o chat da TUI, o instalador de plugins e os seis binários. As notas estão em [`docs/release-notes/v0.3.0.md`](docs/release-notes/v0.3.0.md).
 
 ## Baixar a v0.3.0
 
