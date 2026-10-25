@@ -112,7 +112,7 @@ Menu, escolha múltipla e confirmação no modo acessível são feitos pelo pró
 
 ## ADR-0028: Versão no fonte
 
-A versão fica no fonte como `var version = "v0.3.0"`, como pede o briefing. O release troca o valor por `-ldflags`. As capturas usam o binário de release.
+A versão fica no fonte como `var version = "vX.Y.Z"`, como pede o briefing. O release troca o valor por `-ldflags`. As capturas usam o binário de release.
 
 ## ADR-0029: Executável dos hooks sempre atualizado
 
