@@ -1172,10 +1172,8 @@ func (m chatModel) flowGreeting(short bool) chatModel {
 	}, then: func(m chatModel, _ chatToolResult) chatModel {
 		if m.coreErr != nil {
 			m = m.say("Não consegui ler o Core: " + m.coreErr.Error())
-		} else if m.core.ActiveCore > 0 {
-			m = m.say(fmt.Sprintf("Encontrei o Core instalado (%d/%d skills).", m.core.ActiveCore, len(catalog.CoreSkills())))
 		} else {
-			m = m.say("Ainda não há Core instalado neste HOME.")
+			m = m.say(coreGreeting(m.core))
 		}
 		if short {
 			return m.startIntent(m.start)
@@ -1183,6 +1181,17 @@ func (m chatModel) flowGreeting(short bool) chatModel {
 		return m.flowIdle().say("Digite / para ver o que posso fazer. Para configurar o ambiente, use /setup.")
 	}})
 	return m
+}
+
+func coreGreeting(core app.CoreStatus) string {
+	total := len(catalog.CoreSkills())
+	switch {
+	case core.Attention > 0:
+		return fmt.Sprintf("Encontrei o Core com %d arquivo(s) que precisam de atenção (%d/%d skills em dia). Rode /doctor para ver quais.", core.Attention, core.ActiveCore, total)
+	case core.ActiveCore > 0:
+		return fmt.Sprintf("Encontrei o Core instalado (%d/%d skills).", core.ActiveCore, total)
+	}
+	return "Ainda não há Core instalado neste HOME."
 }
 
 func (m chatModel) flowIdle() chatModel {
