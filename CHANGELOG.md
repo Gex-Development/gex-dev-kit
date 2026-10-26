@@ -2,7 +2,9 @@
 
 Todas as mudanças relevantes do Kit de Desenvolvimento GEX ficam neste arquivo. O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e as versões usam [SemVer](https://semver.org/lang/pt-BR/).
 
-## [Não publicada]
+## [0.3.5] - 2026-10-26
+
+As notas da publicação estão em [`docs/release-notes/v0.3.5.md`](docs/release-notes/v0.3.5.md).
 
 ### Adicionado
 
@@ -144,6 +146,7 @@ Primeira entrega.
 - Claude Code `2.1.306` e Codex `0.163.0` fixados; a CLI só instala ou atualiza executáveis standalone próprios, pelos instaladores oficiais com versão exata.
 - Binários para macOS, Linux e Windows, em `arm64` e `amd64`.
 
+[0.3.5]: https://github.com/Gex-Development/gex-dev-kit/compare/v0.3.4...v0.3.5
 [0.3.4]: https://github.com/Gex-Development/gex-dev-kit/compare/v0.3.3...v0.3.4
 [0.3.3]: https://github.com/Gex-Development/gex-dev-kit/compare/v0.3.2...v0.3.3
 [0.3.2]: https://github.com/Gex-Development/gex-dev-kit/compare/v0.3.1...v0.3.2
