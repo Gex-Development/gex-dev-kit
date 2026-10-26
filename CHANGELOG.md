@@ -2,19 +2,22 @@
 
 Todas as mudanças relevantes do Kit de Desenvolvimento GEX ficam neste arquivo. O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e as versões usam [SemVer](https://semver.org/lang/pt-BR/).
 
-## [Não publicada]
+## [0.3.2] - 2026-10-25
+
+As notas da publicação estão em [`docs/release-notes/v0.3.2.md`](docs/release-notes/v0.3.2.md).
 
 ### Adicionado
 
-- MCP Context7 como addon opcional para documentação atualizada de bibliotecas.
-- MCPs opcionais `terraform` (Terraform MCP 1.4.1), `brave-search` (Brave Search 2.1.4) e `mapbox-devkit` (Mapbox DevKit 0.8.2), instalados no chat.
-- Chaves de Brave Search e Mapbox DevKit pedidas no chat e gravadas em texto puro nas configurações Claude Code/Codex. Isso altera a regra anterior de não gravar chaves somente para MCPs.
+- **MCPs como addons opcionais**, instalados no chat com os comandos exatos, os riscos e a confirmação (ADR-0040): `context7` 4.4.4 (documentação atualizada de bibliotecas), `terraform` 1.4.1 (imagem oficial fixada por digest; exige Docker ligado), `brave-search` 2.1.4 e `mapbox-devkit` 0.8.2 (exigem chave de API; o Mapbox exige Node.js 22 ou mais novo). Cada versão foi conferida contra o registro do fornecedor.
+- **Chaves de API de MCP pedidas no chat** (ADR-0041): campo mascarado, gravadas em texto puro em `~/.claude.json` e `~/.codex/config.toml`, ambos `0600`. Isso altera a regra anterior de o kit não gravar chaves, só para MCP. A chave não aparece na transcrição, na confirmação, em erros, no comando equivalente, em diff nem em golden, e a saída dos passos é redigida. Reinstalar substitui a chave. O `rollback` não remove MCP nem revoga a chave.
+- `addons --json` lista `secrets` de cada addon: nome da variável, rótulo e URL, nunca o valor.
+- O instalador de addons aceita binários exigidos em tempo de execução (`npx`, `docker`), um passo de pré-requisito que pula o addon inteiro nos dois clientes quando falha, e trata `claude mcp add` repetido como já configurado.
 
 ### Alterado
 
-- Claude Code e Codex passam à versão mais recente pelos instaladores oficiais, substituindo a ADR-0016. O kit consulta a versão antes de instalar e confere a versão observada.
-- Claude Code nativo oficial já instalado pode ser adotado pelo kit.
-- O banner mostra `versão mais recente: X`; o chat mostra `mais recente: X`.
+- **Claude Code e Codex passam à versão mais recente** pelos instaladores oficiais (ADR-0039, que substitui a ADR-0016). O kit consulta a versão publicada antes de instalar, usa `latest` nos instaladores e confere a versão observada. Sem rede, um agente já registrado não propõe atualização e um agente não registrado fica bloqueado com o motivo.
+- Um Claude Code nativo oficial já instalado (com o link em `~/.local/share/claude/versions/`) é adotado em vez de bloqueado. O `rollback-agents` continua pela versão exata anterior.
+- O banner mostra `versão mais recente: X` e o chat mostra `mais recente: X`.
 
 ### Corrigido
 
@@ -106,6 +109,7 @@ Primeira entrega.
 - Claude Code `2.1.306` e Codex `0.163.0` fixados; a CLI só instala ou atualiza executáveis standalone próprios, pelos instaladores oficiais com versão exata.
 - Binários para macOS, Linux e Windows, em `arm64` e `amd64`.
 
+[0.3.2]: https://github.com/Gex-Development/gex-dev-kit/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/Gex-Development/gex-dev-kit/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/Gex-Development/gex-dev-kit/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/Gex-Development/gex-dev-kit/compare/v0.1.0...v0.2.0
