@@ -9,7 +9,7 @@
 
 ![macOS arm64 e amd64][badge-macos] ![Linux arm64 e amd64][badge-linux] ![Windows arm64 e amd64][badge-windows]
 
-![Versão v0.3.1][badge-version] ![Go 1.25.8][badge-go] ![Interface TUI e CLI][badge-interface] ![Agente Claude Code][badge-claude] ![Agente Codex][badge-codex] ![Conventional Commits][badge-commits] ![GitHub CLI necessário][badge-gh]
+![Versão v0.3.2][badge-version] ![Go 1.25.8][badge-go] ![Interface TUI e CLI][badge-interface] ![Agente Claude Code][badge-claude] ![Agente Codex][badge-codex] ![Conventional Commits][badge-commits] ![GitHub CLI necessário][badge-gh]
 
 </div>
 
@@ -48,7 +48,7 @@
 *Instale o GitHub CLI, autentique-se e escolha o comando do seu sistema.*
 
 > [!IMPORTANT]
-> A [release v0.3.1 é privada](https://github.com/Gex-Development/gex-dev-kit/releases/tag/v0.3.1). Instale **GitHub CLI (`gh`)**, rode `gh auth login` e confirme seu acesso à **Gex-Development**. O instalador vem do repositório autenticado: revise o comando antes de executá-lo.
+> A [release v0.3.2 é privada](https://github.com/Gex-Development/gex-dev-kit/releases/tag/v0.3.2). Instale **GitHub CLI (`gh`)**, rode `gh auth login` e confirme seu acesso à **Gex-Development**. O instalador vem do repositório autenticado: revise o comando antes de executá-lo.
 
 | Sistema | Instale `gh` |
 |---|---|
@@ -100,7 +100,7 @@ gh api -H "Accept: application/vnd.github.raw" \
 Confirme com `gex-dev-kit --version` em qualquer sistema.
 
 > [!TIP]
-> Para escolher versão e pasta, substitua `| bash` por `| bash -s -- --version v0.3.1 --dir "$HOME/bin"`. No Windows, acrescente `-Version v0.3.1 -InstallDir "$HOME\bin" -NoPath` após o último parêntese.
+> Para escolher versão e pasta, substitua `| bash` por `| bash -s -- --version v0.3.2 --dir "$HOME/bin"`. No Windows, acrescente `-Version v0.3.2 -InstallDir "$HOME\bin" -NoPath` após o último parêntese.
 
 <details>
 <summary>Desinstalar · desfazer gravações, remover executável e conferir hooks</summary>
@@ -115,39 +115,39 @@ Confirme com `gex-dev-kit --version` em qualquer sistema.
 <details>
 <summary>Instalação manual · ativos da release, checksum e nome curto</summary>
 
-| Sistema | Arquitetura | Ativo da v0.3.1 |
+| Sistema | Arquitetura | Ativo da v0.3.2 |
 |---|---|---|
-| macOS | Apple Silicon (arm64) | `gex-dev-kit_v0.3.1_darwin_arm64` |
-| macOS | Intel (amd64) | `gex-dev-kit_v0.3.1_darwin_amd64` |
-| Linux / WSL | arm64 | `gex-dev-kit_v0.3.1_linux_arm64` |
-| Linux / WSL | amd64 | `gex-dev-kit_v0.3.1_linux_amd64` |
-| Windows | ARM64 | `gex-dev-kit_v0.3.1_windows_arm64.exe` |
-| Windows | AMD64 | `gex-dev-kit_v0.3.1_windows_amd64.exe` |
+| macOS | Apple Silicon (arm64) | `gex-dev-kit_v0.3.2_darwin_arm64` |
+| macOS | Intel (amd64) | `gex-dev-kit_v0.3.2_darwin_amd64` |
+| Linux / WSL | arm64 | `gex-dev-kit_v0.3.2_linux_arm64` |
+| Linux / WSL | amd64 | `gex-dev-kit_v0.3.2_linux_amd64` |
+| Windows | ARM64 | `gex-dev-kit_v0.3.2_windows_arm64.exe` |
+| Windows | AMD64 | `gex-dev-kit_v0.3.2_windows_amd64.exe` |
 
 Baixe somente o ativo escolhido e `SHA256SUMS`; não precisa baixar os seis binários. Exemplo para Linux amd64:
 
 ```bash
-gh release download v0.3.1 --repo Gex-Development/gex-dev-kit --pattern 'gex-dev-kit_v0.3.1_linux_amd64' --pattern SHA256SUMS
+gh release download v0.3.2 --repo Gex-Development/gex-dev-kit --pattern 'gex-dev-kit_v0.3.2_linux_amd64' --pattern SHA256SUMS
 sha256sum -c --ignore-missing SHA256SUMS
-chmod +x gex-dev-kit_v0.3.1_linux_amd64
+chmod +x gex-dev-kit_v0.3.2_linux_amd64
 mkdir -p "$HOME/.local/bin"
-mv gex-dev-kit_v0.3.1_linux_amd64 "$HOME/.local/bin/gex-dev-kit"
+mv gex-dev-kit_v0.3.2_linux_amd64 "$HOME/.local/bin/gex-dev-kit"
 ```
 
 `--ignore-missing` ignora os outros cinco arquivos ausentes. **Confira se a saída menciona seu ativo: OK.** No macOS, substitua o nome no download e confira apenas sua linha. Exemplo Apple Silicon:
 
 ```bash
-grep '  gex-dev-kit_v0.3.1_darwin_arm64$' SHA256SUMS | shasum -a 256 -c -
-chmod +x gex-dev-kit_v0.3.1_darwin_arm64
+grep '  gex-dev-kit_v0.3.2_darwin_arm64$' SHA256SUMS | shasum -a 256 -c -
+chmod +x gex-dev-kit_v0.3.2_darwin_arm64
 mkdir -p "$HOME/.local/bin"
-mv gex-dev-kit_v0.3.1_darwin_arm64 "$HOME/.local/bin/gex-dev-kit"
+mv gex-dev-kit_v0.3.2_darwin_arm64 "$HOME/.local/bin/gex-dev-kit"
 ```
 
 No PowerShell, baixe o ativo Windows e `SHA256SUMS`:
 
 ```powershell
-gh release download v0.3.1 --repo Gex-Development/gex-dev-kit --pattern 'gex-dev-kit_v0.3.1_windows_amd64.exe' --pattern SHA256SUMS
-Get-FileHash .\gex-dev-kit_v0.3.1_windows_amd64.exe -Algorithm SHA256
+gh release download v0.3.2 --repo Gex-Development/gex-dev-kit --pattern 'gex-dev-kit_v0.3.2_windows_amd64.exe' --pattern SHA256SUMS
+Get-FileHash .\gex-dev-kit_v0.3.2_windows_amd64.exe -Algorithm SHA256
 ```
 
 Compare o hash com a linha **desse arquivo** em `SHA256SUMS`. Só depois renomeie para `gex-dev-kit.exe` na pasta de instalação. Consulte `THIRD_PARTY_LICENSES.txt` da release para avisos das dependências.
@@ -475,7 +475,7 @@ Fontes de compatibilidade: [hooks Claude Code](https://code.claude.com/docs/en/h
 [badge-macos]: https://img.shields.io/badge/macOS-arm64%20%7C%20amd64-000000?style=for-the-badge&logo=apple&logoColor=white
 [badge-linux]: https://img.shields.io/badge/Linux-arm64%20%7C%20amd64-FCC624?style=for-the-badge&logo=linux&logoColor=black
 [badge-windows]: https://img.shields.io/badge/Windows-arm64%20%7C%20amd64-0078D4?style=for-the-badge&logo=data:image/svg%2Bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI%2BPHBhdGggZmlsbD0iI2ZmZiIgZD0iTTAsMEgxMS4zNzdWMTEuMzcySDBaTTEyLjYyMywwSDI0VjExLjM3MkgxMi42MjNaTTAsMTIuNjIzSDExLjM3N1YyNEgwWm0xMi42MjMsMEgyNFYyNEgxMi42MjMiLz48L3N2Zz4%3D
-[badge-version]: https://img.shields.io/badge/Vers%C3%A3o-v0.3.1-6f42c1?style=flat-square
+[badge-version]: https://img.shields.io/badge/Vers%C3%A3o-v0.3.2-6f42c1?style=flat-square
 [badge-go]: https://img.shields.io/badge/Go-1.25.8-00ADD8?style=flat-square&logo=go&logoColor=white
 [badge-interface]: https://img.shields.io/badge/Interface-TUI%20%2B%20CLI-2088aa?style=flat-square&logo=gnubash&logoColor=white
 [badge-claude]: https://img.shields.io/badge/Agente-Claude%20Code-2088aa?style=flat-square&logo=anthropic&logoColor=white
