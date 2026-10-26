@@ -522,7 +522,7 @@ func (m chatModel) finishTool() (chatModel, tea.Cmd) {
 	e.tool.Rows = append(e.tool.Rows, msg.result.rows[min(run.displayed, len(msg.result.rows)):]...)
 	e.tool.Lines = append(e.tool.Lines, msg.result.lines[max(0, run.displayed-len(msg.result.rows)):]...)
 	m.running = nil
-	if e.tool.Title == "Instalar plugins" {
+	if e.tool.Title == "Instalar plugins e MCPs" {
 		e.tool.Params = ""
 	}
 	m.channel = nil
@@ -637,7 +637,7 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case chatProgressMsg:
 		if m.running != nil && m.running.entry == msg.entry {
 			e := &m.entries[msg.entry]
-			if e.tool.Title == "Instalar plugins" && strings.HasPrefix(msg.line, "Instalando ") {
+			if e.tool.Title == "Instalar plugins e MCPs" && strings.HasPrefix(msg.line, "Instalando ") {
 				e.tool.Params = msg.line
 			} else {
 				e.tool.Lines = append(e.tool.Lines, msg.line)
@@ -710,7 +710,7 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if !m.common.Motion {
 					return m.finishTool()
 				}
-				if m.entries[run.entry].tool.Title == "Instalar plugins" && len(run.phases) == 0 {
+				if m.entries[run.entry].tool.Title == "Instalar plugins e MCPs" && len(run.phases) == 0 {
 					return m.finishTool()
 				}
 				retention := min(time.Duration(max(len(run.phases), 1))*chatPhaseDuration, chatMaxRetention)
@@ -1206,6 +1206,17 @@ func (m chatModel) flowGreeting(short bool) chatModel {
 		}
 		return chatToolResult{rows: append(rows, core)}
 	}, then: func(m chatModel, _ chatToolResult) chatModel {
+		for _, name := range []string{"claude", "codex"} {
+			change, found := homeAgentChange(m.agents, name)
+			if !found || !change.Blocked || change.Reason == "" {
+				continue
+			}
+			label := "Claude Code"
+			if name == "codex" {
+				label = "Codex"
+			}
+			m = m.say(label + " bloqueado: " + maskHome(change.Reason, m.common.UserHome))
+		}
 		if m.coreErr != nil {
 			m = m.say("Não consegui ler o Core: " + m.coreErr.Error())
 		} else {

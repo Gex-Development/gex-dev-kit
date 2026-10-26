@@ -3,12 +3,35 @@ set -euo pipefail
 
 version=${1:-}
 if [[ ! $version =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-  printf 'Uso: %s vX.Y.Z [--publish]\n' "$0" >&2
+  printf 'Uso: %s vX.Y.Z [--publish] [--confirm vX.Y.Z]\n' "$0" >&2
   exit 2
 fi
-if [[ ${2:-} != '' && ${2:-} != '--publish' ]]; then
-  printf 'Opção desconhecida: %s\n' "$2" >&2
+shift
+publish=0
+confirm=
+while (( $# )); do
+  case $1 in
+    --publish) publish=1; shift ;;
+    --confirm)
+      if (( $# < 2 )); then printf 'Falta versão após --confirm.\n' >&2; exit 2; fi
+      confirm=$2
+      shift 2 ;;
+    *) printf 'Opção desconhecida: %s\n' "$1" >&2; exit 2 ;;
+  esac
+done
+if [[ -n $confirm && $publish -eq 0 ]]; then
+  printf '%s\n' '--confirm exige --publish.' >&2
   exit 2
+fi
+if [[ $publish -eq 1 ]]; then
+  if [[ -n $confirm && $confirm != "$version" ]]; then
+    printf 'Confirmação divergente: %s; esperado %s.\n' "$confirm" "$version" >&2
+    exit 2
+  fi
+  if [[ -z $confirm && ! -t 0 ]]; then
+    printf 'Publicação sem terminal exige --confirm vX.Y.Z (a versão digitada de novo).\n' >&2
+    exit 1
+  fi
 fi
 
 root=$(git rev-parse --show-toplevel)
@@ -29,10 +52,14 @@ for target in darwin/arm64 darwin/amd64 linux/arm64 linux/amd64 windows/arm64 wi
   printf 'Compilando %s/%s\n' "$os" "$arch"
   (cd "$root" && CGO_ENABLED=0 GOOS="$os" GOARCH="$arch" go build -trimpath -ldflags "-s -w -X main.version=$version" -o "$binario" ./cmd/gex-dev-kit)
   tamanho=$(wc -c < "$binario" | tr -d ' ')
-  printf '  %s: %s bytes (limite %s)\n' "$(basename -- "$binario")" "$tamanho" "$limite"
+  percentual=$((tamanho * 100 / limite))
+  printf '  %s: %s bytes (%s%% do limite de %s)\n' "$(basename -- "$binario")" "$tamanho" "$percentual" "$limite"
   if (( tamanho > limite )); then
     printf 'Binário acima de %s MiB (%s bytes): %s\n' "$limite_mib" "$limite" "$binario" >&2
     exit 1
+  fi
+  if (( percentual >= 85 )); then
+    printf 'aviso: %s usa %s%% do limite; veja a ADR-0037\n' "$(basename -- "$binario")" "$percentual" >&2
   fi
 done
 (
@@ -70,18 +97,16 @@ if [[ $falta -ne 0 ]]; then
   exit 1
 fi
 
-if [[ ${2:-} != '--publish' ]]; then
+if [[ $publish -eq 0 ]]; then
   printf 'Binários, SHA256SUMS e THIRD_PARTY_LICENSES.txt em %s/dist. Publique com --publish após conferir.\n' "$root"
   exit 0
 fi
-if [[ ! -t 0 ]]; then
-  printf 'Publicação exige confirmação no terminal.\n' >&2
-  exit 1
-fi
-if command -v gum >/dev/null 2>&1; then
-  gum confirm "Publicar $version em Gex-Development/gex-dev-kit?" || exit 1
-else
-  read -r -p "Publicar $version em Gex-Development/gex-dev-kit? Digite sim: " answer
-  [[ $answer == sim ]] || exit 1
+if [[ -z $confirm ]]; then
+  if command -v gum >/dev/null 2>&1; then
+    gum confirm "Publicar $version em Gex-Development/gex-dev-kit?" || exit 1
+  else
+    read -r -p "Publicar $version em Gex-Development/gex-dev-kit? Digite sim: " answer
+    [[ $answer == sim ]] || exit 1
+  fi
 fi
 gh release create "$version" "$root/dist/gex-dev-kit_${version}_"* "$root/dist/SHA256SUMS" "$root/dist/THIRD_PARTY_LICENSES.txt" --repo Gex-Development/gex-dev-kit --title "$version" --notes-file "$notas"

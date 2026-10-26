@@ -48,7 +48,7 @@
 *Instale o GitHub CLI, autentique-se e escolha o comando do seu sistema.*
 
 > [!IMPORTANT]
-> A [release v0.3.2 é privada](https://github.com/Gex-Development/gex-dev-kit/releases/tag/v0.3.2). Instale **GitHub CLI (`gh`)**, rode `gh auth login` e confirme seu acesso à **Gex-Development**. O instalador vem do repositório autenticado: revise o comando antes de executá-lo.
+> A [última release é privada](https://github.com/Gex-Development/gex-dev-kit/releases/latest). Instale **GitHub CLI (`gh`)**, rode `gh auth login` e confirme seu acesso à **Gex-Development**. O instalador vem do repositório autenticado: revise o comando antes de executá-lo.
 
 | Sistema | Instale `gh` |
 |---|---|
@@ -100,7 +100,7 @@ gh api -H "Accept: application/vnd.github.raw" \
 Confirme com `gex-dev-kit --version` em qualquer sistema.
 
 > [!TIP]
-> Para escolher versão e pasta, substitua `| bash` por `| bash -s -- --version v0.3.2 --dir "$HOME/bin"`. No Windows, acrescente `-Version v0.3.2 -InstallDir "$HOME\bin" -NoPath` após o último parêntese.
+> Para escolher versão e pasta, substitua `| bash` por `| bash -s -- --version vX.Y.Z --dir "$HOME/bin"` (troque `vX.Y.Z` pela versão que quer). No Windows, acrescente `-Version vX.Y.Z -InstallDir "$HOME\bin" -NoPath` após o último parêntese.
 
 <details>
 <summary>Desinstalar · desfazer gravações, remover executável e conferir hooks</summary>
@@ -115,39 +115,40 @@ Confirme com `gex-dev-kit --version` em qualquer sistema.
 <details>
 <summary>Instalação manual · ativos da release, checksum e nome curto</summary>
 
-| Sistema | Arquitetura | Ativo da v0.3.2 |
+| Sistema | Arquitetura | Ativo `gex-dev-kit_<versão>_<sistema>_<arquitetura>` |
 |---|---|---|
-| macOS | Apple Silicon (arm64) | `gex-dev-kit_v0.3.2_darwin_arm64` |
-| macOS | Intel (amd64) | `gex-dev-kit_v0.3.2_darwin_amd64` |
-| Linux / WSL | arm64 | `gex-dev-kit_v0.3.2_linux_arm64` |
-| Linux / WSL | amd64 | `gex-dev-kit_v0.3.2_linux_amd64` |
-| Windows | ARM64 | `gex-dev-kit_v0.3.2_windows_arm64.exe` |
-| Windows | AMD64 | `gex-dev-kit_v0.3.2_windows_amd64.exe` |
+| macOS | Apple Silicon (arm64) | `gex-dev-kit_<versão>_darwin_arm64` |
+| macOS | Intel (amd64) | `gex-dev-kit_<versão>_darwin_amd64` |
+| Linux / WSL | arm64 | `gex-dev-kit_<versão>_linux_arm64` |
+| Linux / WSL | amd64 | `gex-dev-kit_<versão>_linux_amd64` |
+| Windows | ARM64 | `gex-dev-kit_<versão>_windows_arm64.exe` |
+| Windows | AMD64 | `gex-dev-kit_<versão>_windows_amd64.exe` |
 
 Baixe somente o ativo escolhido e `SHA256SUMS`; não precisa baixar os seis binários. Exemplo para Linux amd64:
 
 ```bash
-gh release download v0.3.2 --repo Gex-Development/gex-dev-kit --pattern 'gex-dev-kit_v0.3.2_linux_amd64' --pattern SHA256SUMS
-sha256sum -c --ignore-missing SHA256SUMS
-chmod +x gex-dev-kit_v0.3.2_linux_amd64
+gh release download --repo Gex-Development/gex-dev-kit --pattern '*_linux_amd64' --pattern SHA256SUMS
+grep '  gex-dev-kit_.*_linux_amd64$' SHA256SUMS | shasum -a 256 -c -
+chmod +x gex-dev-kit_*_linux_amd64
 mkdir -p "$HOME/.local/bin"
-mv gex-dev-kit_v0.3.2_linux_amd64 "$HOME/.local/bin/gex-dev-kit"
+mv gex-dev-kit_*_linux_amd64 "$HOME/.local/bin/gex-dev-kit"
 ```
 
-`--ignore-missing` ignora os outros cinco arquivos ausentes. **Confira se a saída menciona seu ativo: OK.** No macOS, substitua o nome no download e confira apenas sua linha. Exemplo Apple Silicon:
+O `gh release download` sem tag baixa a última release. Os padrões `*` pressupõem uma pasta sem outros downloads do kit. Em Linux com `sha256sum`, você pode trocar `shasum -a 256 -c -` por `sha256sum -c -`. **Confira se a saída menciona seu ativo: OK.** No macOS, baixe o ativo correspondente. Exemplo Apple Silicon:
 
 ```bash
-grep '  gex-dev-kit_v0.3.2_darwin_arm64$' SHA256SUMS | shasum -a 256 -c -
-chmod +x gex-dev-kit_v0.3.2_darwin_arm64
+gh release download --repo Gex-Development/gex-dev-kit --pattern '*_darwin_arm64' --pattern SHA256SUMS
+grep '  gex-dev-kit_.*_darwin_arm64$' SHA256SUMS | shasum -a 256 -c -
+chmod +x gex-dev-kit_*_darwin_arm64
 mkdir -p "$HOME/.local/bin"
-mv gex-dev-kit_v0.3.2_darwin_arm64 "$HOME/.local/bin/gex-dev-kit"
+mv gex-dev-kit_*_darwin_arm64 "$HOME/.local/bin/gex-dev-kit"
 ```
 
-No PowerShell, baixe o ativo Windows e `SHA256SUMS`:
+No PowerShell, baixe o ativo Windows e `SHA256SUMS` em uma pasta sem outros downloads do kit:
 
 ```powershell
-gh release download v0.3.2 --repo Gex-Development/gex-dev-kit --pattern 'gex-dev-kit_v0.3.2_windows_amd64.exe' --pattern SHA256SUMS
-Get-FileHash .\gex-dev-kit_v0.3.2_windows_amd64.exe -Algorithm SHA256
+gh release download --repo Gex-Development/gex-dev-kit --pattern '*_windows_amd64.exe' --pattern SHA256SUMS
+Get-FileHash .\gex-dev-kit_*_windows_amd64.exe -Algorithm SHA256
 ```
 
 Compare o hash com a linha **desse arquivo** em `SHA256SUMS`. Só depois renomeie para `gex-dev-kit.exe` na pasta de instalação. Consulte `THIRD_PARTY_LICENSES.txt` da release para avisos das dependências.
@@ -453,7 +454,8 @@ go build -o /tmp/gex-dev-kit-piloto ./cmd/gex-dev-kit
 - `scripts/check.sh`: formato, comentários, vet, testes, build e smoke local.
 - `scripts/smoke.sh CAMINHO_DO_BINARIO`: instalação, doctor, hook e rollback em HOME descartável.
 - `scripts/demo.sh`: compila e abre a TUI num HOME descartável.
-- `scripts/release.sh vX.Y.Z`: compila seis alvos, cada um com máximo de 16 MiB. Gera `dist/SHA256SUMS` e avisos das dependências; exige `docs/release-notes/vX.Y.Z.md`. Só publica com `--publish` e confirmação explícita.
+- `scripts/bump.sh vX.Y.Z`: após escrever a seção `[Não publicada]` e as notas, atualiza versão, CHANGELOG e badge.
+- `scripts/release.sh vX.Y.Z`: compila seis alvos, cada um com máximo de 16 MiB. Gera `dist/SHA256SUMS` e avisos das dependências; exige `docs/release-notes/vX.Y.Z.md`. Só publica com `--publish --confirm vX.Y.Z` ou confirmação no terminal.
 
 | Pasta | Responsabilidade |
 |---|---|

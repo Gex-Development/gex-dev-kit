@@ -24,9 +24,15 @@ Escopo, estado e uso para usuários estão em `README.md`.
 - `scripts/test-install.sh`: testa o instalador sem rede, com `gh` falso e HOME descartável.
 - `go test ./internal/ui/screens -run TestGoldenChat -update` e `go test ./internal/ui/theme -run TestGolden -update`: regravam os goldens do chat e da paleta. Só ao mudar o visual de propósito; revise o diff.
 - `scripts/smoke.sh CAMINHO_DO_BINARIO`: instalação, doctor, hooks e rollback num HOME descartável.
-- `scripts/release.sh vX.Y.Z`: gera `dist/` local e exige `docs/release-notes/vX.Y.Z.md`. Publicar exige `--publish` e confirmação humana.
+- `scripts/bump.sh vX.Y.Z`: promove `[Não publicada]`, fixa data, versão Go, link do CHANGELOG e badge. Exige notas escritas.
+- `scripts/release.sh vX.Y.Z`: gera `dist/` local e exige `docs/release-notes/vX.Y.Z.md`. Para publicar: `scripts/release.sh vX.Y.Z --publish --confirm vX.Y.Z` com autorização humana.
 - `scripts/ux-audit-env.sh`: sandbox da auditoria de UX; `--run ARQUIVO.sh` roda um script dentro dele.
 - `scripts/demo.sh`: compila e abre a TUI num HOME descartável, sem `CI` nem `NO_COLOR`; o HOME é apagado ao sair.
+
+Fluxo de release:
+1. Escreva a seção `[Não publicada]` no CHANGELOG e as notas `docs/release-notes/vX.Y.Z.md`; rode `scripts/bump.sh vX.Y.Z`.
+2. Rode `scripts/check.sh`; abra PR, revise e integre com `gh pr merge --delete-branch`.
+3. Somente com pedido humano, rode `scripts/release.sh vX.Y.Z --publish --confirm vX.Y.Z`.
 
 ## Convenções
 
