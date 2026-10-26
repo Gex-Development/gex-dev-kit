@@ -18,9 +18,10 @@ const (
 )
 
 type AddonDeps struct {
-	Plan    func(names, harnesses []string, secrets map[string]string) (app.AddonPlan, error)
-	Secrets func(names []string) ([]catalog.AddonSecret, error)
-	Install func(plan app.AddonPlan, home string, progress func(app.AddonStepResult)) app.AddonResult
+	Plan        func(names, harnesses []string, secrets map[string]string) (app.AddonPlan, error)
+	PlanRemoval func(names, harnesses []string) (app.AddonPlan, error)
+	Secrets     func(names []string) ([]catalog.AddonSecret, error)
+	Install     func(plan app.AddonPlan, home string, progress func(app.AddonStepResult)) app.AddonResult
 }
 
 func addonsGuard(d AddonDeps, group *sync.WaitGroup) AddonDeps {
@@ -60,6 +61,9 @@ func (m chatModel) flowAddons() chatModel {
 			{ID: "claude", Label: "Instalar no Claude Code"},
 			{ID: "codex", Label: "Instalar no Codex"},
 			{ID: "both", Label: "Instalar nos dois"},
+			{ID: "remove-claude", Label: "Remover do Claude Code"},
+			{ID: "remove-codex", Label: "Remover do Codex"},
+			{ID: "remove-both", Label: "Remover dos dois"},
 			{ID: "back", Label: "Voltar à lista"},
 		}
 		question := "O que você quer fazer com " + addon.Name + "?"
@@ -67,9 +71,13 @@ func (m chatModel) flowAddons() chatModel {
 			if a.IDs[0] == "back" {
 				return m.flowAddons()
 			}
-			harnesses := []string{a.IDs[0]}
-			if a.IDs[0] == "both" {
+			target, remove := strings.CutPrefix(a.IDs[0], "remove-")
+			harnesses := []string{target}
+			if target == "both" {
 				harnesses = []string{"claude", "codex"}
+			}
+			if remove {
+				return m.reviewAddonRemoval(addon.Name, harnesses)
 			}
 			return m.reviewAddons([]string{addon.Name}, harnesses, func(m chatModel, plan app.AddonPlan) chatModel {
 				return m.confirmAddons(plan)
@@ -193,14 +201,53 @@ func (m chatModel) confirmAddons(plan app.AddonPlan) chatModel {
 	}})
 }
 
+func (m chatModel) reviewAddonRemoval(name string, harnesses []string) chatModel {
+	if m.deps.Addons.PlanRemoval == nil {
+		return m.say("Removedor de plugins indisponível.").flowIdle()
+	}
+	plan, err := m.deps.Addons.PlanRemoval([]string{name}, harnesses)
+	if err != nil {
+		return m.say("Não consegui planejar a remoção: " + err.Error()).flowIdle()
+	}
+	addon, _ := catalog.AddonByName(name)
+	lines := []string{"Vou rodar estes comandos para remover " + name + ":"}
+	for _, harness := range harnesses {
+		for _, command := range addon.DisplayRemovalCommands(harness) {
+			lines = append(lines, "  "+addonHarness(harness)+": "+command)
+		}
+	}
+	for _, manual := range plan.Manual {
+		lines = append(lines, fmt.Sprintf("Passo manual (%s): %s", addonHarness(manual.Harness), manual.Text))
+	}
+	m = m.say(strings.Join(lines, "\n"))
+	if len(plan.Missing) > 0 {
+		m = m.say("Não encontrei no PATH: " + strings.Join(plan.Missing, ", ") + ". Esses passos serão pulados e viram instrução manual.")
+	}
+	if len(plan.Steps) == 0 {
+		return m.say("Não há comando para rodar; siga o passo manual acima.").flowAddons()
+	}
+	opts := []components.ChoiceOption{{ID: "cancel", Label: "Cancelar"}, {ID: "remove", Label: "Sim, remover"}}
+	return m.askFor(chatAsk{hasChoice: true, question: "Removo " + name + "?", choice: components.NewChoice("Removo "+name+"?", opts, false, false), options: opts, onAnswer: func(m chatModel, answer chatAnswer) chatModel {
+		if answer.IDs[0] == "cancel" {
+			return m.flowAddons()
+		}
+		m.history = nil
+		return m.installAddons(plan, m.common.Home, func(m chatModel) chatModel { return m.flowAddons() })
+	}})
+}
+
 func (m chatModel) installAddons(plan app.AddonPlan, home string, next func(chatModel) chatModel) chatModel {
-	return m.tool(chatToolSpec{title: "Instalar plugins e MCPs", write: true, run: func(progress func(string)) chatToolResult {
+	title, doing, done := "Instalar plugins e MCPs", "Instalando ", "instalado"
+	if plan.Remove {
+		title, doing, done = "Remover plugins e MCPs", "Removendo ", "removido"
+	}
+	return m.tool(chatToolSpec{title: title, write: true, run: func(progress func(string)) chatToolResult {
 		if m.deps.Addons.Install == nil {
 			return chatToolResult{state: theme.StateError, err: fmt.Errorf("instalador de plugins indisponível")}
 		}
 		result := m.deps.Addons.Install(plan, home, func(item app.AddonStepResult) {
 			if item.Status == app.AddonPending {
-				progress("Instalando " + item.Step.Addon + " no " + addonHarness(item.Step.Harness) + "…")
+				progress(doing + item.Step.Addon + " no " + addonHarness(item.Step.Harness) + "…")
 			}
 		})
 		rows := make([]components.ToolRow, 0, len(result.Steps)+len(result.Manual))
@@ -208,7 +255,7 @@ func (m chatModel) installAddons(plan app.AddonPlan, home string, next func(chat
 		state := theme.StateOK
 		for _, item := range result.Steps {
 			label := item.Step.Addon + " · " + addonHarness(item.Step.Harness)
-			row := components.ToolRow{State: theme.StateOK, Label: label, Detail: "instalado"}
+			row := components.ToolRow{State: theme.StateOK, Label: label, Detail: done}
 			switch item.Status {
 			case app.AddonFailed:
 				state, row.State, row.Detail = theme.StateError, theme.StateError, "falhou · "+lastAddonLine(item.Output)
@@ -264,8 +311,12 @@ func (m chatModel) installAddons(plan app.AddonPlan, home string, next func(chat
 				codex = codex || (item.Step.Harness == "codex" && !addonIsMCP(item.Step.Addon))
 			}
 		}
+		past := "instalados"
+		if plan.Remove {
+			past = "removidos"
+		}
 		if m.exitCode == 1 {
-			m = m.say("Alguns itens não foram instalados; veja os passos que falharam.")
+			m = m.say("Alguns itens não foram " + past + "; veja os passos que falharam.")
 		}
 		var plugins, mcps []string
 		for _, name := range installed {
@@ -276,15 +327,23 @@ func (m chatModel) installAddons(plan app.AddonPlan, home string, next func(chat
 			}
 		}
 		if len(plugins) > 0 {
-			m = m.say("Plugins instalados: " + strings.Join(plugins, ", ") + ".")
+			m = m.say("Plugins " + past + ": " + strings.Join(plugins, ", ") + ".")
 		}
 		if len(mcps) > 0 {
-			m = m.say("MCPs instalados: " + strings.Join(mcps, ", ") + ".")
+			m = m.say("MCPs " + past + ": " + strings.Join(mcps, ", ") + ".")
 		}
-		if codex {
-			m = m.say("No Codex, abra /hooks e aprove os hooks novos.")
+		if plan.Remove {
+			for _, name := range mcps {
+				if addon, _ := catalog.AddonByName(name); len(addon.Secrets) > 0 {
+					m = m.say("Revogue a chave de " + name + " no painel do fornecedor; remover o MCP não a revoga.")
+				}
+			}
+		} else {
+			if codex {
+				m = m.say("No Codex, abra /hooks e aprove os hooks novos.")
+			}
+			m = m.say("O rollback do kit não desfaz plugins nem MCPs; para remover, use /addons e escolha Remover.")
 		}
-		m = m.say("O rollback do kit não desfaz plugins nem MCPs; para remover, use o próprio Claude Code ou Codex.")
 		for _, item := range result.Manual {
 			m = m.say(fmt.Sprintf("Passo manual (%s, %s): %s", item.Addon, addonHarness(item.Harness), item.Text))
 		}

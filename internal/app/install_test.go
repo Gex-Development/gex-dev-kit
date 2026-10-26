@@ -131,27 +131,6 @@ func TestInstallNoticesDescribeClaudeAndCodexSupport(t *testing.T) {
 	}
 }
 
-func TestEquivalentCommandQuotesOnlyWhenNeeded(t *testing.T) {
-	plain := t.TempDir()
-	got := EquivalentCommand(Request{Home: plain})
-	if want := "gex-dev-kit install --home " + plain + " --yes"; got != want {
-		t.Fatalf("comando %q, esperado %q", got, want)
-	}
-	spaced := filepath.Join(t.TempDir(), "casa com espaço")
-	got = EquivalentCommand(Request{Home: spaced, Skills: []string{"gex-design-system"}, Hooks: []string{"gex-conventional-commits"}, SkipAgentUpdate: true})
-	want := "gex-dev-kit install --home '" + spaced + "' --skill gex-design-system --hook gex-conventional-commits --skip-agent-update --yes"
-	if got != want {
-		t.Fatalf("comando %q, esperado %q", got, want)
-	}
-}
-
-func TestEquivalentCommandEscapesSingleQuote(t *testing.T) {
-	home := filepath.Join(t.TempDir(), "d'a")
-	if got := EquivalentCommand(Request{Home: home}); !strings.Contains(got, `d'\''a`) {
-		t.Fatalf("apóstrofo sem escape: %q", got)
-	}
-}
-
 func TestPlanInstallReportsAgentsWithoutPath(t *testing.T) {
 	t.Setenv("PATH", "")
 	r := installRequest(t)

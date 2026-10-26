@@ -439,3 +439,27 @@ func TestInstallPrerequisiteFailureSkipsAllHarnessesOnlyForAddon(t *testing.T) {
 		}
 	}
 }
+
+func TestPlanAddonRemovalNeedsNeitherSecretsNorNodeAndMarksRemoval(t *testing.T) {
+	onlyClients := func(name string) (string, error) {
+		if name == "npx" {
+			return "", errors.New("sem node")
+		}
+		return "/bin/" + name, nil
+	}
+	plan, err := PlanAddonRemoval([]string{"brave-search"}, []string{"claude", "codex"}, onlyClients)
+	if err != nil || !plan.Remove || len(plan.Missing) != 0 || len(plan.secrets) != 0 {
+		t.Fatalf("plano = %+v, %v", plan, err)
+	}
+	var got []string
+	for _, step := range plan.Steps {
+		got = append(got, strings.Join(step.Argv, " "))
+	}
+	want := []string{"claude mcp remove --scope user brave-search", "codex mcp remove brave-search"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("passos = %v; quero %v", got, want)
+	}
+	if _, err := PlanAddonRemoval([]string{"desconhecido"}, []string{"claude"}, onlyClients); err == nil {
+		t.Fatal("addon desconhecido aceito")
+	}
+}

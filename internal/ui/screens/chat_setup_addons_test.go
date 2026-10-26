@@ -123,8 +123,8 @@ func TestChatSetupPluginsReviewAndCoreFirst(t *testing.T) {
 	}
 	m = chatSetupChoose(t, m, "apply")
 	m = chatSetupQuestion(t, m, "")
-	if strings.Join(calls, ",") != "core,plugins" || !strings.Contains(chatTestTranscript(m), "plugins não têm comando CLI equivalente") {
-		t.Fatalf("ordem ou comando incorreto: %v %s", calls, chatTestTranscript(m))
+	if strings.Join(calls, ",") != "core,plugins" || strings.Contains(chatTestTranscript(m), "CLI equivalente") {
+		t.Fatalf("ordem incorreta ou comando equivalente ainda aparece: %v %s", calls, chatTestTranscript(m))
 	}
 }
 

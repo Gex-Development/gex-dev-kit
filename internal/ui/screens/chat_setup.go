@@ -418,16 +418,14 @@ func (m chatModel) setupApply() chatModel {
 }
 
 func (m chatModel) setupApplyAddons() chatModel {
-	command := "Comando equivalente: " + app.EquivalentCommand(m.request)
 	if len(m.addonNames) > 0 {
-		command += " (plugins não têm comando CLI equivalente)"
 		plan := m.addonPlan
 		m.addonPlan = app.AddonPlan{}
 		return m.installAddons(plan, m.request.Home, func(m chatModel) chatModel {
-			return m.say(command).flowIdle()
+			return m.flowIdle()
 		})
 	}
-	return m.say(command).flowIdle()
+	return m.flowIdle()
 }
 
 func agentBannerTitle(label string, change app.AgentChange) string {

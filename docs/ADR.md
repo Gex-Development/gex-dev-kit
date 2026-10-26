@@ -166,12 +166,12 @@ Aceita-se que membros do time usem versões diferentes. A prévia passa a usar r
 
 O kit registra servidores MCP nos clientes Claude Code e Codex; não implementa um servidor MCP. O Core não altera MCPs. Context7 entra como addon `Kind: "mcp"`, com versão fixada e conferida, registro no escopo de usuário, comandos e conflitos exibidos antes da confirmação, como nas ADR-0036 e ADR-0038. Se um pré-requisito de um addon falhar, os passos restantes dele são pulados nos dois clientes; repetir `claude mcp add` para um nome existente sem chave conta como já configurado.
 
-O rollback do kit não remove MCPs; a remoção é manual. A ADR-0041 estende esta decisão às chaves exigidas por alguns MCPs.
+O rollback do kit não remove MCPs. A remoção é pedida pelo usuário em `/addons` e usa o comando oficial de cada cliente, com confirmação; o rollback continua não os desfazendo. A ADR-0041 estende esta decisão às chaves exigidas por alguns MCPs.
 
 ## ADR-0041: Chaves de API de MCP gravadas em texto puro por decisão do dono
 
 Brave Search e Mapbox DevKit exigem chave; na v0.3.0, o kit não pedia nem gravava chaves. Testes mostraram que Claude Code repassa e expande variáveis de ambiente, mas Codex não repassa o ambiente aos servidores MCP e `codex mcp add` não grava `env_vars`.
 
-Por decisão do dono, o chat pede a chave em campo mascarado e o kit a grava com `--env` em `~/.claude.json` e `~/.codex/config.toml`, ambos `0600`. Esta exceção à regra anterior vale somente para MCPs. A chave não aparece na transcrição, confirmação, mensagens de erro, `EquivalentCommand`, diff, golden ou teste; a saída dos passos é redigida.
+Por decisão do dono, o chat pede a chave em campo mascarado e o kit a grava com `--env` em `~/.claude.json` e `~/.codex/config.toml`, ambos `0600`. Esta exceção à regra anterior vale somente para MCPs. A chave não aparece na transcrição, confirmação, mensagens de erro, diff, golden ou teste; a saída dos passos é redigida.
 
 Aceitam-se texto puro em disco e exposição na lista de processos enquanto o comando roda. Reinstalar substitui a chave; rollback não remove MCPs nem revoga chaves. Foram descartados herdar do shell, `${VAR}`, `env_vars` e um passo manual, pois não configuram os dois clientes pelo chat.

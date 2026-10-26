@@ -9,7 +9,7 @@
 
 ![macOS arm64 e amd64][badge-macos] ![Linux arm64 e amd64][badge-linux] ![Windows arm64 e amd64][badge-windows]
 
-![Versão v0.3.4][badge-version] ![Go 1.25.8][badge-go] ![Interface TUI e CLI][badge-interface] ![Agente Claude Code][badge-claude] ![Agente Codex][badge-codex] ![Conventional Commits][badge-commits] ![GitHub CLI necessário][badge-gh]
+![Versão v0.3.5][badge-version] ![Go 1.25.8][badge-go] ![Interface TUI e CLI][badge-interface] ![Agente Claude Code][badge-claude] ![Agente Codex][badge-codex] ![Conventional Commits][badge-commits] ![GitHub CLI necessário][badge-gh]
 
 </div>
 
@@ -402,6 +402,7 @@ Somente a etapa **Plugins** de `/setup` ou `/addons` no chat instala plugins e M
 | `terraform` (MCP) | Ferramentas Terraform | Imagem Docker `hashicorp/terraform-mcp-server:1.4.1`; registro no Claude Code e/ou Codex | Docker ligado; sem chave |
 | `brave-search` (MCP) | Busca na web | `npx -y @brave/brave-search-mcp-server@2.1.4`; registro no Claude Code e/ou Codex | Chave `BRAVE_API_KEY` |
 | `mapbox-devkit` (MCP) | Mapas e ferramentas Mapbox | `npx -y @mapbox/mcp-devkit-server@0.8.2`; registro no Claude Code e/ou Codex | Node.js 22+ e token `MAPBOX_ACCESS_TOKEN` com mínimo de escopos |
+| `claude-code-templates` (hooks) | 13 hooks para Claude Code: formatação, testes, segurança, commit e portões de qualidade | Não é automático: o chat mostra o comando `npx -y claude-code-templates@1.30.0 --hook ...` com `CCT_NO_TRACKING=true` | Rode no projeto; o instalador pergunta onde gravar. `smart-commit` faz `git add` a cada edição; `tdd-gate` e `scope-guard` bloqueiam edições |
 
 **Chaves de API dos MCPs**
 
@@ -409,10 +410,10 @@ Para Brave Search e Mapbox DevKit, o chat pede a chave em campo mascarado. O kit
 
 Obtenha a [chave Brave](https://api-dashboard.search.brave.com/app/keys) ou o [token Mapbox](https://account.mapbox.com/) no fornecedor. Limite os escopos do token Mapbox: ferramentas com permissão de escrita podem criar e apagar estilos e tokens da conta.
 
-Rollback não remove MCPs nem revoga chaves. Para remover um servidor, use `claude mcp remove --scope user NOME` e `codex mcp remove NOME`; depois revogue a chave no painel do fornecedor.
+Rollback do Core não desfaz plugins nem MCPs, e remover um MCP não revoga a chave. Para tirar um deles, use `/addons`, escolha o item e **Remover do Claude Code**, **do Codex** ou **dos dois**: o chat mostra os comandos oficiais (`claude mcp remove --scope user NOME`, `codex mcp remove NOME`, `claude plugin uninstall`, `codex plugin remove`, `uv tool uninstall`) e só roda depois da sua confirmação. Depois revogue a chave no painel do fornecedor.
 
 > [!WARNING]
-> Plugins e MCPs são **código de terceiros** executado com seus privilégios. Os comandos rodam sem shell, num grupo de processos próprio. Usam o HOME escolhido, ambiente reduzido e timeout de cinco minutos por passo. Revise fonte, licença e comandos antes de confirmar. **Rollback não os desfaz:** remova-os nos clientes.
+> Plugins e MCPs são **código de terceiros** executado com seus privilégios. Os comandos rodam sem shell, num grupo de processos próprio. Usam o HOME escolhido, ambiente reduzido e timeout de cinco minutos por passo. Revise fonte, licença e comandos antes de confirmar. **O rollback do Core não os desfaz:** remova-os por `/addons`.
 
 - As tags de `caveman` e `ponytail` no Claude Code não são os commits conferidos do catálogo. O marketplace não aceita commits como referência.
 - O pin de `superpowers` depende do marketplace oficial e pode mudar. `spec-kit` requer Python 3.11+ e `uv`.
@@ -477,7 +478,7 @@ Fontes de compatibilidade: [hooks Claude Code](https://code.claude.com/docs/en/h
 [badge-macos]: https://img.shields.io/badge/macOS-arm64%20%7C%20amd64-000000?style=for-the-badge&logo=apple&logoColor=white
 [badge-linux]: https://img.shields.io/badge/Linux-arm64%20%7C%20amd64-FCC624?style=for-the-badge&logo=linux&logoColor=black
 [badge-windows]: https://img.shields.io/badge/Windows-arm64%20%7C%20amd64-0078D4?style=for-the-badge&logo=data:image/svg%2Bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI%2BPHBhdGggZmlsbD0iI2ZmZiIgZD0iTTAsMEgxMS4zNzdWMTEuMzcySDBaTTEyLjYyMywwSDI0VjExLjM3MkgxMi42MjNaTTAsMTIuNjIzSDExLjM3N1YyNEgwWm0xMi42MjMsMEgyNFYyNEgxMi42MjMiLz48L3N2Zz4%3D
-[badge-version]: https://img.shields.io/badge/Vers%C3%A3o-v0.3.4-6f42c1?style=flat-square
+[badge-version]: https://img.shields.io/badge/Vers%C3%A3o-v0.3.5-6f42c1?style=flat-square
 [badge-go]: https://img.shields.io/badge/Go-1.25.8-00ADD8?style=flat-square&logo=go&logoColor=white
 [badge-interface]: https://img.shields.io/badge/Interface-TUI%20%2B%20CLI-2088aa?style=flat-square&logo=gnubash&logoColor=white
 [badge-claude]: https://img.shields.io/badge/Agente-Claude%20Code-2088aa?style=flat-square&logo=anthropic&logoColor=white

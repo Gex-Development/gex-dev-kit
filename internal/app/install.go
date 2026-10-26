@@ -4,15 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
-	"regexp"
-	"strings"
 
 	"github.com/Gex-Development/gex-dev-kit/internal/agents"
 	"github.com/Gex-Development/gex-dev-kit/internal/catalog"
 	"github.com/Gex-Development/gex-dev-kit/internal/kit"
 )
-
-var installPlainWord = regexp.MustCompile(`^[A-Za-z0-9_./:=@%+,-]+$`)
 
 func PlanInstall(r Request, diffLimit int) (Plan, error) {
 	if !filepath.IsAbs(r.Home) {
@@ -74,30 +70,6 @@ func ApplyInstall(p Plan, progress func(Step)) (Result, error) {
 	}
 	report(StepDone)
 	return result, nil
-}
-
-func EquivalentCommand(r Request) string {
-	parts := []string{"gex-dev-kit", "install"}
-	if r.Home != "" {
-		parts = append(parts, "--home", installQuote(r.Home))
-	}
-	for _, skill := range r.Skills {
-		parts = append(parts, "--skill", installQuote(skill))
-	}
-	for _, hook := range r.Hooks {
-		parts = append(parts, "--hook", installQuote(hook))
-	}
-	if r.SkipAgentUpdate {
-		parts = append(parts, "--skip-agent-update")
-	}
-	return strings.Join(append(parts, "--yes"), " ")
-}
-
-func installQuote(value string) string {
-	if installPlainWord.MatchString(value) {
-		return value
-	}
-	return "'" + strings.ReplaceAll(value, "'", `'\''`) + "'"
 }
 
 func installNeedsTrust(hooks []string) bool {

@@ -1,3 +1,6 @@
+
++- v Planejar instala??o ~ --------------------------------+
+| 1 arquivo(s) ? 0 agente(s) a atualizar                   |
 | criar .claude/CLAUDE.md ? novo                           |
 +----------------------------------------------------------+
 
@@ -9,9 +12,6 @@
 +----------------------------------------------------------+
 
 * Pronto! Instalei 1 arquivo(s). Histórico: hist-1.
-
-* Comando equivalente: gex-dev-kit install --home /home/demo
-  --skip-agent-update --yes
 
 +- [GEX] [OMP] [gex-dev-kit]------- -- Core 0/7 -- v0.3.0--+
 | > Digite / para ver os comandos                          |

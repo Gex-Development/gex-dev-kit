@@ -272,7 +272,7 @@ func TestCLIMatrizJSONDecodificaEmStructsEstritas(t *testing.T) {
 		cliConfereSaidaJSON(t, out, errOut)
 		var doc jsonAddonsDoc
 		cliDecodeEstrito(t, out, &doc)
-		if doc.Schema != "gex-dev-kit.addons/v1" || len(doc.Addons) != 8 {
+		if doc.Schema != "gex-dev-kit.addons/v1" || len(doc.Addons) != 9 {
 			t.Fatalf("addons: schema=%q quantidade=%d", doc.Schema, len(doc.Addons))
 		}
 	})
@@ -448,15 +448,6 @@ func TestCLIMatrizSinalDuranteGravacao(t *testing.T) {
 				t.Fatalf("aviso de sinal ausente: %q", errOut.String())
 			}
 		})
-	}
-}
-
-func TestCLIMatrizFlagsEquivalentesViramMesmoRequest(t *testing.T) {
-	home := cliIsolate(t)
-	req := cliRequest(t, cliInstallArgs(home, "--skill", "retro", "--skill", "writing-for-agents", "--hook", "gex-session-start", "--yes")...)
-	reanalisado := cliRequest(t, strings.Fields(app.EquivalentCommand(req))[1:]...)
-	if !reflect.DeepEqual(req, reanalisado) {
-		t.Fatalf("Request reanalisado difere: %+v != %+v", reanalisado, req)
 	}
 }
 

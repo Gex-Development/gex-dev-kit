@@ -15,7 +15,7 @@ import (
 	"github.com/Gex-Development/gex-dev-kit/internal/ui/terminal"
 )
 
-var version = "v0.3.4"
+var version = "v0.3.5"
 
 type session struct {
 	in     io.Reader
@@ -184,6 +184,9 @@ func chatDeps(s session, home string, preset app.Request) screens.ChatDeps {
 		Addons: screens.AddonDeps{
 			Plan: func(names, harnesses []string, secrets map[string]string) (app.AddonPlan, error) {
 				return app.PlanAddonsWithSecrets(names, harnesses, exec.LookPath, secrets)
+			},
+			PlanRemoval: func(names, harnesses []string) (app.AddonPlan, error) {
+				return app.PlanAddonRemoval(names, harnesses, exec.LookPath)
 			},
 			Secrets: app.AddonSecretsNeeded,
 			Install: func(plan app.AddonPlan, home string, progress func(app.AddonStepResult)) app.AddonResult {

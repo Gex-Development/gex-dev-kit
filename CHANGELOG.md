@@ -2,6 +2,19 @@
 
 Todas as mudanças relevantes do Kit de Desenvolvimento GEX ficam neste arquivo. O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e as versões usam [SemVer](https://semver.org/lang/pt-BR/).
 
+## [0.3.5] - 2026-10-26
+
+As notas da publicação estão em [`docs/release-notes/v0.3.5.md`](docs/release-notes/v0.3.5.md).
+
+### Adicionado
+
+- `/addons` ganhou **Remover do Claude Code**, **do Codex** e **dos dois** para os 9 addons. Mostra os comandos oficiais de remoção (`claude mcp remove`, `claude plugin uninstall`, `codex mcp remove`, `codex plugin remove`, `uv tool uninstall`), pede confirmação e trata item já removido como sucesso. O kit não apaga o `.specify/` dos projetos, os hooks do caveman no Codex nem os hooks do `claude-code-templates`: para esses mostra o passo manual. Remover um MCP não revoga a chave; o chat avisa.
+- Addon `claude-code-templates` (hooks), com os 13 hooks pedidos: lint-on-save, smart-formatting, run-tests-after-changes, change-tracker, security-scanner, smart-commit, nextjs-code-quality-enforcer, tdd-gate, scope-guard, env-file-protection, format-javascript-files, subagent-read-only-guard e change-logger. O chat mostra o comando oficial fixado na 1.30.0, sem telemetria (`CCT_NO_TRACKING=true`); o kit não o executa, porque o instalador só oferece o escopo de projeto sem perguntas.
+
+### Removido
+
+- A mensagem `Comando equivalente: gex-dev-kit install ...` que o chat mostrava ao terminar o setup, e a função que a montava.
+
 ## [0.3.4] - 2026-10-26
 
 As notas da publicação estão em [`docs/release-notes/v0.3.4.md`](docs/release-notes/v0.3.4.md).
@@ -133,6 +146,7 @@ Primeira entrega.
 - Claude Code `2.1.306` e Codex `0.163.0` fixados; a CLI só instala ou atualiza executáveis standalone próprios, pelos instaladores oficiais com versão exata.
 - Binários para macOS, Linux e Windows, em `arm64` e `amd64`.
 
+[0.3.5]: https://github.com/Gex-Development/gex-dev-kit/compare/v0.3.4...v0.3.5
 [0.3.4]: https://github.com/Gex-Development/gex-dev-kit/compare/v0.3.3...v0.3.4
 [0.3.3]: https://github.com/Gex-Development/gex-dev-kit/compare/v0.3.2...v0.3.3
 [0.3.2]: https://github.com/Gex-Development/gex-dev-kit/compare/v0.3.1...v0.3.2

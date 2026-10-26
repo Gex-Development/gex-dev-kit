@@ -199,7 +199,7 @@ func TestChatSetupDoesNotWriteBeforeConfirmationAndWritesOnce(t *testing.T) {
 	}
 	m = chatSetupChoose(t, m, "apply")
 	m = chatSetupQuestion(t, m, "")
-	if calls != 1 || !strings.Contains(chatTestTranscript(m), "Pronto! Instalei") || !strings.Contains(chatTestTranscript(m), "Comando equivalente:") {
+	if calls != 1 || !strings.Contains(chatTestTranscript(m), "Pronto! Instalei") || strings.Contains(chatTestTranscript(m), "Comando equivalente") {
 		t.Fatalf("Apply=%d, resultado incompleto: %s", calls, chatTestTranscript(m))
 	}
 }

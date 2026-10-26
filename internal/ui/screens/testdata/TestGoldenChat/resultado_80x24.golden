@@ -1,3 +1,6 @@
+    • Core GEX + 0 skill(s) e 0 hook(s) opcionais
+    • Agentes: manter versões
+
 * Agora vou planejar a instalação.
 
 +- v Planejar instala??o ~ ----------------------------------------------------+
@@ -13,9 +16,6 @@
 +------------------------------------------------------------------------------+
 
 * Pronto! Instalei 1 arquivo(s). Histórico: hist-1.
-
-* Comando equivalente: gex-dev-kit install --home /home/demo --skip-agent-update
-  --yes
 
 +- [GEX] [OMP] [gex-dev-kit]--------------------------- -- Core 0/7 -- v0.3.0--+
 | > Digite / para ver os comandos                                              |
