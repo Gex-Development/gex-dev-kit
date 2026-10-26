@@ -272,7 +272,7 @@ func TestCLIMatrizJSONDecodificaEmStructsEstritas(t *testing.T) {
 		cliConfereSaidaJSON(t, out, errOut)
 		var doc jsonAddonsDoc
 		cliDecodeEstrito(t, out, &doc)
-		if doc.Schema != "gex-dev-kit.addons/v1" || len(doc.Addons) != 4 {
+		if doc.Schema != "gex-dev-kit.addons/v1" || len(doc.Addons) != 8 {
 			t.Fatalf("addons: schema=%q quantidade=%d", doc.Schema, len(doc.Addons))
 		}
 	})

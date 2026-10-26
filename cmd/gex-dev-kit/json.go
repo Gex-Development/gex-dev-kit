@@ -88,21 +88,28 @@ type jsonAddonsDoc struct {
 }
 
 type jsonAddon struct {
-	Name          string      `json:"name"`
-	Kind          string      `json:"kind"`
-	Summary       string      `json:"summary"`
-	Source        string      `json:"source"`
-	License       string      `json:"license"`
-	Revision      string      `json:"revision"`
-	Release       string      `json:"release"`
-	CheckedAt     string      `json:"checked_at"`
-	Install       jsonInstall `json:"install"`
-	Pinned        string      `json:"pinned"`
-	Deterministic bool        `json:"deterministic"`
-	Installs      []string    `json:"installs"`
-	Conflicts     []string    `json:"conflicts"`
-	CoreCompat    string      `json:"core_compat"`
-	ExecutedByKit bool        `json:"executed_by_kit"`
+	Name          string            `json:"name"`
+	Kind          string            `json:"kind"`
+	Summary       string            `json:"summary"`
+	Source        string            `json:"source"`
+	License       string            `json:"license"`
+	Revision      string            `json:"revision"`
+	Release       string            `json:"release"`
+	CheckedAt     string            `json:"checked_at"`
+	Install       jsonInstall       `json:"install"`
+	Pinned        string            `json:"pinned"`
+	Deterministic bool              `json:"deterministic"`
+	Installs      []string          `json:"installs"`
+	Conflicts     []string          `json:"conflicts"`
+	CoreCompat    string            `json:"core_compat"`
+	ExecutedByKit bool              `json:"executed_by_kit"`
+	Secrets       []jsonAddonSecret `json:"secrets"`
+}
+
+type jsonAddonSecret struct {
+	Env   string `json:"env"`
+	Label string `json:"label"`
+	URL   string `json:"url"`
 }
 
 type jsonInstall struct {

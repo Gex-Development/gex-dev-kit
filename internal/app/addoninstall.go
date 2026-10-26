@@ -20,6 +20,9 @@ type AddonPlanStep struct {
 	Addon, Harness, Display string
 	Argv                    []string
 	Available               bool
+	BlockedBy               string
+	Prerequisite            bool
+	AlreadyOK               string
 }
 
 type AddonManual struct {
@@ -30,10 +33,46 @@ type AddonPlan struct {
 	Steps   []AddonPlanStep
 	Manual  []AddonManual
 	Missing []string
+	secrets []string
 }
 
-func PlanAddons(names, harnesses []string, lookPath func(string) (string, error)) (AddonPlan, error) {
+type AddonSecretMissing struct{ Env string }
+
+func (e AddonSecretMissing) Error() string { return "chave obrigatória ausente: " + e.Env }
+
+func AddonSecretsNeeded(names []string) ([]catalog.AddonSecret, error) {
+	var result []catalog.AddonSecret
+	seen := make(map[string]bool)
+	for _, name := range names {
+		addon, ok := catalog.AddonByName(name)
+		if !ok {
+			return nil, fmt.Errorf("addon desconhecido: %s", name)
+		}
+		for _, secret := range addon.Secrets {
+			if !seen[secret.Env] {
+				result = append(result, secret)
+				seen[secret.Env] = true
+			}
+		}
+	}
+	return result, nil
+}
+
+func PlanAddonsWithSecrets(names, harnesses []string, lookPath func(string) (string, error), secrets map[string]string) (AddonPlan, error) {
+	required, err := AddonSecretsNeeded(names)
+	if err != nil {
+		return AddonPlan{}, err
+	}
 	var plan AddonPlan
+	for _, secret := range required {
+		value := secrets[secret.Env]
+		if value == "" {
+			return AddonPlan{}, AddonSecretMissing{Env: secret.Env}
+		}
+		if !slices.Contains(plan.secrets, value) {
+			plan.secrets = append(plan.secrets, value)
+		}
+	}
 	seenSteps := make(map[string]bool)
 	seenManual := make(map[string]bool)
 	checked := make(map[string]bool)
@@ -41,6 +80,25 @@ func PlanAddons(names, harnesses []string, lookPath func(string) (string, error)
 		addon, ok := catalog.AddonByName(name)
 		if !ok {
 			return AddonPlan{}, fmt.Errorf("addon desconhecido: %s", name)
+		}
+		missingRequired := false
+		blocker := ""
+		for _, binary := range addon.Requires {
+			if !checked[binary] {
+				checked[binary] = true
+				if _, err := lookPath(binary); err != nil {
+					plan.Missing = append(plan.Missing, binary)
+				}
+			}
+			if slices.Contains(plan.Missing, binary) {
+				missingRequired = true
+				if blocker == "" {
+					blocker = binary
+				}
+			}
+		}
+		if missingRequired && addon.RequiresNote != "" {
+			plan.Manual = append(plan.Manual, AddonManual{Addon: name, Text: addon.RequiresNote})
 		}
 		for _, harness := range harnesses {
 			if harness != "claude" && harness != "codex" {
@@ -60,7 +118,23 @@ func PlanAddons(names, harnesses []string, lookPath func(string) (string, error)
 						plan.Missing = append(plan.Missing, binary)
 					}
 				}
-				plan.Steps = append(plan.Steps, AddonPlanStep{Addon: name, Harness: harness, Display: strings.Join(step.Argv, " "), Argv: slices.Clone(step.Argv), Available: !slices.Contains(plan.Missing, binary)})
+				argv := slices.Clone(step.Argv)
+				display := slices.Clone(step.Argv)
+				for i, arg := range argv {
+					for _, secret := range addon.Secrets {
+						if strings.Contains(arg, secret.Env+"="+catalog.SecretPlaceholder) {
+							argv[i] = strings.ReplaceAll(arg, catalog.SecretPlaceholder, secrets[secret.Env])
+							display[i] = strings.ReplaceAll(arg, catalog.SecretPlaceholder, "••••••••")
+						}
+					}
+				}
+				blockedBy := ""
+				if slices.Contains(plan.Missing, binary) {
+					blockedBy = binary
+				} else if missingRequired {
+					blockedBy = blocker
+				}
+				plan.Steps = append(plan.Steps, AddonPlanStep{Addon: name, Harness: harness, Display: strings.Join(display, " "), Argv: argv, Available: blockedBy == "", BlockedBy: blockedBy, Prerequisite: step.Prerequisite, AlreadyOK: step.AlreadyOK})
 			}
 			if install.Manual != "" {
 				key := name + "\x00" + harness
@@ -72,6 +146,10 @@ func PlanAddons(names, harnesses []string, lookPath func(string) (string, error)
 		}
 	}
 	return plan, nil
+}
+
+func PlanAddons(names, harnesses []string, lookPath func(string) (string, error)) (AddonPlan, error) {
+	return PlanAddonsWithSecrets(names, harnesses, lookPath, nil)
 }
 
 type AddonStatus uint8
@@ -108,13 +186,22 @@ func installAddonsWithTimeout(plan AddonPlan, home string, run AddonRunner, prog
 	}
 	env := addonEnvironment(os.Environ(), home, realHome)
 	failed := make(map[string]bool)
+	failedAddon := make(map[string]bool)
 	for _, step := range plan.Steps {
-		item := AddonStepResult{Step: step, Status: AddonPending}
+		publicStep := step
+		publicStep.Argv = slices.Clone(step.Argv)
+		for i, arg := range publicStep.Argv {
+			for _, secret := range plan.secrets {
+				publicStep.Argv[i] = strings.ReplaceAll(arg, secret, "[oculto]")
+				arg = publicStep.Argv[i]
+			}
+		}
+		item := AddonStepResult{Step: publicStep, Status: AddonPending}
 		if progress != nil {
 			progress(item)
 		}
 		key := step.Addon + "\x00" + step.Harness
-		if !step.Available || failed[key] {
+		if !step.Available || failed[key] || failedAddon[step.Addon] {
 			item.Status = AddonSkipped
 		} else {
 			ctx, cancel := context.WithTimeout(context.Background(), timeout)
@@ -125,16 +212,27 @@ func installAddonsWithTimeout(plan AddonPlan, home string, run AddonRunner, prog
 				output = fmt.Sprintf("tempo esgotado (%s)", timeout)
 				err = context.DeadlineExceeded
 			}
-			if err != nil {
-				failed[key] = true
-				item.Status = AddonFailed
-				if output == "" {
-					output = err.Error()
-				}
-			} else {
+			if err != nil && step.AlreadyOK != "" && !expired && strings.Contains(strings.ToLower(output+"\n"+err.Error()), strings.ToLower(step.AlreadyOK)) {
 				item.Status = AddonOK
+				item.Output = "já configurado"
+			} else {
+				if err != nil {
+					failed[key] = true
+					if step.Prerequisite {
+						failedAddon[step.Addon] = true
+					}
+					item.Status = AddonFailed
+					if output == "" {
+						output = err.Error()
+					}
+				} else {
+					item.Status = AddonOK
+				}
+				for _, secret := range plan.secrets {
+					output = strings.ReplaceAll(output, secret, "[oculto]")
+				}
+				item.Output = addonOutput(output)
 			}
-			item.Output = addonOutput(output)
 		}
 		result.Steps = append(result.Steps, item)
 		if progress != nil {
@@ -236,7 +334,6 @@ func addonEnvironment(environ []string, home, realHome string) []string {
 			set("HOMEPATH", strings.TrimPrefix(home, volume))
 		}
 	}
-	set("CLAUDE_CONFIG_DIR", filepath.Join(home, ".claude"))
 	set("CODEX_HOME", filepath.Join(home, ".codex"))
 	set("GIT_TERMINAL_PROMPT", "0")
 	return env

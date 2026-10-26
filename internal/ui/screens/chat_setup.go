@@ -246,6 +246,8 @@ func (m chatModel) setupPlugins() chatModel {
 	return m.askFor(chatAsk{hasChoice: true, question: question, choice: components.NewChoice(question, opts, true, false).Preselect(m.addonNames), options: opts, onAnswer: func(m chatModel, a chatAnswer) chatModel {
 		m.addonNames = slices.Clone(a.IDs)
 		m.addonPlan = app.AddonPlan{}
+		clear(m.addonSecrets)
+		m.addonSecrets = nil
 		if len(a.IDs) == 0 {
 			return m.setupPlan()
 		}
@@ -419,7 +421,9 @@ func (m chatModel) setupApplyAddons() chatModel {
 	command := "Comando equivalente: " + app.EquivalentCommand(m.request)
 	if len(m.addonNames) > 0 {
 		command += " (plugins não têm comando CLI equivalente)"
-		return m.installAddons(m.addonPlan, m.request.Home, func(m chatModel) chatModel {
+		plan := m.addonPlan
+		m.addonPlan = app.AddonPlan{}
+		return m.installAddons(plan, m.request.Home, func(m chatModel) chatModel {
 			return m.say(command).flowIdle()
 		})
 	}

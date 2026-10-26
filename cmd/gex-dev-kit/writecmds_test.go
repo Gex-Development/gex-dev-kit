@@ -71,7 +71,7 @@ func TestChatDepsInstalaAddonComHOMEEscolhido(t *testing.T) {
 	}
 	t.Setenv("PATH", bin)
 	chat := chatDeps(session{}, home, app.Request{})
-	plan, err := chat.Addons.Plan([]string{"superpowers"}, []string{"claude"})
+	plan, err := chat.Addons.Plan([]string{"superpowers"}, []string{"claude"}, nil)
 	if err != nil || len(plan.Steps) != 1 || len(plan.Missing) != 0 {
 		t.Fatalf("plano errado: %+v %v", plan, err)
 	}

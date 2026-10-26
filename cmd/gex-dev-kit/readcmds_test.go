@@ -210,7 +210,7 @@ func TestHooksJSONCountsAndSchema(t *testing.T) {
 	}
 }
 
-func TestAddonsJSONListsFourAndSelectsOne(t *testing.T) {
+func TestAddonsJSONListsSecretsWithoutValues(t *testing.T) {
 	s, out, _ := readTestSession(options{JSON: true}, deps{})
 	if code := cmdAddons(s); code != 0 {
 		t.Fatalf("addons --json: exit=%d", code)
@@ -220,21 +220,34 @@ func TestAddonsJSONListsFourAndSelectsOne(t *testing.T) {
 		Addons []struct {
 			Name          string `json:"name"`
 			ExecutedByKit bool   `json:"executed_by_kit"`
+			Secrets       []struct {
+				Env, Label, URL string
+			} `json:"secrets"`
 		} `json:"addons"`
 	}
 	readDecode(t, out.String(), &doc)
-	if doc.Schema != "gex-dev-kit.addons/v1" || len(doc.Addons) != 4 {
+	if doc.Schema != "gex-dev-kit.addons/v1" || len(doc.Addons) != 8 {
 		t.Fatalf("addons: schema=%s total=%d", doc.Schema, len(doc.Addons))
 	}
+	found := 0
 	for _, addon := range doc.Addons {
 		if addon.ExecutedByKit {
 			t.Fatalf("addon %s marcado como executado pelo kit", addon.Name)
 		}
+		for _, secret := range addon.Secrets {
+			if secret.Env == "" || secret.Label == "" || secret.URL == "" {
+				t.Fatalf("metadados de chave incompletos: %+v", secret)
+			}
+			found++
+		}
+	}
+	if found != 2 || strings.Contains(out.String(), "fake-key-123") {
+		t.Fatalf("metadados de chaves: %d", found)
 	}
 	s, out, _ = readTestSession(options{JSON: true, Args: []string{"caveman"}}, deps{})
 	cmdAddons(s)
 	readDecode(t, out.String(), &doc)
-	if len(doc.Addons) != 1 || doc.Addons[0].Name != "caveman" {
+	if len(doc.Addons) != 1 || doc.Addons[0].Name != "caveman" || len(doc.Addons[0].Secrets) != 0 {
 		t.Fatalf("addon único: %+v", doc.Addons)
 	}
 }
@@ -251,7 +264,7 @@ func TestAddonsUnknownNameListsValidosESugere(t *testing.T) {
 	if code := cmdAddons(s); code != 2 {
 		t.Fatalf("addon inexistente: exit=%d; quero 2", code)
 	}
-	want := "addon desconhecido: cavemn\nAddons: caveman, ponytail, superpowers, spec-kit. Você quis dizer caveman?\n"
+	want := "addon desconhecido: cavemn\nAddons: caveman, ponytail, superpowers, spec-kit, context7, terraform, brave-search, mapbox-devkit. Você quis dizer caveman?\n"
 	if errOut.String() != want {
 		t.Fatalf("saída de addon desconhecido = %q; quero %q", errOut.String(), want)
 	}

@@ -1,11 +1,16 @@
 package screens
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"sync"
 	"testing"
 	"time"
+
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/Gex-Development/gex-dev-kit/internal/app"
 	"github.com/Gex-Development/gex-dev-kit/internal/ui/theme"
@@ -13,8 +18,9 @@ import (
 
 func chatFakeAddons() AddonDeps {
 	return AddonDeps{
-		Plan: func(names, harnesses []string) (app.AddonPlan, error) {
-			return app.PlanAddons(names, harnesses, func(string) (string, error) { return "/bin/fake", nil })
+		Secrets: app.AddonSecretsNeeded,
+		Plan: func(names, harnesses []string, secrets map[string]string) (app.AddonPlan, error) {
+			return app.PlanAddonsWithSecrets(names, harnesses, func(string) (string, error) { return "/bin/fake", nil }, secrets)
 		},
 		Install: func(plan app.AddonPlan, _ string, progress func(app.AddonStepResult)) app.AddonResult {
 			var result app.AddonResult
@@ -25,6 +31,171 @@ func chatFakeAddons() AddonDeps {
 			}
 			return result
 		},
+	}
+}
+
+func TestChatAddonSecretsNeverReachTranscriptOrConfirmation(t *testing.T) {
+	m := chatTestModel(false)
+	m.deps.Addons = chatFakeAddons()
+	m = chatSetupQuestion(t, m.flowAddons(), "Qual addon")
+	m = chatSetupChoose(t, m, "brave-search")
+	m = chatSetupQuestion(t, m, "O que você quer fazer")
+	m = chatSetupChoose(t, m, "both")
+	m = chatSetupQuestion(t, m, "Cole a")
+	if len([]rune("? "+m.ask.question)) > 80 {
+		t.Fatal("pergunta secreta não cabe em 80 colunas")
+	}
+	transcript := chatTestTranscript(m)
+	first := "A Chave Brave Search fica em texto puro em ~/.claude.json e ~/.codex/config.toml; só você os lê."
+	second := "Para criar: https://api-dashboard.search.brave.com/app/keys. Deixe vazio e tecle enter para cancelar."
+	if i, j := strings.Index(transcript, first), strings.Index(transcript, second); i < 0 || j <= i {
+		t.Fatal("instruções completas não aparecem antes do campo")
+	}
+	if m.input.EchoMode != textinput.EchoPassword {
+		t.Fatal("entrada da chave não está mascarada")
+	}
+	m.input.SetValue("fake-key-123")
+	if view := m.View().Content; strings.Contains(view, "fake-key-123") || !strings.Contains(view, "••••") {
+		t.Fatal("chave visível ou máscara ausente durante digitação")
+	}
+	m = chatSetupText(t, m, "fake-key-123")
+	m = chatSetupQuestion(t, m, "Rodo estes comandos?")
+	if m.ask.options[0].ID != "cancel" || !strings.Contains(chatTestTranscript(m), "BRAVE_API_KEY=••••••••") {
+		t.Fatal("confirmação sem cancelamento ou máscara")
+	}
+	assertChatSecretAbsent(t, m)
+	m = chatSetupChoose(t, m, "install")
+	m = chatSetupQuestion(t, m, "Qual addon")
+	assertChatSecretAbsent(t, m)
+	if m.input.EchoMode != textinput.EchoNormal {
+		t.Fatal("modo da entrada não restaurado")
+	}
+}
+
+func assertChatSecretAbsent(t *testing.T, m chatModel) {
+	t.Helper()
+	for _, text := range []string{chatTestTranscript(m), m.View().Content, app.EquivalentCommand(m.request), fmt.Sprintf("%+v", m.request), fmt.Sprintf("%+v", m.history), fmt.Sprintf("%+v", m.ask), fmt.Sprintf("%+v", m.queue)} {
+		if strings.Contains(text, "fake-key-123") {
+			t.Fatal("chave exposta no chat")
+		}
+	}
+	for _, entry := range m.entries {
+		if strings.Contains(entry.text, "fake-key-123") {
+			t.Fatal("chave exposta em entrada")
+		}
+	}
+	for _, ask := range m.history {
+		if strings.Contains(ask.question, "fake-key-123") {
+			t.Fatal("chave exposta em histórico")
+		}
+	}
+}
+
+func TestChatAddonSecretCancelReturnsToList(t *testing.T) {
+	for _, cancel := range []string{"empty", "esc"} {
+		t.Run(cancel, func(t *testing.T) {
+			m := chatTestModel(false)
+			m.deps.Addons = chatFakeAddons()
+			m = chatSetupQuestion(t, m.flowAddons(), "Qual addon")
+			m = chatSetupChoose(t, m, "brave-search")
+			m = chatSetupQuestion(t, m, "O que você quer fazer")
+			m = chatSetupChoose(t, m, "claude")
+			m = chatSetupQuestion(t, m, "Cole a")
+			if cancel == "esc" {
+				m.input.SetValue("fake-key-123")
+				m, _ = chatTestUpdate(m, tea.KeyPressMsg{Code: tea.KeyEscape})
+			} else {
+				m = chatSetupText(t, m, "")
+			}
+			m = chatSetupQuestion(t, m, "Qual addon")
+			if m.addonSecrets != nil || m.input.EchoMode != textinput.EchoNormal {
+				t.Fatal("cancelar reteve chave ou máscara")
+			}
+			assertChatSecretAbsent(t, m)
+		})
+	}
+}
+
+func TestChatAddonMapboxCodexAndTerraformWithoutSecret(t *testing.T) {
+	for _, tc := range []struct{ name, question string }{{"mapbox-devkit", "Cole a"}, {"terraform", "Rodo estes comandos?"}} {
+		t.Run(tc.name, func(t *testing.T) {
+			m := chatTestModel(false)
+			m.deps.Addons = chatFakeAddons()
+			m = chatSetupQuestion(t, m.flowAddons(), "Qual addon")
+			m = chatSetupChoose(t, m, tc.name)
+			m = chatSetupQuestion(t, m, "O que você quer fazer")
+			m = chatSetupChoose(t, m, "codex")
+			m = chatSetupQuestion(t, m, tc.question)
+			if tc.name == "mapbox-devkit" {
+				if strings.Contains(chatTestTranscript(m), "~/.claude.json; só você o lê.") || !strings.Contains(chatTestTranscript(m), "~/.codex/config.toml; só você o lê.") {
+					t.Fatal("instruções incluem cliente não selecionado")
+				}
+				m = chatSetupText(t, m, "fake-key-123")
+				m = chatSetupQuestion(t, m, "Rodo estes comandos?")
+				if !strings.Contains(chatTestTranscript(m), "MAPBOX_ACCESS_TOKEN=••••••••") {
+					t.Fatal("prévia Mapbox sem máscara")
+				}
+			}
+			assertChatSecretAbsent(t, m)
+		})
+	}
+}
+
+func TestChatAddonPlanningErrorHidesSecret(t *testing.T) {
+	m := chatTestModel(false)
+	m.deps.Addons = chatFakeAddons()
+	m.deps.Addons.Plan = func(_, _ []string, _ map[string]string) (app.AddonPlan, error) {
+		return app.AddonPlan{}, errors.New("erro fake-key-123")
+	}
+	m = chatSetupQuestion(t, m.flowAddons(), "Qual addon")
+	m = chatSetupChoose(t, m, "brave-search")
+	m = chatSetupQuestion(t, m, "O que você quer fazer")
+	m = chatSetupChoose(t, m, "codex")
+	m = chatSetupQuestion(t, m, "Cole a")
+	m = chatSetupText(t, m, "fake-key-123")
+	m = chatSetupQuestion(t, m, "")
+	assertChatSecretAbsent(t, m)
+	if !strings.Contains(chatTestTranscript(m), "erro [oculto]") || m.addonSecrets != nil {
+		t.Fatal("erro de planejamento expôs chave ou reteve segredo")
+	}
+}
+
+func TestChatAddonFailureHidesSecretInToolRows(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	m := chatTestModel(false)
+	m.common.Home = home
+	m.deps.Addons = chatFakeAddons()
+	m.deps.Addons.Install = func(plan app.AddonPlan, home string, progress func(app.AddonStepResult)) app.AddonResult {
+		return app.InstallAddons(plan, home, func(context.Context, string, []string, []string) (string, error) {
+			return "falha fake-key-123", errors.New("erro fake-key-123")
+		}, progress)
+	}
+	m = chatSetupQuestion(t, m.flowAddons(), "Qual addon")
+	m = chatSetupChoose(t, m, "brave-search")
+	m = chatSetupQuestion(t, m, "O que você quer fazer")
+	m = chatSetupChoose(t, m, "codex")
+	m = chatSetupQuestion(t, m, "Cole a")
+	m = chatSetupText(t, m, "fake-key-123")
+	m = chatSetupQuestion(t, m, "Rodo estes comandos?")
+	m = chatSetupChoose(t, m, "install")
+	m = chatSetupQuestion(t, m, "Qual addon")
+	assertChatSecretAbsent(t, m)
+	if m.exitCode != 1 {
+		t.Fatal("falha de instalação sem código de erro")
+	}
+	found := false
+	for _, entry := range m.entries {
+		if entry.isTool {
+			tool := fmt.Sprintf("%+v", entry.tool)
+			if strings.Contains(tool, "fake-key-123") {
+				t.Fatal("bloco de ferramenta contém chave")
+			}
+			found = found || strings.Contains(tool, "[oculto]")
+		}
+	}
+	if !found {
+		t.Fatal("erro da ferramenta não foi ocultado")
 	}
 }
 
@@ -76,12 +247,108 @@ func TestChatAddonsConfirmAndCancel(t *testing.T) {
 	}
 }
 
+func TestChatAddonsCodexHookApprovalOnlyForPlugins(t *testing.T) {
+	for _, tc := range []struct {
+		addon     string
+		wantHooks bool
+	}{{"context7", false}, {"caveman", true}} {
+		m := chatTestModel(false)
+		m.deps.Addons = chatFakeAddons()
+		m = chatSetupQuestion(t, m.flowAddons(), "Qual addon")
+		m = chatSetupChoose(t, m, tc.addon)
+		m = chatSetupQuestion(t, m, "O que você quer fazer")
+		m = chatSetupChoose(t, m, "codex")
+		m = chatSetupQuestion(t, m, "Rodo estes comandos?")
+		m = chatSetupChoose(t, m, "install")
+		m = chatSetupQuestion(t, m, "Qual addon")
+		if got := strings.Contains(chatTestTranscript(m), "abra /hooks"); got != tc.wantHooks {
+			t.Fatalf("%s: aprovação de hooks=%v, esperado %v: %s", tc.addon, got, tc.wantHooks, chatTestTranscript(m))
+		}
+	}
+}
+
+func TestChatMCPShowsKindCommandsAndRisksBeforeConfirmation(t *testing.T) {
+	m := chatTestModel(false)
+	m.deps.Addons = chatFakeAddons()
+	m = chatSetupQuestion(t, m.flowAddons(), "Qual addon")
+	if addonsKindLabel("mcp") != "MCP" {
+		t.Fatal("tipo MCP não exibido")
+	}
+	m = chatSetupChoose(t, m, "context7")
+	m = chatSetupQuestion(t, m, "O que você quer fazer")
+	for _, text := range []string{"MIT", "Upstash", "limite anônimo"} {
+		if !strings.Contains(chatTestTranscript(m), text) {
+			t.Fatalf("card sem informação %q", text)
+		}
+	}
+	m = chatSetupChoose(t, m, "both")
+	m = chatSetupQuestion(t, m, "Rodo estes comandos?")
+	transcript := chatTestTranscript(m)
+	for _, text := range []string{"claude mcp add --scope user context7", "codex mcp add context7", "Envia perguntas e nomes de bibliotecas"} {
+		if !strings.Contains(transcript, text) {
+			t.Fatalf("prévia sem %q", text)
+		}
+	}
+}
+
+func TestChatMCPMissingRuntimeShowsManualInstruction(t *testing.T) {
+	m := chatTestModel(false)
+	m.deps.Addons = chatFakeAddons()
+	m.deps.Addons.Plan = func(names, harnesses []string, secrets map[string]string) (app.AddonPlan, error) {
+		return app.PlanAddonsWithSecrets(names, harnesses, func(name string) (string, error) {
+			if name == "npx" {
+				return "", errors.New("not found")
+			}
+			return "/bin/fake", nil
+		}, secrets)
+	}
+	m = chatSetupQuestion(t, m.flowAddons(), "Qual addon")
+	m = chatSetupChoose(t, m, "context7")
+	m = chatSetupQuestion(t, m, "O que você quer fazer")
+	m = chatSetupChoose(t, m, "both")
+	m = chatSetupQuestion(t, m, "Rodo estes comandos?")
+	for _, text := range []string{"Não encontrei no PATH: npx", "Instale Node.js (npx) e rode de novo."} {
+		if !strings.Contains(chatTestTranscript(m), text) {
+			t.Fatalf("prévia não explica requisito %q", text)
+		}
+	}
+}
+
+func TestChatMCPBlockedStepsNameTheRealMissingBinary(t *testing.T) {
+	m := chatTestModel(false)
+	m.deps.Addons = chatFakeAddons()
+	m.deps.Addons.Plan = func(names, harnesses []string, secrets map[string]string) (app.AddonPlan, error) {
+		return app.PlanAddonsWithSecrets(names, harnesses, func(name string) (string, error) {
+			if name == "npx" {
+				return "", errors.New("not found")
+			}
+			return "/bin/fake", nil
+		}, secrets)
+	}
+	m.deps.Addons.Install = func(plan app.AddonPlan, home string, progress func(app.AddonStepResult)) app.AddonResult {
+		return app.InstallAddons(plan, home, func(context.Context, string, []string, []string) (string, error) { return "", nil }, progress)
+	}
+	m = chatSetupQuestion(t, m.flowAddons(), "Qual addon")
+	m = chatSetupChoose(t, m, "context7")
+	m = chatSetupQuestion(t, m, "O que você quer fazer")
+	m = chatSetupChoose(t, m, "both")
+	m = chatSetupQuestion(t, m, "Rodo estes comandos?")
+	m = chatSetupChoose(t, m, "install")
+	m = chatSetupQuestion(t, m, "Qual addon")
+	transcript := chatTestTranscript(m)
+	if strings.Contains(transcript, "instale claude") || strings.Contains(transcript, "instale codex") {
+		t.Fatalf("culpou o cliente em vez do npx ausente: %s", transcript)
+	}
+	if !strings.Contains(transcript, "Instale Node.js (npx) e rode de novo.") {
+		t.Fatalf("o resultado deve explicar que falta o Node: %s", transcript)
+	}
+}
+
 func TestChatAddonsManualAndMissingReview(t *testing.T) {
 	m := chatTestModel(false)
 	m.deps.Addons = chatFakeAddons()
-	m.deps.Addons.Plan = func(names, harnesses []string) (app.AddonPlan, error) {
-		p, err := app.PlanAddons(names, harnesses, func(string) (string, error) { return "", errors.New("not found") })
-		return p, err
+	m.deps.Addons.Plan = func(names, harnesses []string, secrets map[string]string) (app.AddonPlan, error) {
+		return app.PlanAddonsWithSecrets(names, harnesses, func(string) (string, error) { return "", errors.New("not found") }, secrets)
 	}
 	m = chatSetupQuestion(t, m.flowAddons(), "Qual addon")
 	m = chatSetupChoose(t, m, "superpowers")
@@ -103,7 +370,7 @@ func TestChatAddonsRowsFailureAndManual(t *testing.T) {
 		}
 		return app.AddonResult{Steps: []app.AddonStepResult{{Step: plan.Steps[0], Status: app.AddonFailed, Output: "first\nboom"}, {Step: app.AddonPlanStep{Addon: "ponytail", Harness: "claude", Argv: []string{"claude"}}, Status: app.AddonSkipped}}, Manual: plan.Manual}
 	}
-	plan, _ := m.deps.Addons.Plan([]string{"superpowers"}, []string{"claude", "codex"})
+	plan, _ := m.deps.Addons.Plan([]string{"superpowers"}, []string{"claude", "codex"}, nil)
 	m = m.installAddons(plan, m.common.Home, func(m chatModel) chatModel { return m.flowIdle() })
 	m = chatSetupQuestion(t, m, "")
 	var rows []string

@@ -161,3 +161,17 @@ Como executar terceiros não tem rollback pelo kit, `Cancelar` é a opção inic
 Por decisão do dono, esta ADR substitui a ADR-0016: o kit consulta a versão mais recente de Claude Code e Codex antes de instalar e usa `latest` nos instaladores oficiais. A consulta evita repetir o download de cerca de 260 MB que o instalador do Claude faz a cada execução; a versão observada após instalar deve coincidir com a consultada. O rollback continua pela versão exata anterior, e um Claude Code nativo oficial já instalado pode ser adotado se o symlink apontar para `~/.local/share/claude/versions/`.
 
 Aceita-se que membros do time usem versões diferentes. A prévia passa a usar rede, com timeout e cache; sem rede, agentes já registrados não recebem proposta de atualização e agentes não registrados ficam bloqueados.
+
+## ADR-0040: MCP como addons opt-in
+
+O kit registra servidores MCP nos clientes Claude Code e Codex; não implementa um servidor MCP. O Core não altera MCPs. Context7 entra como addon `Kind: "mcp"`, com versão fixada e conferida, registro no escopo de usuário, comandos e conflitos exibidos antes da confirmação, como nas ADR-0036 e ADR-0038. Se um pré-requisito de um addon falhar, os passos restantes dele são pulados nos dois clientes; repetir `claude mcp add` para um nome existente sem chave conta como já configurado.
+
+O rollback do kit não remove MCPs; a remoção é manual. A ADR-0041 estende esta decisão às chaves exigidas por alguns MCPs.
+
+## ADR-0041: Chaves de API de MCP gravadas em texto puro por decisão do dono
+
+Brave Search e Mapbox DevKit exigem chave; na v0.3.0, o kit não pedia nem gravava chaves. Testes mostraram que Claude Code repassa e expande variáveis de ambiente, mas Codex não repassa o ambiente aos servidores MCP e `codex mcp add` não grava `env_vars`.
+
+Por decisão do dono, o chat pede a chave em campo mascarado e o kit a grava com `--env` em `~/.claude.json` e `~/.codex/config.toml`, ambos `0600`. Esta exceção à regra anterior vale somente para MCPs. A chave não aparece na transcrição, confirmação, mensagens de erro, `EquivalentCommand`, diff, golden ou teste; a saída dos passos é redigida.
+
+Aceitam-se texto puro em disco e exposição na lista de processos enquanto o comando roda. Reinstalar substitui a chave; rollback não remove MCPs nem revoga chaves. Foram descartados herdar do shell, `${VAR}`, `env_vars` e um passo manual, pois não configuram os dois clientes pelo chat.

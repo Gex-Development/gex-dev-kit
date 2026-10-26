@@ -6,7 +6,7 @@ CLI que prepara Claude Code e Codex com o Core GEX e com escolhas opcionais, sem
 
 - Instalar e manter o Core GEX nos dois agentes: instruções globais e skills `gex-*`.
 - Deixar a pessoa escolher especializações, skills Matt e hooks. Nada opcional é instalado sem escolha.
-- Mostrar e instalar plugins opcionais de terceiros na TUI, após revisão dos comandos e confirmação.
+- Mostrar e instalar plugins e MCPs opcionais de terceiros na TUI, após revisão dos comandos e confirmação.
 
 ## Quem usa
 
@@ -53,8 +53,16 @@ Item do catálogo mostrado com motivo e fonte, que o kit nunca instala.
 _Avoid_: candidato, sugestão
 
 **Addon**:
-Método ou estilo de terceiros instalado opcionalmente pelo chat, com comandos oficiais exibidos antes da confirmação; passos interativos ficam manuais.
+Método, estilo ou MCP de terceiros instalado opcionalmente pelo chat, com comandos oficiais exibidos antes da confirmação; passos interativos ficam manuais.
 _Avoid_: plugin do kit, extensão
+
+**MCP**:
+Servidor ou cliente de ferramentas que o agente chama; o kit apenas o registra nos clientes.
+_Avoid_: plugin
+
+**Chave de API de MCP**:
+Credencial que o usuário cola no chat para um MCP; fica em texto puro na configuração do cliente.
+_Avoid_: segredo do kit
 
 
 ### Hooks
@@ -215,7 +223,7 @@ _Avoid_: atalho
 
 ## Fora de escopo
 
-- Servidor MCP.
+- Servidor MCP. O kit não implementa um servidor; somente registra servidores MCP opcionais nos clientes Claude Code e Codex.
 - Alterar arquivos do projeto fora de `.git`.
 - Publicação: push, PR, release ou merge feitos pelo kit.
 - GSD, que não entra no kit.

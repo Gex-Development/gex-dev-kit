@@ -18,7 +18,8 @@ const (
 )
 
 type AddonDeps struct {
-	Plan    func(names, harnesses []string) (app.AddonPlan, error)
+	Plan    func(names, harnesses []string, secrets map[string]string) (app.AddonPlan, error)
+	Secrets func(names []string) ([]catalog.AddonSecret, error)
 	Install func(plan app.AddonPlan, home string, progress func(app.AddonStepResult)) app.AddonResult
 }
 
@@ -35,6 +36,10 @@ func addonsGuard(d AddonDeps, group *sync.WaitGroup) AddonDeps {
 }
 
 func (m chatModel) flowAddons() chatModel {
+	m.history = nil
+	clear(m.addonSecrets)
+	m.addonSecrets = nil
+	m.addonPlan = app.AddonPlan{}
 	m.context = "addons"
 	addons := catalog.Addons()
 	opts := make([]components.ChoiceOption, 0, len(addons)+1)
@@ -81,10 +86,64 @@ func addonHarness(id string) string {
 }
 
 func (m chatModel) reviewAddons(names, harnesses []string, next func(chatModel, app.AddonPlan) chatModel) chatModel {
-	if m.deps.Addons.Plan == nil {
+	if m.deps.Addons.Plan == nil || m.deps.Addons.Secrets == nil {
 		return m.say("Planejador de plugins indisponível.").flowIdle()
 	}
-	plan, err := m.deps.Addons.Plan(names, harnesses)
+	secrets, err := m.deps.Addons.Secrets(names)
+	if err != nil {
+		return m.say("Não consegui consultar as chaves dos plugins.").flowIdle()
+	}
+	if len(secrets) > 0 {
+		return m.askAddonSecret(names, harnesses, secrets, 0, next)
+	}
+	return m.reviewAddonsPlan(names, harnesses, next)
+}
+
+func (m chatModel) askAddonSecret(names, harnesses []string, secrets []catalog.AddonSecret, index int, next func(chatModel, app.AddonPlan) chatModel) chatModel {
+	secret := secrets[index]
+	var files []string
+	if slices.Contains(harnesses, "claude") {
+		files = append(files, "~/.claude.json")
+	}
+	if slices.Contains(harnesses, "codex") {
+		files = append(files, "~/.codex/config.toml")
+	}
+	reader := "os lê"
+	if len(files) == 1 {
+		reader = "o lê"
+	}
+	m = m.say("A " + secret.Label + " fica em texto puro em " + strings.Join(files, " e ") + "; só você " + reader + ".")
+	m = m.say("Para criar: " + secret.URL + ". Deixe vazio e tecle enter para cancelar.")
+	return m.askFor(chatAsk{input: true, secret: true, question: "Cole a " + secret.Label, onAnswer: func(m chatModel, a chatAnswer) chatModel {
+		if strings.TrimSpace(a.Text) == "" {
+			clear(m.addonSecrets)
+			m.addonSecrets = nil
+			m.addonNames = nil
+			if m.context == "addons" {
+				return m.flowAddons()
+			}
+			return m.setupPlugins()
+		}
+		if m.addonSecrets == nil {
+			m.addonSecrets = make(map[string]string, len(secrets))
+		}
+		m.addonSecrets[secret.Env] = a.Text
+		if index+1 < len(secrets) {
+			return m.askAddonSecret(names, harnesses, secrets, index+1, next)
+		}
+		return m.reviewAddonsPlan(names, harnesses, next)
+	}})
+}
+
+func (m chatModel) reviewAddonsPlan(names, harnesses []string, next func(chatModel, app.AddonPlan) chatModel) chatModel {
+	plan, err := m.deps.Addons.Plan(names, harnesses, m.addonSecrets)
+	for _, value := range m.addonSecrets {
+		if err != nil && value != "" {
+			err = fmt.Errorf("%s", strings.ReplaceAll(err.Error(), value, "[oculto]"))
+		}
+	}
+	clear(m.addonSecrets)
+	m.addonSecrets = nil
 	if err != nil {
 		return m.say("Não consegui planejar os plugins: " + err.Error()).flowIdle()
 	}
@@ -97,7 +156,7 @@ func (m chatModel) reviewAddons(names, harnesses []string, next func(chatModel, 
 				continue
 			}
 			for _, command := range addon.DisplayCommands(harness) {
-				lines = append(lines, "  "+name+" · "+addonHarness(harness)+": "+command)
+				lines = append(lines, "  "+name+" · "+addonHarness(harness)+": "+strings.NewReplacer(catalog.SecretPlaceholder, "••••••••", "<sua chave>", "••••••••").Replace(command))
 			}
 		}
 	}
@@ -110,7 +169,11 @@ func (m chatModel) reviewAddons(names, harnesses []string, next func(chatModel, 
 		lines = append(lines, "  "+name+": "+addon.CoreCompat)
 	}
 	for _, manual := range plan.Manual {
-		lines = append(lines, fmt.Sprintf("Passo manual (%s, %s): %s", manual.Addon, addonHarness(manual.Harness), manual.Text))
+		if manual.Harness == "" {
+			lines = append(lines, fmt.Sprintf("Passo manual (%s): %s", manual.Addon, manual.Text))
+		} else {
+			lines = append(lines, fmt.Sprintf("Passo manual (%s, %s): %s", manual.Addon, addonHarness(manual.Harness), manual.Text))
+		}
 	}
 	m = m.say(strings.Join(lines, "\n"))
 	if len(plan.Missing) > 0 {
@@ -125,6 +188,7 @@ func (m chatModel) confirmAddons(plan app.AddonPlan) chatModel {
 		if answer.IDs[0] == "cancel" {
 			return m.flowAddons()
 		}
+		m.history = nil
 		return m.installAddons(plan, m.common.Home, func(m chatModel) chatModel { return m.flowAddons() })
 	}})
 }
@@ -151,7 +215,7 @@ func (m chatModel) installAddons(plan app.AddonPlan, home string, next func(chat
 			case app.AddonSkipped:
 				row.State, row.Detail = theme.StatePending, "ignorado · falha anterior"
 				if !item.Step.Available {
-					row.Detail = "ignorado · faltou " + item.Step.Argv[0]
+					row.Detail = "ignorado · faltou " + item.Step.BlockedBy
 				}
 			}
 			if i, ok := index[label]; ok {
@@ -164,7 +228,11 @@ func (m chatModel) installAddons(plan app.AddonPlan, home string, next func(chat
 			rows = append(rows, row)
 		}
 		for _, item := range result.Manual {
-			rows = append(rows, components.ToolRow{State: theme.StatePending, Label: item.Addon + " · " + addonHarness(item.Harness), Detail: "manual · " + item.Text})
+			label := item.Addon
+			if item.Harness != "" {
+				label += " · " + addonHarness(item.Harness)
+			}
+			rows = append(rows, components.ToolRow{State: theme.StatePending, Label: label, Detail: "manual · " + item.Text})
 		}
 		return chatToolResult{state: state, rows: rows, value: result}
 	}, then: func(m chatModel, r chatToolResult) chatModel {
@@ -183,7 +251,7 @@ func (m chatModel) installAddons(plan app.AddonPlan, home string, next func(chat
 			if item.Status == app.AddonFailed {
 				m.exitCode = 1
 			}
-			if item.Status == app.AddonSkipped && !item.Step.Available {
+			if item.Status == app.AddonSkipped && !item.Step.Available && item.Step.BlockedBy == item.Step.Argv[0] {
 				m = m.say("Passo manual (" + item.Step.Addon + ", " + addonHarness(item.Step.Harness) + "): instale " + item.Step.Argv[0] + " e rode " + item.Step.Display)
 			}
 		}
@@ -192,7 +260,7 @@ func (m chatModel) installAddons(plan app.AddonPlan, home string, next func(chat
 				if !slices.Contains(installed, item.Step.Addon) {
 					installed = append(installed, item.Step.Addon)
 				}
-				codex = codex || item.Step.Harness == "codex"
+				codex = codex || (item.Step.Harness == "codex" && !addonIsMCP(item.Step.Addon))
 			}
 		}
 		if m.exitCode == 1 {
@@ -212,16 +280,25 @@ func (m chatModel) installAddons(plan app.AddonPlan, home string, next func(chat
 	}})
 }
 
+func addonIsMCP(name string) bool {
+	addon, ok := catalog.AddonByName(name)
+	return ok && addon.Kind == "mcp"
+}
+
 func lastAddonLine(output string) string {
 	lines := strings.Split(strings.TrimSpace(output), "\n")
 	return lines[len(lines)-1]
 }
 
 func addonsKindLabel(kind string) string {
-	if kind == "metodo" {
+	switch kind {
+	case "metodo":
 		return "método"
+	case "mcp":
+		return "MCP"
+	default:
+		return kind
 	}
-	return kind
 }
 
 func addonsShortRevision(revision string) string {

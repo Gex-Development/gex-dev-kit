@@ -4,6 +4,12 @@ Todas as mudanças relevantes do Kit de Desenvolvimento GEX ficam neste arquivo.
 
 ## [Não publicada]
 
+### Adicionado
+
+- MCP Context7 como addon opcional para documentação atualizada de bibliotecas.
+- MCPs opcionais `terraform` (Terraform MCP 1.4.1), `brave-search` (Brave Search 2.1.4) e `mapbox-devkit` (Mapbox DevKit 0.8.2), instalados no chat.
+- Chaves de Brave Search e Mapbox DevKit pedidas no chat e gravadas em texto puro nas configurações Claude Code/Codex. Isso altera a regra anterior de não gravar chaves somente para MCPs.
+
 ### Alterado
 
 - Claude Code e Codex passam à versão mais recente pelos instaladores oficiais, substituindo a ADR-0016. O kit consulta a versão antes de instalar e confere a versão observada.
@@ -15,6 +21,8 @@ Todas as mudanças relevantes do Kit de Desenvolvimento GEX ficam neste arquivo.
 - O cartão do Doctor mostra primeiro os itens de atenção e fica em aviso.
 - Sem registro do agente no kit, o banner diz `não instalado pelo kit`.
 - Com dois agentes bloqueados, cada um mostra o próprio motivo.
+- O ambiente dos addons não define mais `CLAUDE_CONFIG_DIR`. Com ela, o Claude Code gravava o MCP em `~/.claude/.claude.json`, um arquivo que ele não lê numa sessão normal, e o kit mostrava o MCP como instalado sem que ele aparecesse.
+- Instalar só MCPs no Codex não pede mais para aprovar hooks em `/hooks`, porque MCPs não criam hooks.
 
 ## [0.3.1] - 2026-10-25
 

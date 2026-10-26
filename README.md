@@ -35,9 +35,9 @@
 - **Harness:** Claude Code ou Codex, o ambiente que usa as instruções e skills.
 - **HOME:** pasta pessoal onde o kit grava configuração e histórico; `--home` permite escolher outra pasta.
 - **Extras:** skills e hooks opcionais escolhidos durante o setup.
-- **Plugins:** ferramentas de terceiros instaladas pelo chat após confirmação.
+- **Plugins e MCPs:** ferramentas de terceiros instaladas pelo chat após confirmação; MCPs são servidores de ferramentas registrados nos clientes, não no Core.
 - **Prévia:** lista de mudanças e diff mostrados antes de gravar ou desfazer.
-- **Rollback:** desfaz uma gravação registrada; não desinstala plugins nem a primeira instalação dos agentes.
+- **Rollback:** desfaz uma gravação registrada; não desinstala plugins, MCPs nem a primeira instalação dos agentes.
 - **Hook (agente):** ação acionada pelo Claude Code ou Codex em eventos do agente.
 - **Git hook:** ação executada pelo Git em eventos de um repositório.
 
@@ -108,7 +108,7 @@ Confirme com `gex-dev-kit --version` em qualquer sistema.
 1. Opcional: rode `gex-dev-kit rollback` antes de remover o executável. Para outro HOME, use `gex-dev-kit rollback --home CAMINHO_ABSOLUTO`. Cada chamada mostra a prévia e desfaz uma gravação; repita enquanto houver histórico. Para git hooks, use `gex-dev-kit rollback --repo CAMINHO_ABSOLUTO`.
 2. Remova `~/.local/bin/gex-dev-kit` no macOS/Linux ou `%LOCALAPPDATA%\Programs\gex-dev-kit` no Windows. No Windows, retire a pasta do PATH do usuário se não for mais usá-la.
 3. O kit pode manter uma cópia em `~/.local/share/gex-dev-kit/bin/gex-dev-kit`, ou `gex-dev-kit.exe` nessa pasta no Windows. **Não remova essa cópia enquanto houver hooks ativos.** O rollback restaura ou remove a cópia quando ela fez parte da gravação; confira a prévia.
-4. **Rollback não desinstala plugins nem a primeira instalação dos agentes.** Remova plugins pelo Claude Code ou Codex.
+4. **Rollback não desinstala plugins, MCPs nem a primeira instalação dos agentes.** Remova plugins pelo Claude Code ou Codex. Os comandos de remoção dos MCPs estão em **Referência**, no bloco **Plugins e MCPs opcionais**.
 
 </details>
 
@@ -211,7 +211,8 @@ Sessão com HOME descartável e Core ausente. O resultado dos agentes depende do
 | Verificar o ambiente | `gex-dev-kit doctor` |
 | Desfazer a última gravação do Core | `gex-dev-kit rollback` |
 | Adicionar uma skill opcional | `gex-dev-kit install --skill tdd` |
-| Listar skills, hooks e plugins | `gex-dev-kit skills`, `gex-dev-kit hooks`, `gex-dev-kit addons` |
+| Listar skills, hooks, plugins e MCPs | `gex-dev-kit skills`, `gex-dev-kit hooks`, `gex-dev-kit addons` |
+| Dar ao agente busca na web, mapas, Terraform e docs atualizadas | `/addons` no chat |
 | Configurar git hooks no repositório atual | `gex-dev-kit githooks --repo "$(pwd)"` |
 | Atualizar o executável | Repita [Instalação](#instalação-em-1-minuto); `gex-dev-kit install` atualiza o Core separadamente |
 | Automatizar/usar CI | `gex-dev-kit install --skip-agent-update --yes --ui=cli`; leia estado com `gex-dev-kit doctor --json`. `install` não aceita `--json` |
@@ -251,7 +252,7 @@ No PowerShell, o instalador atualiza PATH do usuário e da sessão atual. Com `-
 
 ## Referência
 
-*Abra somente o detalhe necessário: comandos, catálogo, plugins ou desenvolvimento.*
+*Abra somente o detalhe necessário: comandos, catálogo, plugins e MCPs ou desenvolvimento.*
 
 <details>
 <summary>Chat · comandos, atalhos e navegação</summary>
@@ -266,7 +267,7 @@ Digite `/` para abrir a paleta. `↑`/`↓` escolhem e `Tab` completa. Busque po
 | `/rollback` | Desfaz a última instalação |
 | `/agentes` | Restaura versões anteriores dos agentes |
 | `/githooks` | Configura git hooks |
-| `/addons` | Mostra e instala plugins após revisão e confirmação |
+| `/addons` | Mostra e instala plugins e MCPs após revisão e confirmação |
 | `/menu` | Lista opções |
 | `/voltar` | Volta uma etapa |
 | `/ajuda` | Lista comandos e atalhos |
@@ -302,7 +303,7 @@ gex-dev-kit rollback
 | `rollback-agents` | Restaura versão anterior de Claude Code/Codex, com confirmação |
 | `skills` | Lista Core, opcionais e referências |
 | `hooks` | Lista hooks de agente, git hooks e referências |
-| `addons [NOME]` | Lista plugins ou mostra comando oficial; **não instala** |
+| `addons [NOME]` | Lista plugins e MCPs ou mostra comandos oficiais; **não instala** |
 | `githooks --repo CAMINHO` | Mostra prévia dos git hooks; grava com confirmação |
 | `ds` | Vitrine do Design System; `--ui=cli` mostra texto |
 | `version` | Mostra versão |
@@ -321,7 +322,7 @@ gex-dev-kit rollback
 - **Caminhos:** `--home` vale para `install`, `doctor`, `rollback`, `rollback-agents` e `githooks`. Ele e `--repo` exigem caminho absoluto.
 - **Escolhas:** `--skill` e `--hook` podem ser repetidos. Sem Extras, `install` grava o Core e tenta atualizar agentes elegíveis.
 - **Rede:** o kit consulta a versão mais recente antes de atualizar os agentes. Sem rede, não propõe atualização para agentes já registrados; agentes ainda não registrados ficam bloqueados. `--skip-agent-update` evita rede e mudanças nos binários dos agentes. `--yes` confirma após mostrar a prévia.
-- **Schema:** `skills --json` usa `gex-dev-kit.skills/v1`, introduzido na v0.3.0. Especializações não incluem `credentials`: skills de API de gateway não fazem parte do catálogo. O kit não pede nem grava essas chaves.
+- **Schema:** `skills --json` usa `gex-dev-kit.skills/v1`, introduzido na v0.3.0. Especializações não incluem `credentials`: skills de API de gateway não fazem parte do catálogo. O kit não pede nem grava chaves de gateway; chaves de MCP são a exceção.
 
 | Saída | Significado |
 |---|---|
@@ -386,24 +387,39 @@ O hook de agente `gex-conventional-commits` não substitui a validação do Git 
 </details>
 
 <details>
-<summary>Plugins opcionais · instalação, passos manuais e segurança</summary>
+<summary>Plugins e MCPs opcionais · instalação, passos manuais e segurança</summary>
 
-Somente a etapa **Plugins** de `/setup` ou `/addons` no chat instala plugins. Escolha Claude Code e/ou Codex, revise comandos e conflitos com o Core e confirme. Na CLI, `addons` apenas consulta o catálogo; `install` não instala plugins.
+Somente a etapa **Plugins** de `/setup` ou `/addons` no chat instala plugins e MCPs. Escolha Claude Code e/ou Codex, revise comandos e conflitos com o Core e confirme. Na CLI, `addons` apenas consulta o catálogo; `install` não instala addons.
 
-| Plugin | Para quê | Instalação pelo chat | Passo manual |
+| Plugin ou MCP | Para quê | Instalação pelo chat | Passo manual |
 |---|---|---|---|
 | `caveman` | Respostas curtas | Claude Code por tag `v4.0.1`; Codex via `npx` por commit | Aprovar hook no Codex em `/hooks` |
 | `ponytail` | Menor mudança completa | Claude Code por tag `v5.3.2`; Codex por commit | Aprovar hooks no Codex em `/hooks` |
 | `superpowers` | Brainstorming, TDD, planos e revisão | Claude Code via marketplace oficial | No Codex, `/plugins` → superpowers → Install Plugin |
 | `spec-kit` | Fluxo de especificação | `uv tool install` por commit verificado | `specify init . --integration claude` ou `codex` em cada projeto |
+| `context7` (MCP) | Documentação atualizada de Spring, Hibernate, JUnit e outras bibliotecas | `npx -y @upstash/context7-mcp@4.4.4`; registro no Claude Code e/ou Codex | Requer Node.js com `npx`; sem chave de API usa limite anônimo |
+| `terraform` (MCP) | Ferramentas Terraform | Imagem Docker `hashicorp/terraform-mcp-server:1.4.1`; registro no Claude Code e/ou Codex | Docker ligado; sem chave |
+| `brave-search` (MCP) | Busca na web | `npx -y @brave/brave-search-mcp-server@2.1.4`; registro no Claude Code e/ou Codex | Chave `BRAVE_API_KEY` |
+| `mapbox-devkit` (MCP) | Mapas e ferramentas Mapbox | `npx -y @mapbox/mcp-devkit-server@0.8.2`; registro no Claude Code e/ou Codex | Node.js 22+ e token `MAPBOX_ACCESS_TOKEN` com mínimo de escopos |
+
+**Chaves de API dos MCPs**
+
+Para Brave Search e Mapbox DevKit, o chat pede a chave em campo mascarado. O kit a grava em texto puro em `~/.claude.json` e `~/.codex/config.toml` (ambos `0600`). Ela aparece na lista de processos enquanto o comando roda; reinstalar substitui a chave.
+
+Obtenha a [chave Brave](https://api-dashboard.search.brave.com/app/keys) ou o [token Mapbox](https://account.mapbox.com/) no fornecedor. Limite os escopos do token Mapbox: ferramentas com permissão de escrita podem criar e apagar estilos e tokens da conta.
+
+Rollback não remove MCPs nem revoga chaves. Para remover um servidor, use `claude mcp remove --scope user NOME` e `codex mcp remove NOME`; depois revogue a chave no painel do fornecedor.
 
 > [!WARNING]
-> Plugins são **código de terceiros** executado com seus privilégios. Os comandos rodam sem shell, num grupo de processos próprio. Usam o HOME escolhido, ambiente reduzido e timeout de cinco minutos por passo. Revise fonte, licença e comandos antes de confirmar. **Rollback não desfaz plugins:** remova-os no Claude Code ou Codex.
+> Plugins e MCPs são **código de terceiros** executado com seus privilégios. Os comandos rodam sem shell, num grupo de processos próprio. Usam o HOME escolhido, ambiente reduzido e timeout de cinco minutos por passo. Revise fonte, licença e comandos antes de confirmar. **Rollback não os desfaz:** remova-os nos clientes.
 
 - As tags de `caveman` e `ponytail` no Claude Code não são os commits conferidos do catálogo. O marketplace não aceita commits como referência.
 - O pin de `superpowers` depende do marketplace oficial e pode mudar. `spec-kit` requer Python 3.11+ e `uv`.
+- Context7 envia nome da biblioteca e pergunta ao serviço Context7; o `npx` baixa o pacote na primeira execução.
+- MCPs avaliados e não incluídos: Maven Tools (Docker), SonarQube (token e Docker), IntelliJ (IDE aberta) e GitHub (token).
+- Para remover Context7: `claude mcp remove --scope user context7` e `codex mcp remove context7`.
 - Instaladores ausentes geram instrução manual. Plugins podem alterar `settings.json`/`hooks.json` após o Core; isso pode causar conflito no `rollback` ou aviso no `doctor`.
-- O kit não envia tokens como `GH_TOKEN`/`NPM_TOKEN` ao instalador. A filtragem da saída não cobre todos os formatos de segredo ou caracteres de controle. Veja a [análise de segurança nas notas v0.3.0](docs/release-notes/v0.3.0.md).
+- O kit não envia tokens como `GH_TOKEN`/`NPM_TOKEN` ao instalador; chaves pedidas para MCPs são a exceção. A filtragem da saída não cobre todos os formatos de segredo ou caracteres de controle. Veja a [análise de segurança nas notas v0.3.0](docs/release-notes/v0.3.0.md).
 
 </details>
 

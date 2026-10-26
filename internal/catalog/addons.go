@@ -2,8 +2,14 @@ package catalog
 
 import "strings"
 
+const SecretPlaceholder = "{{valor}}"
+
+type AddonSecret struct{ Env, Label, URL string }
+
 type AddonStep struct {
-	Argv []string
+	Argv         []string
+	Prerequisite bool
+	AlreadyOK    string
 }
 
 type AddonInstall struct {
@@ -18,6 +24,9 @@ type Addon struct {
 	InstallClaude, InstallCodex  string
 	Pinned                       string
 	Install                      map[string]AddonInstall
+	Requires                     []string
+	RequiresNote                 string
+	Secrets                      []AddonSecret
 	Deterministic                bool
 	Installs, Conflicts          []string
 	CoreCompat                   string
@@ -164,6 +173,97 @@ specify init my-project --integration codex`,
 			},
 			CoreCompat: "O kit instala a CLI; specify init por projeto é manual e a decisão é do time.",
 		},
+		{
+			Name: "context7", Kind: "mcp",
+			Summary: "Documentação atualizada de bibliotecas (Spring, Hibernate, JUnit e outras) direto no contexto do agente.",
+			Source:  "https://github.com/upstash/context7", License: "MIT",
+			Revision: "c7f80ce5af1ff1403d167579b76784482cf7f3e2", Release: "4.4.4", CheckedAt: "2026-10-25",
+			InstallClaude: "claude mcp add --scope user context7 -- npx -y @upstash/context7-mcp@4.4.4",
+			InstallCodex:  "codex mcp add context7 -- npx -y @upstash/context7-mcp@4.4.4",
+			Pinned:        "Pacote npm @upstash/context7-mcp@4.4.4; tag @upstash/context7-mcp@4.4.4 conferida no GitHub (integridade sha512-T2DkjhweDnC2mRAclDiTrPG3KI1zYKhhjgY2SMKD9PVrbEaGD8x35VsIOqpwwDc2qiKBvfYCF/jqr+jQMu5PUA==).",
+			Requires:      []string{"npx"},
+			RequiresNote:  "Instale Node.js (npx) e rode de novo.",
+			Install: map[string]AddonInstall{
+				"claude": {Steps: []AddonStep{{Argv: []string{"claude", "mcp", "add", "--scope", "user", "context7", "--", "npx", "-y", "@upstash/context7-mcp@4.4.4"}, AlreadyOK: "already exists"}}},
+				"codex":  {Steps: []AddonStep{{Argv: []string{"codex", "mcp", "add", "context7", "--", "npx", "-y", "@upstash/context7-mcp@4.4.4"}}}},
+			},
+			Installs: []string{
+				"Exige Node.js com npx; o npx baixa o pacote na primeira execução.",
+				"Funciona sem chave de API, com limite anônimo.",
+				"Envia o nome da biblioteca e a pergunta ao serviço Context7.",
+				"Registro global (escopo de usuário) para Claude Code e Codex.",
+			},
+			Conflicts: []string{
+				"Envia perguntas e nomes de bibliotecas ao serviço Context7 (Upstash).",
+				"O rollback do kit não remove MCP: rode claude mcp remove --scope user context7 e codex mcp remove context7.",
+			},
+			CoreCompat: "Extra opt-in. Não altera o Core nem grava chaves de API.",
+		},
+		{
+			Name: "terraform", Kind: "mcp",
+			Summary: "Consulta documentação e recursos Terraform pelo servidor oficial.",
+			Source:  "https://github.com/hashicorp/terraform-mcp-server", License: "MPL-2.0",
+			Revision: "3781509a674482ca7e2821fab8159a25e3b29bdf", Release: "1.4.1", CheckedAt: "2026-10-25",
+			InstallClaude: "docker pull hashicorp/terraform-mcp-server:1.4.1@sha256:11dd418bba6003dd5777e9d0979b68de59929a155b355f338f407947e00e9d80\nclaude mcp add --scope user terraform -- docker run -i --rm hashicorp/terraform-mcp-server:1.4.1@sha256:11dd418bba6003dd5777e9d0979b68de59929a155b355f338f407947e00e9d80",
+			InstallCodex:  "docker pull hashicorp/terraform-mcp-server:1.4.1@sha256:11dd418bba6003dd5777e9d0979b68de59929a155b355f338f407947e00e9d80\ncodex mcp add terraform -- docker run -i --rm hashicorp/terraform-mcp-server:1.4.1@sha256:11dd418bba6003dd5777e9d0979b68de59929a155b355f338f407947e00e9d80",
+			Pinned:        "Imagem oficial 1.4.1 fixada pelo digest sha256:11dd418bba6003dd5777e9d0979b68de59929a155b355f338f407947e00e9d80.",
+			Requires:      []string{"docker"}, RequiresNote: "Instale e ligue o Docker e rode de novo.",
+			Install: map[string]AddonInstall{
+				"claude": {Steps: []AddonStep{
+					{Argv: []string{"docker", "pull", "hashicorp/terraform-mcp-server:1.4.1@sha256:11dd418bba6003dd5777e9d0979b68de59929a155b355f338f407947e00e9d80"}, Prerequisite: true},
+					{Argv: []string{"claude", "mcp", "add", "--scope", "user", "terraform", "--", "docker", "run", "-i", "--rm", "hashicorp/terraform-mcp-server:1.4.1@sha256:11dd418bba6003dd5777e9d0979b68de59929a155b355f338f407947e00e9d80"}, AlreadyOK: "already exists"},
+				}},
+				"codex": {Steps: []AddonStep{
+					{Argv: []string{"docker", "pull", "hashicorp/terraform-mcp-server:1.4.1@sha256:11dd418bba6003dd5777e9d0979b68de59929a155b355f338f407947e00e9d80"}, Prerequisite: true},
+					{Argv: []string{"codex", "mcp", "add", "terraform", "--", "docker", "run", "-i", "--rm", "hashicorp/terraform-mcp-server:1.4.1@sha256:11dd418bba6003dd5777e9d0979b68de59929a155b355f338f407947e00e9d80"}},
+				}},
+			},
+			Installs:   []string{"Roda em contêiner Docker com imagem oficial fixada por digest; Docker precisa estar ligado.", "Consulta o Registry público; sem token HCP Terraform."},
+			Conflicts:  []string{"Pode expor dados do Terraform ao agente; use só com clientes e modelos confiáveis.", "O rollback do kit não remove MCP: rode claude mcp remove --scope user terraform e codex mcp remove terraform."},
+			CoreCompat: "Extra opt-in. Não altera o Core.",
+		},
+		{
+			Name: "brave-search", Kind: "mcp",
+			Summary: "Pesquisa na web com a API Brave Search.",
+			Source:  "https://github.com/brave/brave-search-mcp-server", License: "MIT",
+			Revision: "8bcb302657b0f072612c2f3e53182ff17912013c", Release: "2.1.4", CheckedAt: "2026-10-25",
+			InstallClaude: "claude mcp remove --scope user brave-search\nclaude mcp add --scope user brave-search -e BRAVE_API_KEY=<sua chave> -- npx -y @brave/brave-search-mcp-server@2.1.4 --transport stdio",
+			InstallCodex:  "codex mcp add brave-search --env BRAVE_API_KEY=<sua chave> -- npx -y @brave/brave-search-mcp-server@2.1.4 --transport stdio",
+			Pinned:        "Pacote npm @brave/brave-search-mcp-server@2.1.4; tag v2.1.4 conferida no GitHub.",
+			Requires:      []string{"npx"}, RequiresNote: "Instale Node.js (npx) e rode de novo.",
+			Secrets: []AddonSecret{{Env: "BRAVE_API_KEY", Label: "Chave Brave Search", URL: "https://api-dashboard.search.brave.com/app/keys"}},
+			Install: map[string]AddonInstall{
+				"claude": {Steps: []AddonStep{
+					{Argv: []string{"claude", "mcp", "remove", "--scope", "user", "brave-search"}, AlreadyOK: "No MCP server named"},
+					{Argv: []string{"claude", "mcp", "add", "--scope", "user", "brave-search", "-e", "BRAVE_API_KEY={{valor}}", "--", "npx", "-y", "@brave/brave-search-mcp-server@2.1.4", "--transport", "stdio"}},
+				}},
+				"codex": {Steps: []AddonStep{{Argv: []string{"codex", "mcp", "add", "brave-search", "--env", "BRAVE_API_KEY={{valor}}", "--", "npx", "-y", "@brave/brave-search-mcp-server@2.1.4", "--transport", "stdio"}}}},
+			},
+			Installs:   []string{"Envia buscas à API do Brave.", "Chave em TEXTO PURO em ~/.claude.json e ~/.codex/config.toml (arquivos 0600); aparece na lista de processos durante o registro.", "Para trocar a chave, reinstale."},
+			Conflicts:  []string{"O rollback do kit não remove MCP: rode claude mcp remove --scope user brave-search e codex mcp remove brave-search; revogue a chave no painel do Brave."},
+			CoreCompat: "Extra opt-in. Chave fornecida pelo usuário.",
+		},
+		{
+			Name: "mapbox-devkit", Kind: "mcp",
+			Summary: "Acessa ferramentas de mapas e recursos da conta Mapbox.",
+			Source:  "https://github.com/mapbox/mcp-devkit-server", License: "MIT",
+			Revision: "502932367434321ce0cb99ab91a9ecfa9e0214ac", Release: "0.8.2", CheckedAt: "2026-10-25",
+			InstallClaude: "claude mcp remove --scope user mapbox-devkit\nclaude mcp add --scope user mapbox-devkit -e MAPBOX_ACCESS_TOKEN=<sua chave> -- npx -y @mapbox/mcp-devkit-server@0.8.2",
+			InstallCodex:  "codex mcp add mapbox-devkit --env MAPBOX_ACCESS_TOKEN=<sua chave> -- npx -y @mapbox/mcp-devkit-server@0.8.2",
+			Pinned:        "Pacote npm @mapbox/mcp-devkit-server@0.8.2; tag v0.8.2 conferida no GitHub.",
+			Requires:      []string{"npx"}, RequiresNote: "Instale Node.js 22 ou mais novo (npx) e rode de novo.",
+			Secrets: []AddonSecret{{Env: "MAPBOX_ACCESS_TOKEN", Label: "Token Mapbox", URL: "https://account.mapbox.com/"}},
+			Install: map[string]AddonInstall{
+				"claude": {Steps: []AddonStep{
+					{Argv: []string{"claude", "mcp", "remove", "--scope", "user", "mapbox-devkit"}, AlreadyOK: "No MCP server named"},
+					{Argv: []string{"claude", "mcp", "add", "--scope", "user", "mapbox-devkit", "-e", "MAPBOX_ACCESS_TOKEN={{valor}}", "--", "npx", "-y", "@mapbox/mcp-devkit-server@0.8.2"}},
+				}},
+				"codex": {Steps: []AddonStep{{Argv: []string{"codex", "mcp", "add", "mapbox-devkit", "--env", "MAPBOX_ACCESS_TOKEN={{valor}}", "--", "npx", "-y", "@mapbox/mcp-devkit-server@0.8.2"}}}},
+			},
+			Installs:   []string{"Exige Node.js 22 ou mais novo; ferramentas usam a conta Mapbox.", "Token em TEXTO PURO em ~/.claude.json e ~/.codex/config.toml (arquivos 0600); aparece na lista de processos durante o registro.", "Para trocar o token, reinstale."},
+			Conflicts:  []string{"O token define permissões: com escopos de escrita o agente cria e apaga estilos e tokens da conta; use o mínimo de escopos.", "O rollback do kit não remove MCP: rode claude mcp remove --scope user mapbox-devkit e codex mcp remove mapbox-devkit; revogue o token no painel Mapbox."},
+			CoreCompat: "Extra opt-in. Token fornecido pelo usuário.",
+		},
 	}
 }
 
@@ -179,7 +279,7 @@ func AddonByName(name string) (Addon, bool) {
 func (a Addon) DisplayCommands(harness string) []string {
 	var commands []string
 	for _, step := range a.Install[harness].Steps {
-		commands = append(commands, strings.Join(step.Argv, " "))
+		commands = append(commands, strings.ReplaceAll(strings.Join(step.Argv, " "), SecretPlaceholder, "<sua chave>"))
 	}
 	return commands
 }
