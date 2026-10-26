@@ -166,7 +166,7 @@ Aceita-se que membros do time usem versões diferentes. A prévia passa a usar r
 
 O kit registra servidores MCP nos clientes Claude Code e Codex; não implementa um servidor MCP. O Core não altera MCPs. Context7 entra como addon `Kind: "mcp"`, com versão fixada e conferida, registro no escopo de usuário, comandos e conflitos exibidos antes da confirmação, como nas ADR-0036 e ADR-0038. Se um pré-requisito de um addon falhar, os passos restantes dele são pulados nos dois clientes; repetir `claude mcp add` para um nome existente sem chave conta como já configurado.
 
-O rollback do kit não remove MCPs; a remoção é manual. A ADR-0041 estende esta decisão às chaves exigidas por alguns MCPs.
+O rollback do kit não remove MCPs. A remoção é pedida pelo usuário em `/addons` e usa o comando oficial de cada cliente, com confirmação; o rollback continua não os desfazendo. A ADR-0041 estende esta decisão às chaves exigidas por alguns MCPs.
 
 ## ADR-0041: Chaves de API de MCP gravadas em texto puro por decisão do dono
 

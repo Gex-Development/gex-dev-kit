@@ -167,7 +167,7 @@ Os testes que verificam a tabela estão em `internal/ui/screens/coverage_test.go
 - Escrita por `os.Root`: a gravação não sai da raiz escolhida.
 - Symlink recusado: o kit não segue link simbólico no caminho de gravação (`kit.ErrSymlink`).
 - Git hooks: os scripts chamam o executável com `exec`. As mensagens do adaptador `hook` são textos fixos e não repetem o comando do commit (`cmd/gex-dev-kit/hook.go`).
-- Addons: `ChatDeps.Addons` planeja com `app.PlanAddons` e executa com `app.InstallAddons` depois da confirmação, com HOME escolhido; argv sem shell, timeout e passos manuais visíveis. `Ctrl+C` espera terminar a gravação. O rollback do kit não os desfaz.
+- Addons: `ChatDeps.Addons` planeja com `app.PlanAddons` (instalar) ou `app.PlanAddonRemoval` (remover, pelo `/addons`) e executa com `app.InstallAddons` depois da confirmação, com HOME escolhido; argv sem shell, timeout e passos manuais visíveis. `Ctrl+C` espera terminar a gravação. O rollback do kit não os desfaz; a remoção é uma ação separada e confirmada.
 - Dados pessoais: o teste `scripts/smoke.sh` procura dados pessoais nos arquivos instalados. Na execução desta revisão (macOS arm64), ele falhou (ver Matriz de plataformas).
 
 ## Matriz de plataformas

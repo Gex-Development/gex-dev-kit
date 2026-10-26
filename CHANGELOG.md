@@ -6,6 +6,7 @@ Todas as mudanças relevantes do Kit de Desenvolvimento GEX ficam neste arquivo.
 
 ### Adicionado
 
+- `/addons` ganhou **Remover do Claude Code**, **do Codex** e **dos dois** para os 9 addons. Mostra os comandos oficiais de remoção (`claude mcp remove`, `claude plugin uninstall`, `codex mcp remove`, `codex plugin remove`, `uv tool uninstall`), pede confirmação e trata item já removido como sucesso. O kit não apaga o `.specify/` dos projetos, os hooks do caveman no Codex nem os hooks do `claude-code-templates`: para esses mostra o passo manual. Remover um MCP não revoga a chave; o chat avisa.
 - Addon `claude-code-templates` (hooks), com os 13 hooks pedidos: lint-on-save, smart-formatting, run-tests-after-changes, change-tracker, security-scanner, smart-commit, nextjs-code-quality-enforcer, tdd-gate, scope-guard, env-file-protection, format-javascript-files, subagent-read-only-guard e change-logger. O chat mostra o comando oficial fixado na 1.30.0, sem telemetria (`CCT_NO_TRACKING=true`); o kit não o executa, porque o instalador só oferece o escopo de projeto sem perguntas.
 
 ### Removido

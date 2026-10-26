@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -19,6 +20,9 @@ import (
 func chatFakeAddons() AddonDeps {
 	return AddonDeps{
 		Secrets: app.AddonSecretsNeeded,
+		PlanRemoval: func(names, harnesses []string) (app.AddonPlan, error) {
+			return app.PlanAddonRemoval(names, harnesses, func(string) (string, error) { return "/bin/fake", nil })
+		},
 		Plan: func(names, harnesses []string, secrets map[string]string) (app.AddonPlan, error) {
 			return app.PlanAddonsWithSecrets(names, harnesses, func(string) (string, error) { return "/bin/fake", nil }, secrets)
 		},
@@ -458,5 +462,59 @@ func TestAddonsGuardWaitsForInstaller(t *testing.T) {
 	case <-waited:
 	case <-time.After(time.Second):
 		t.Fatal("espera não terminou após instalação")
+	}
+}
+
+func TestChatAddonRemovalRunsRemovalCommandsAndStopsClaimingRollbackCannotUndo(t *testing.T) {
+	var ran []string
+	m := chatTestModel(false)
+	m.deps.Addons = chatFakeAddons()
+	m.deps.Addons.Install = func(plan app.AddonPlan, home string, progress func(app.AddonStepResult)) app.AddonResult {
+		return app.InstallAddons(plan, home, func(_ context.Context, _ string, argv, _ []string) (string, error) {
+			ran = append(ran, strings.Join(argv, " "))
+			return "", nil
+		}, progress)
+	}
+	m = chatSetupQuestion(t, m.flowAddons(), "Qual addon")
+	m = chatSetupChoose(t, m, "brave-search")
+	m = chatSetupQuestion(t, m, "O que você quer fazer")
+	m = chatSetupChoose(t, m, "remove-both")
+	m = chatSetupQuestion(t, m, "Removo brave-search?")
+	if len(ran) != 0 || strings.Contains(chatTestTranscript(m), "Cole a") {
+		t.Fatalf("removeu sem confirmar ou pediu chave: %v", ran)
+	}
+	m = chatSetupChoose(t, m, "remove")
+	m = chatSetupQuestion(t, m, "Qual addon")
+	transcript := chatTestTranscript(m)
+	if !slices.Equal(ran, []string{"claude mcp remove --scope user brave-search", "codex mcp remove brave-search"}) {
+		t.Fatalf("comandos = %v", ran)
+	}
+	for _, want := range []string{"MCPs removidos: brave-search.", "Revogue a chave de brave-search"} {
+		if !strings.Contains(transcript, want) {
+			t.Fatalf("falta %q em %s", want, transcript)
+		}
+	}
+	if strings.Contains(transcript, "O rollback do kit não desfaz") || strings.Contains(transcript, "instalados") {
+		t.Fatalf("texto de instalação na remoção: %s", transcript)
+	}
+}
+
+func TestChatAddonRemovalCancelRunsNothing(t *testing.T) {
+	ran := 0
+	m := chatTestModel(false)
+	m.deps.Addons = chatFakeAddons()
+	m.deps.Addons.Install = func(app.AddonPlan, string, func(app.AddonStepResult)) app.AddonResult {
+		ran++
+		return app.AddonResult{}
+	}
+	m = chatSetupQuestion(t, m.flowAddons(), "Qual addon")
+	m = chatSetupChoose(t, m, "context7")
+	m = chatSetupQuestion(t, m, "O que você quer fazer")
+	m = chatSetupChoose(t, m, "remove-claude")
+	m = chatSetupQuestion(t, m, "Removo context7?")
+	m = chatSetupChoose(t, m, "cancel")
+	m = chatSetupQuestion(t, m, "Qual addon")
+	if ran != 0 {
+		t.Fatal("cancelar executou a remoção")
 	}
 }

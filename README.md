@@ -410,10 +410,10 @@ Para Brave Search e Mapbox DevKit, o chat pede a chave em campo mascarado. O kit
 
 Obtenha a [chave Brave](https://api-dashboard.search.brave.com/app/keys) ou o [token Mapbox](https://account.mapbox.com/) no fornecedor. Limite os escopos do token Mapbox: ferramentas com permissão de escrita podem criar e apagar estilos e tokens da conta.
 
-Rollback não remove MCPs nem revoga chaves. Para remover um servidor, use `claude mcp remove --scope user NOME` e `codex mcp remove NOME`; depois revogue a chave no painel do fornecedor.
+Rollback do Core não desfaz plugins nem MCPs, e remover um MCP não revoga a chave. Para tirar um deles, use `/addons`, escolha o item e **Remover do Claude Code**, **do Codex** ou **dos dois**: o chat mostra os comandos oficiais (`claude mcp remove --scope user NOME`, `codex mcp remove NOME`, `claude plugin uninstall`, `codex plugin remove`, `uv tool uninstall`) e só roda depois da sua confirmação. Depois revogue a chave no painel do fornecedor.
 
 > [!WARNING]
-> Plugins e MCPs são **código de terceiros** executado com seus privilégios. Os comandos rodam sem shell, num grupo de processos próprio. Usam o HOME escolhido, ambiente reduzido e timeout de cinco minutos por passo. Revise fonte, licença e comandos antes de confirmar. **Rollback não os desfaz:** remova-os nos clientes.
+> Plugins e MCPs são **código de terceiros** executado com seus privilégios. Os comandos rodam sem shell, num grupo de processos próprio. Usam o HOME escolhido, ambiente reduzido e timeout de cinco minutos por passo. Revise fonte, licença e comandos antes de confirmar. **O rollback do Core não os desfaz:** remova-os por `/addons`.
 
 - As tags de `caveman` e `ponytail` no Claude Code não são os commits conferidos do catálogo. O marketplace não aceita commits como referência.
 - O pin de `superpowers` depende do marketplace oficial e pode mudar. `spec-kit` requer Python 3.11+ e `uv`.

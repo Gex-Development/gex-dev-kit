@@ -282,3 +282,25 @@ func TestMCPAddonsRequireCorrectRuntimeAndProtectSecrets(t *testing.T) {
 		}
 	}
 }
+
+func TestEveryAddonCanBeRemovedFromBothClients(t *testing.T) {
+	for _, addon := range Addons() {
+		for _, harness := range []string{"claude", "codex"} {
+			removal := AddonRemoval(addon.Name, harness)
+			if len(removal.Steps) == 0 && removal.Manual == "" {
+				t.Fatalf("%s/%s sem remoção", addon.Name, harness)
+			}
+			for _, step := range removal.Steps {
+				if strings.ContainsAny(strings.Join(step.Argv, " "), ";&|") {
+					t.Fatalf("%s/%s: argumento de shell em %v", addon.Name, harness, step.Argv)
+				}
+			}
+		}
+		if addon.Kind == "mcp" {
+			claude := AddonRemoval(addon.Name, "claude").Steps[0].Argv
+			if !slices.Equal(claude, []string{"claude", "mcp", "remove", "--scope", "user", addon.Name}) {
+				t.Fatalf("%s: remoção no Claude fora do escopo de usuário: %v", addon.Name, claude)
+			}
+		}
+	}
+}

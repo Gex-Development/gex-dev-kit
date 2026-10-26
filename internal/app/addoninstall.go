@@ -33,6 +33,7 @@ type AddonPlan struct {
 	Steps   []AddonPlanStep
 	Manual  []AddonManual
 	Missing []string
+	Remove  bool
 	secrets []string
 }
 
@@ -59,18 +60,28 @@ func AddonSecretsNeeded(names []string) ([]catalog.AddonSecret, error) {
 }
 
 func PlanAddonsWithSecrets(names, harnesses []string, lookPath func(string) (string, error), secrets map[string]string) (AddonPlan, error) {
-	required, err := AddonSecretsNeeded(names)
-	if err != nil {
-		return AddonPlan{}, err
-	}
-	var plan AddonPlan
-	for _, secret := range required {
-		value := secrets[secret.Env]
-		if value == "" {
-			return AddonPlan{}, AddonSecretMissing{Env: secret.Env}
+	return planAddons(names, harnesses, lookPath, secrets, false)
+}
+
+func PlanAddonRemoval(names, harnesses []string, lookPath func(string) (string, error)) (AddonPlan, error) {
+	return planAddons(names, harnesses, lookPath, nil, true)
+}
+
+func planAddons(names, harnesses []string, lookPath func(string) (string, error), secrets map[string]string, remove bool) (AddonPlan, error) {
+	plan := AddonPlan{Remove: remove}
+	if !remove {
+		required, err := AddonSecretsNeeded(names)
+		if err != nil {
+			return AddonPlan{}, err
 		}
-		if !slices.Contains(plan.secrets, value) {
-			plan.secrets = append(plan.secrets, value)
+		for _, secret := range required {
+			value := secrets[secret.Env]
+			if value == "" {
+				return AddonPlan{}, AddonSecretMissing{Env: secret.Env}
+			}
+			if !slices.Contains(plan.secrets, value) {
+				plan.secrets = append(plan.secrets, value)
+			}
 		}
 	}
 	seenSteps := make(map[string]bool)
@@ -83,7 +94,11 @@ func PlanAddonsWithSecrets(names, harnesses []string, lookPath func(string) (str
 		}
 		missingRequired := false
 		blocker := ""
-		for _, binary := range addon.Requires {
+		requires := addon.Requires
+		if remove {
+			requires = nil
+		}
+		for _, binary := range requires {
 			if !checked[binary] {
 				checked[binary] = true
 				if _, err := lookPath(binary); err != nil {
@@ -105,6 +120,9 @@ func PlanAddonsWithSecrets(names, harnesses []string, lookPath func(string) (str
 				continue
 			}
 			install := addon.Install[harness]
+			if remove {
+				install = catalog.AddonRemoval(name, harness)
+			}
 			for _, step := range install.Steps {
 				key := strings.Join(step.Argv, "\x00")
 				if seenSteps[key] {
