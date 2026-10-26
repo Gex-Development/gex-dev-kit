@@ -239,7 +239,7 @@ func accessibleInstallChoices(l *lineReader, out io.Writer, groups []app.OptionG
 		}
 		skills = append(skills, chosen...)
 	}
-	update, err := promptConfirm(l, out, "Atualizar agentes para as versões fixadas?")
+	update, err := promptConfirm(l, out, "Atualizar agentes para as versões mais recentes?")
 	if err != nil {
 		return nil, nil, false, err
 	}

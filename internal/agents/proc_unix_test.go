@@ -78,10 +78,10 @@ func TestProbeTimeoutBlocksWithReason(t *testing.T) {
 	script := `#!/bin/sh
 sleep 30
 `
-	if err := os.WriteFile(filepath.Join(bin, "claude"), []byte(script), 0700); err != nil {
+	if err := os.WriteFile(filepath.Join(bin, "claude"), []byte(script), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if err := save(home, history{"claude": {Current: ClaudeVersion}}); err != nil {
+	if err := save(home, history{"claude": {Current: "2.1.306"}}); err != nil {
 		t.Fatal(err)
 	}
 	previous := probeTimeout

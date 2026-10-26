@@ -320,7 +320,7 @@ gex-dev-kit rollback
 - **JSON:** `--json` vale para `skills`, `hooks`, `addons` e `doctor`. Imprime apenas JSON no stdout.
 - **Caminhos:** `--home` vale para `install`, `doctor`, `rollback`, `rollback-agents` e `githooks`. Ele e `--repo` exigem caminho absoluto.
 - **Escolhas:** `--skill` e `--hook` podem ser repetidos. Sem Extras, `install` grava o Core e tenta atualizar agentes elegíveis.
-- **Rede:** `--skip-agent-update` evita rede e mudanças nos binários dos agentes. `--yes` confirma após mostrar a prévia.
+- **Rede:** o kit consulta a versão mais recente antes de atualizar os agentes. Sem rede, não propõe atualização para agentes já registrados; agentes ainda não registrados ficam bloqueados. `--skip-agent-update` evita rede e mudanças nos binários dos agentes. `--yes` confirma após mostrar a prévia.
 - **Schema:** `skills --json` usa `gex-dev-kit.skills/v1`, introduzido na v0.3.0. Especializações não incluem `credentials`: skills de API de gateway não fazem parte do catálogo. O kit não pede nem grava essas chaves.
 
 | Saída | Significado |
@@ -410,9 +410,10 @@ Somente a etapa **Plugins** de `/setup` ou `/addons` no chat instala plugins. Es
 <details>
 <summary>Agentes e git hooks por projeto · versões, limites e comandos</summary>
 
-Versões fixadas: **Claude Code 2.1.306** e **Codex 0.163.0**. O kit instala ou atualiza somente executáveis standalone gerenciados por ele. Usa instaladores oficiais, versão exata e perfil do usuário.
+O kit instala ou atualiza Claude Code e Codex para a versão mais recente pelos instaladores oficiais. Consulta a versão antes de instalar: precisa de rede. Sem rede, não atualiza agentes já registrados; agentes não registrados ficam bloqueados.
 
-- Brew, npm, winget, apt, dnf, binários não gerenciados, PATH ambíguo e atualização nativa fora do pin bloqueiam a operação.
+- Um Claude Code nativo oficial já instalado pode ser adotado quando seu symlink aponta para `~/.local/share/claude/versions/`.
+- Binários de npm, bun, brew, winget, apt ou dnf, outros binários não gerenciados e PATH ambíguo continuam bloqueados.
 - O Core ainda pode ser instalado; o comando retorna erro e não afirma que atualizou o agente.
 - `rollback-agents` reverte apenas upgrade gerenciado com versão anterior registrada. A primeira instalação não é removida automaticamente.
 - Login e modelo não são alterados.

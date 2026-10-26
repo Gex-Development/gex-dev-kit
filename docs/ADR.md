@@ -62,7 +62,7 @@ As skills Matt ficam no commit `5beb35b0` (licença MIT), e `retro` entra no kit
 
 O kit nunca executa a instalação de um addon. Nenhum addon fica ativo por padrão. O GSD fica fora do kit.
 
-## ADR-0016: Versões fixas dos agentes
+## ADR-0016: Versões fixas dos agentes (substituída pela ADR-0039)
 
 Claude Code 2.1.306 e Codex 0.163.0 são instalados só pelos instaladores oficiais, com versão exata. O processo roda em grupo de processos próprio.
 
@@ -155,3 +155,9 @@ Esta decisão substitui a ADR-0031. O windows/amd64 passou de 12,2 MiB (12.753.4
 O runner executa instaladores em grupo próprio e sem terminal de controle; prazo vencido encerra também os filhos. Só repassa ambiente permitido, com HOME isolado e diretórios XDG próprios, mantendo configurações Claude/Codex no destino escolhido.
 Instaladores usam commits conferidos quando a CLI aceita; Claude Code usa tag porque `marketplace add` não aceita SHA. `Revision` conferido não corresponde necessariamente ao commit da tag `Release`; superpowers mantém o pin do marketplace oficial, que pode mudar.
 Como executar terceiros não tem rollback pelo kit, `Cancelar` é a opção inicial nas confirmações de plugins.
+
+## ADR-0039: Agentes sempre na versão mais recente
+
+Por decisão do dono, esta ADR substitui a ADR-0016: o kit consulta a versão mais recente de Claude Code e Codex antes de instalar e usa `latest` nos instaladores oficiais. A consulta evita repetir o download de cerca de 260 MB que o instalador do Claude faz a cada execução; a versão observada após instalar deve coincidir com a consultada. O rollback continua pela versão exata anterior, e um Claude Code nativo oficial já instalado pode ser adotado se o symlink apontar para `~/.local/share/claude/versions/`.
+
+Aceita-se que membros do time usem versões diferentes. A prévia passa a usar rede, com timeout e cache; sem rede, agentes já registrados não recebem proposta de atualização e agentes não registrados ficam bloqueados.

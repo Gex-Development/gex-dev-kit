@@ -1147,12 +1147,12 @@ func (m chatModel) flowGreeting(short bool) chatModel {
 				case change.Current == "":
 					row.Detail = "não instalado"
 					if change.Target != "" {
-						row.Detail += " · o kit fixa " + maskHome(change.Target, m.common.UserHome)
+						row.Detail += " · mais recente: " + maskHome(change.Target, m.common.UserHome)
 					}
 				case change.Current != change.Target:
 					row.Detail = maskHome(change.Current, m.common.UserHome)
 					if change.Target != "" {
-						row.Detail += " · o kit fixa " + maskHome(change.Target, m.common.UserHome)
+						row.Detail += " · mais recente: " + maskHome(change.Target, m.common.UserHome)
 					}
 				default:
 					row.Detail = maskHome(change.Current, m.common.UserHome) + " · em dia"

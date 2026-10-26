@@ -526,8 +526,8 @@ func TestChatEnvironmentAgentDetails(t *testing.T) {
 		want   string
 		state  theme.State
 	}{
-		{app.AgentChange{Current: "1.0", Target: "2.0"}, "1.0 · o kit fixa 2.0", theme.StateWarn},
-		{app.AgentChange{Target: "2.0"}, "não instalado · o kit fixa 2.0", theme.StateWarn},
+		{app.AgentChange{Current: "1.0", Target: "2.0"}, "1.0 · mais recente: 2.0", theme.StateWarn},
+		{app.AgentChange{Target: "2.0"}, "não instalado · mais recente: 2.0", theme.StateWarn},
 		{app.AgentChange{Blocked: true, Reason: "conflito"}, "bloqueado · conflito", theme.StateWarn},
 	} {
 		m := chatTestModel(false)

@@ -34,7 +34,7 @@ func TestChatHarnessSpaceEnterAndContinue(t *testing.T) {
 		if !strings.Contains(text, "Claude Code, Codex, OMP") || strings.Contains(text, "Verificar Claude Code") || strings.Contains(text, "Verificar Codex") {
 			t.Fatalf("verificação deve ser enxuta: %s", text)
 		}
-		if !strings.Contains(m.View().Content, "versão fixada pelo kit") {
+		if !strings.Contains(m.View().Content, "versão mais recente") {
 			t.Fatal("banner dos harnesses não apareceu antes do destino")
 		}
 	}
