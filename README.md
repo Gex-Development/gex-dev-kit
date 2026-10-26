@@ -9,7 +9,7 @@
 
 ![macOS arm64 e amd64][badge-macos] ![Linux arm64 e amd64][badge-linux] ![Windows arm64 e amd64][badge-windows]
 
-![Versão v0.3.3][badge-version] ![Go 1.25.8][badge-go] ![Interface TUI e CLI][badge-interface] ![Agente Claude Code][badge-claude] ![Agente Codex][badge-codex] ![Conventional Commits][badge-commits] ![GitHub CLI necessário][badge-gh]
+![Versão v0.3.4][badge-version] ![Go 1.25.8][badge-go] ![Interface TUI e CLI][badge-interface] ![Agente Claude Code][badge-claude] ![Agente Codex][badge-codex] ![Conventional Commits][badge-commits] ![GitHub CLI necessário][badge-gh]
 
 </div>
 
@@ -477,7 +477,7 @@ Fontes de compatibilidade: [hooks Claude Code](https://code.claude.com/docs/en/h
 [badge-macos]: https://img.shields.io/badge/macOS-arm64%20%7C%20amd64-000000?style=for-the-badge&logo=apple&logoColor=white
 [badge-linux]: https://img.shields.io/badge/Linux-arm64%20%7C%20amd64-FCC624?style=for-the-badge&logo=linux&logoColor=black
 [badge-windows]: https://img.shields.io/badge/Windows-arm64%20%7C%20amd64-0078D4?style=for-the-badge&logo=data:image/svg%2Bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI%2BPHBhdGggZmlsbD0iI2ZmZiIgZD0iTTAsMEgxMS4zNzdWMTEuMzcySDBaTTEyLjYyMywwSDI0VjExLjM3MkgxMi42MjNaTTAsMTIuNjIzSDExLjM3N1YyNEgwWm0xMi42MjMsMEgyNFYyNEgxMi42MjMiLz48L3N2Zz4%3D
-[badge-version]: https://img.shields.io/badge/Vers%C3%A3o-v0.3.3-6f42c1?style=flat-square
+[badge-version]: https://img.shields.io/badge/Vers%C3%A3o-v0.3.4-6f42c1?style=flat-square
 [badge-go]: https://img.shields.io/badge/Go-1.25.8-00ADD8?style=flat-square&logo=go&logoColor=white
 [badge-interface]: https://img.shields.io/badge/Interface-TUI%20%2B%20CLI-2088aa?style=flat-square&logo=gnubash&logoColor=white
 [badge-claude]: https://img.shields.io/badge/Agente-Claude%20Code-2088aa?style=flat-square&logo=anthropic&logoColor=white

@@ -2,6 +2,14 @@
 
 Todas as mudanças relevantes do Kit de Desenvolvimento GEX ficam neste arquivo. O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e as versões usam [SemVer](https://semver.org/lang/pt-BR/).
 
+## [0.3.4] - 2026-10-26
+
+As notas da publicação estão em [`docs/release-notes/v0.3.4.md`](docs/release-notes/v0.3.4.md).
+
+### Corrigido
+
+- **Hooks escolhidos no `/setup` quebravam o plano.** Ao abrir o kit sem argumentos, o chat começava sem o caminho do executável do kit, que os hooks precisam copiar para o HOME. Escolher qualquer hook terminava em `Catálogo: executável obrigatório para hook` e nada era instalado. Existia desde a v0.3.0 e só afetava o chat aberto sem argumentos; `gex-dev-kit install --hook ...` sempre funcionou.
+
 ## [0.3.3] - 2026-10-26
 
 As notas da publicação estão em [`docs/release-notes/v0.3.3.md`](docs/release-notes/v0.3.3.md).
@@ -125,6 +133,7 @@ Primeira entrega.
 - Claude Code `2.1.306` e Codex `0.163.0` fixados; a CLI só instala ou atualiza executáveis standalone próprios, pelos instaladores oficiais com versão exata.
 - Binários para macOS, Linux e Windows, em `arm64` e `amd64`.
 
+[0.3.4]: https://github.com/Gex-Development/gex-dev-kit/compare/v0.3.3...v0.3.4
 [0.3.3]: https://github.com/Gex-Development/gex-dev-kit/compare/v0.3.2...v0.3.3
 [0.3.2]: https://github.com/Gex-Development/gex-dev-kit/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/Gex-Development/gex-dev-kit/compare/v0.3.0...v0.3.1

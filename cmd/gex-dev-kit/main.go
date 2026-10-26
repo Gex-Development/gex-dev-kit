@@ -15,7 +15,7 @@ import (
 	"github.com/Gex-Development/gex-dev-kit/internal/ui/terminal"
 )
 
-var version = "v0.3.3"
+var version = "v0.3.4"
 
 type session struct {
 	in     io.Reader
@@ -143,11 +143,23 @@ func runHomeTUI(s session) int {
 	r.Profile = s.env.ColorProfile()
 	defer stop()
 	home := homeDoUsuario(s)
-	res, err := screens.RunChat(r, tuiCommon(s, home), chatDeps(s, home, app.Request{}), screens.IntentHome)
+	preset, err := homeRequest()
+	if err != nil {
+		return telaFalhou(s.errOut, err)
+	}
+	res, err := screens.RunChat(r, tuiCommon(s, home), chatDeps(s, home, preset), screens.IntentHome)
 	if err != nil {
 		return telaFalhou(s.errOut, err)
 	}
 	return res.ExitCode
+}
+
+func homeRequest() (app.Request, error) {
+	executable, err := writeExecutable()
+	if err != nil {
+		return app.Request{}, err
+	}
+	return app.Request{Executable: executable}, nil
 }
 
 func chatDeps(s session, home string, preset app.Request) screens.ChatDeps {
