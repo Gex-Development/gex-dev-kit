@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	"github.com/Gex-Development/gex-dev-kit/internal/app"
 )
@@ -17,6 +18,70 @@ func chatSetupPluginQuestion(t *testing.T, deps ChatDeps, harness string) chatMo
 	m = chatSetupQuestion(t, m, "Além do Core")
 	m = chatSetupChoose(t, m)
 	return chatSetupQuestion(t, m, "Quer instalar algum plugin?")
+}
+
+func TestChatSetupBraveSecretsMaskedBeforeApply(t *testing.T) {
+	deps := chatInstallFakeDeps()
+	deps.Addons = chatFakeAddons()
+	m := chatSetupPluginQuestion(t, deps, "claude")
+	m = chatSetupChoose(t, m, "brave-search")
+	m = chatSetupQuestion(t, m, "Cole a")
+	m = chatSetupText(t, m, "fake-key-123")
+	m = chatSetupQuestion(t, m, "Aplico essas alterações?")
+	if m.ask.options[0].ID != "cancel" || m.addonSecrets != nil || !strings.Contains(chatTestTranscript(m), "BRAVE_API_KEY=••••••••") {
+		t.Fatal("setup sem confirmação mascarada ou manteve chave")
+	}
+	assertChatSecretAbsent(t, m)
+	m = chatSetupChoose(t, m, "apply")
+	m = chatSetupQuestion(t, m, "")
+	if m.addonPlan.Steps != nil {
+		t.Fatal("plano com chave persistiu no modelo após instalar")
+	}
+	assertChatSecretAbsent(t, m)
+}
+
+func TestChatSetupEmptySecretCancelsPlugin(t *testing.T) {
+	deps := chatInstallFakeDeps()
+	deps.Addons = chatFakeAddons()
+	m := chatSetupPluginQuestion(t, deps, "codex")
+	m = chatSetupChoose(t, m, "mapbox-devkit")
+	m = chatSetupQuestion(t, m, "Cole a")
+	m = chatSetupText(t, m, "")
+	m = chatSetupQuestion(t, m, "Quer instalar algum plugin?")
+	if m.addonSecrets != nil || len(m.addonNames) != 0 {
+		t.Fatal("chave vazia não cancelou seleção")
+	}
+}
+
+func TestChatSetupSecretEscClearsInput(t *testing.T) {
+	deps := chatInstallFakeDeps()
+	deps.Addons = chatFakeAddons()
+	m := chatSetupPluginQuestion(t, deps, "codex")
+	m = chatSetupChoose(t, m, "mapbox-devkit")
+	m = chatSetupQuestion(t, m, "Cole a")
+	m.input.SetValue("fake-key-123")
+	m, _ = chatTestUpdate(m, tea.KeyPressMsg{Code: tea.KeyEscape})
+	m = chatSetupQuestion(t, m, "Quer instalar algum plugin?")
+	if m.input.Value() != "" || m.input.EchoMode != textinput.EchoNormal || m.addonSecrets != nil || len(m.addonNames) != 0 {
+		t.Fatal("Esc reteve token ou não voltou à lista")
+	}
+	assertChatSecretAbsent(t, m)
+}
+
+func TestChatSetupSecondSecretCancelClearsFirst(t *testing.T) {
+	deps := chatInstallFakeDeps()
+	deps.Addons = chatFakeAddons()
+	m := chatSetupPluginQuestion(t, deps, "claude")
+	m = chatSetupChoose(t, m, "brave-search", "mapbox-devkit")
+	m = chatSetupQuestion(t, m, "Chave Brave Search")
+	m = chatSetupText(t, m, "fake-key-123")
+	m = chatSetupQuestion(t, m, "Token Mapbox")
+	m, _ = chatTestUpdate(m, tea.KeyPressMsg{Code: tea.KeyEscape})
+	m = chatSetupQuestion(t, m, "Quer instalar algum plugin?")
+	if m.addonSecrets != nil || m.addonPlan.Steps != nil || len(m.addonNames) != 0 {
+		t.Fatal("cancelar segunda chave reteve primeira")
+	}
+	assertChatSecretAbsent(t, m)
 }
 
 func TestChatSetupPluginsReviewAndCoreFirst(t *testing.T) {

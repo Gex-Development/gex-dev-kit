@@ -268,6 +268,10 @@ func addonDesconhecido(nome string) usageError {
 func readAddonsDoc(addons []catalog.Addon) jsonAddonsDoc {
 	doc := jsonAddonsDoc{Schema: readAddonsSchema, Addons: []jsonAddon{}}
 	for _, addon := range addons {
+		secrets := make([]jsonAddonSecret, 0, len(addon.Secrets))
+		for _, secret := range addon.Secrets {
+			secrets = append(secrets, jsonAddonSecret{Env: secret.Env, Label: secret.Label, URL: secret.URL})
+		}
 		doc.Addons = append(doc.Addons, jsonAddon{
 			Name:          addon.Name,
 			Kind:          addon.Kind,
@@ -283,6 +287,7 @@ func readAddonsDoc(addons []catalog.Addon) jsonAddonsDoc {
 			Installs:      readList(addon.Installs),
 			Conflicts:     readList(addon.Conflicts),
 			CoreCompat:    addon.CoreCompat,
+			Secrets:       secrets,
 		})
 	}
 	return doc
@@ -456,12 +461,15 @@ func readSupportText(support jsonHookSupport) string {
 
 func readAddonsText(doc jsonAddonsDoc) string {
 	var b strings.Builder
-	b.WriteString("Addons (opt-in; o kit mostra o comando oficial e nunca o executa):\n")
+	b.WriteString("Addons (opt-in; a TUI executa comandos oficiais só após confirmação):\n")
 	for _, addon := range doc.Addons {
 		fmt.Fprintf(&b, "\n%s [%s]  %s\n", addon.Name, addon.Kind, addon.Summary)
 		fmt.Fprintf(&b, "  Fonte: %s (licença %s)\n", addon.Source, addon.License)
 		fmt.Fprintf(&b, "  Versão: %s, revisão %s, conferido em %s\n", addon.Release, addon.Revision, addon.CheckedAt)
 		fmt.Fprintf(&b, "  Fixação: %s\n", addon.Pinned)
+		for _, secret := range addon.Secrets {
+			fmt.Fprintf(&b, "  Chave: %s (%s) · %s\n", secret.Label, secret.Env, secret.URL)
+		}
 		readCommand(&b, "Instalar no Claude Code", addon.Install.Claude)
 		readCommand(&b, "Instalar no Codex", addon.Install.Codex)
 		readBullets(&b, "O que instala", addon.Installs)

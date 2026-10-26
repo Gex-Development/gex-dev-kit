@@ -94,6 +94,7 @@ type chatAsk struct {
 	choice                           components.Choice
 	picker                           components.PathPicker
 	options                          []components.ChoiceOption
+	secret                           bool
 	hasChoice, input, textarea, path bool
 	question                         string
 	context                          string
@@ -206,6 +207,7 @@ type chatModel struct {
 	harnessIDs      []string
 	addonNames      []string
 	addonPlan       app.AddonPlan
+	addonSecrets    map[string]string
 	selectedGroups  []string
 	plan            app.Plan
 	gitHooksRequest app.GitHooksRequest
@@ -470,6 +472,10 @@ func (m chatModel) pump() (chatModel, tea.Cmd) {
 		m.history = append(m.history, a)
 		m.input.Placeholder = "Escreva e tecle enter"
 		m.input.EchoMode = textinput.EchoNormal
+		if a.secret {
+			m.input.EchoMode = textinput.EchoPassword
+			m.input.EchoCharacter = '•'
+		}
 		if a.hasChoice {
 			m.input.Placeholder = "ou digite um comando (/ajuda)"
 		}
@@ -897,6 +903,20 @@ func (m chatModel) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	}
+	if m.ask != nil && m.ask.secret && k == "esc" {
+		m.input.Reset()
+		m.input.EchoMode = textinput.EchoNormal
+		clear(m.addonSecrets)
+		m.addonSecrets = nil
+		m.addonPlan = app.AddonPlan{}
+		if m.context == "addons" {
+			m = m.flowAddons()
+		} else {
+			m.addonNames = nil
+			m = m.setupPlugins()
+		}
+		return m.pump()
+	}
 	if k == "esc" {
 		if m.paletteOpen {
 			m.paletteOpen = false
@@ -996,6 +1016,12 @@ func (m chatModel) key(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 	if k == "enter" {
+		if m.ask != nil && m.ask.secret {
+			text := m.input.Value()
+			m.input.Reset()
+			m.input.EchoMode = textinput.EchoNormal
+			return m.answer(chatAnswer{Text: text})
+		}
 		text := strings.TrimSpace(m.input.Value())
 		if m.paletteOpen {
 			if _, _, ok := chatIntentFor(text); !ok {
@@ -1054,6 +1080,9 @@ func (m chatModel) answer(ans chatAnswer) (tea.Model, tea.Cmd) {
 	}
 	a := *m.ask
 	label := ans.Text
+	if a.secret {
+		label = "••••••••"
+	}
 	if len(ans.IDs) > 0 {
 		var names []string
 		for _, id := range ans.IDs {
@@ -1096,12 +1125,19 @@ func (m chatModel) back() (tea.Model, tea.Cmd) {
 		m.context = a.context
 		m.entries = m.entries[:min(a.mark, len(m.entries))]
 		m.queue = nil
+		clear(m.addonSecrets)
+		m.addonSecrets = nil
+		m.addonPlan = app.AddonPlan{}
 		m.input.Reset()
 		m.input.Placeholder = "Escreva e tecle enter"
 		if a.hasChoice {
 			m.input.Placeholder = "ou digite um comando (/ajuda)"
 		}
 		m.input.EchoMode = textinput.EchoNormal
+		if a.secret {
+			m.input.EchoMode = textinput.EchoPassword
+			m.input.EchoCharacter = '•'
+		}
 		if a.path {
 			m.ask.picker = a.picker.Sync("~/")
 		}
@@ -1204,6 +1240,9 @@ func (m chatModel) flowIdle() chatModel {
 	m.input.Reset()
 	m.input.EchoMode = textinput.EchoNormal
 	m.input.Placeholder = "Digite / para ver os comandos"
+	clear(m.addonSecrets)
+	m.addonSecrets = nil
+	m.addonPlan = app.AddonPlan{}
 	m.plan = app.Plan{}
 	return m
 }

@@ -13,8 +13,8 @@ import (
 	"time"
 )
 
-func TestAddonCatalogoTemQuatroEntradas(t *testing.T) {
-	want := []string{"caveman", "ponytail", "superpowers", "spec-kit"}
+func TestAddonCatalogoTemOitoEntradas(t *testing.T) {
+	want := []string{"caveman", "ponytail", "superpowers", "spec-kit", "context7", "terraform", "brave-search", "mapbox-devkit"}
 	var got []string
 	for _, addon := range Addons() {
 		got = append(got, addon.Name)
@@ -53,7 +53,7 @@ func TestAddonCamposObrigatoriosPreenchidos(t *testing.T) {
 				t.Fatalf("%s: item vazio em Installs ou Conflicts", addon.Name)
 			}
 		}
-		if addon.Kind != "estilo" && addon.Kind != "metodo" {
+		if addon.Kind != "estilo" && addon.Kind != "metodo" && addon.Kind != "mcp" {
 			t.Fatalf("%s: Kind inválido: %s", addon.Name, addon.Kind)
 		}
 	}
@@ -74,6 +74,9 @@ func TestAddonURLsDeFonteSaoHTTPS(t *testing.T) {
 func TestAddonRevisaoEhSHADeQuarentaHex(t *testing.T) {
 	sha := regexp.MustCompile(`^[0-9a-f]{40}$`)
 	for _, addon := range Addons() {
+		if addon.Kind == "mcp" && addon.Revision == "" && addon.Pinned != "" {
+			continue
+		}
 		if !sha.MatchString(addon.Revision) {
 			t.Fatalf("%s: revisão deve ser um SHA de 40 caracteres hex: %s", addon.Name, addon.Revision)
 		}
@@ -82,7 +85,7 @@ func TestAddonRevisaoEhSHADeQuarentaHex(t *testing.T) {
 
 func TestAddonLicencaEstaNaListaAprovada(t *testing.T) {
 	for _, addon := range Addons() {
-		if addon.License != "MIT" && addon.License != "Apache-2.0" {
+		if addon.License != "MIT" && addon.License != "Apache-2.0" && addon.License != "GPL-3.0-or-later" && addon.License != "MPL-2.0" {
 			t.Fatalf("%s: licença fora da lista aprovada: %s", addon.Name, addon.License)
 		}
 	}
@@ -140,6 +143,22 @@ func TestAddonInstallStepsAndDisplay(t *testing.T) {
 			"claude": {{"uv", "tool", "install", "specify-cli", "--from", "git+https://github.com/github/spec-kit.git@dc2cec4f568d0f6e2cdfb8571c69116bc55c1aaf"}},
 			"codex":  {{"uv", "tool", "install", "specify-cli", "--from", "git+https://github.com/github/spec-kit.git@dc2cec4f568d0f6e2cdfb8571c69116bc55c1aaf"}},
 		},
+		"context7": {
+			"claude": {{"claude", "mcp", "add", "--scope", "user", "context7", "--", "npx", "-y", "@upstash/context7-mcp@4.4.4"}},
+			"codex":  {{"codex", "mcp", "add", "context7", "--", "npx", "-y", "@upstash/context7-mcp@4.4.4"}},
+		},
+		"terraform": {
+			"claude": {{"docker", "pull", "hashicorp/terraform-mcp-server:1.4.1@sha256:11dd418bba6003dd5777e9d0979b68de59929a155b355f338f407947e00e9d80"}, {"claude", "mcp", "add", "--scope", "user", "terraform", "--", "docker", "run", "-i", "--rm", "hashicorp/terraform-mcp-server:1.4.1@sha256:11dd418bba6003dd5777e9d0979b68de59929a155b355f338f407947e00e9d80"}},
+			"codex":  {{"docker", "pull", "hashicorp/terraform-mcp-server:1.4.1@sha256:11dd418bba6003dd5777e9d0979b68de59929a155b355f338f407947e00e9d80"}, {"codex", "mcp", "add", "terraform", "--", "docker", "run", "-i", "--rm", "hashicorp/terraform-mcp-server:1.4.1@sha256:11dd418bba6003dd5777e9d0979b68de59929a155b355f338f407947e00e9d80"}},
+		},
+		"brave-search": {
+			"claude": {{"claude", "mcp", "remove", "--scope", "user", "brave-search"}, {"claude", "mcp", "add", "--scope", "user", "brave-search", "-e", "BRAVE_API_KEY={{valor}}", "--", "npx", "-y", "@brave/brave-search-mcp-server@2.1.4", "--transport", "stdio"}},
+			"codex":  {{"codex", "mcp", "add", "brave-search", "--env", "BRAVE_API_KEY={{valor}}", "--", "npx", "-y", "@brave/brave-search-mcp-server@2.1.4", "--transport", "stdio"}},
+		},
+		"mapbox-devkit": {
+			"claude": {{"claude", "mcp", "remove", "--scope", "user", "mapbox-devkit"}, {"claude", "mcp", "add", "--scope", "user", "mapbox-devkit", "-e", "MAPBOX_ACCESS_TOKEN={{valor}}", "--", "npx", "-y", "@mapbox/mcp-devkit-server@0.8.2"}},
+			"codex":  {{"codex", "mcp", "add", "mapbox-devkit", "--env", "MAPBOX_ACCESS_TOKEN={{valor}}", "--", "npx", "-y", "@mapbox/mcp-devkit-server@0.8.2"}},
+		},
 	}
 	for _, addon := range Addons() {
 		for _, harness := range []string{"claude", "codex"} {
@@ -177,7 +196,7 @@ func TestAddonInstallStepsAndDisplay(t *testing.T) {
 			}
 			var display []string
 			for _, argv := range want[addon.Name][harness] {
-				display = append(display, strings.Join(argv, " "))
+				display = append(display, strings.ReplaceAll(strings.Join(argv, " "), SecretPlaceholder, "<sua chave>"))
 			}
 			if !slices.Equal(addon.DisplayCommands(harness), display) {
 				t.Fatalf("%s/%s: display = %v; quer %v", addon.Name, harness, addon.DisplayCommands(harness), display)
@@ -195,6 +214,51 @@ func TestAddonDeterministicoNaoDependeDeTag(t *testing.T) {
 						t.Fatalf("%s/%s é marcado como determinístico mas fixa a tag mutável %s", addon.Name, harness, addon.Release)
 					}
 				}
+			}
+		}
+	}
+}
+
+func TestMCPAddonMetadataAndSteps(t *testing.T) {
+	addon, ok := AddonByName("context7")
+	if !ok || addon.Kind != "mcp" || addon.CheckedAt != "2026-10-25" {
+		t.Fatalf("context7: metadados = %+v", addon)
+	}
+	for _, harness := range []string{"claude", "codex"} {
+		steps := addon.Install[harness].Steps
+		if len(steps) != 1 {
+			t.Fatalf("%s: passos = %+v", harness, steps)
+		}
+		if harness == "claude" && steps[0].AlreadyOK != "already exists" {
+			t.Fatalf("%s: resposta existente = %+v", harness, steps)
+		}
+	}
+}
+
+func TestMCPAddonsRequireCorrectRuntimeAndProtectSecrets(t *testing.T) {
+	for _, tc := range []struct {
+		name, runtime, note, env, url string
+	}{
+		{"terraform", "docker", "Instale e ligue o Docker e rode de novo.", "", ""},
+		{"brave-search", "npx", "Instale Node.js (npx) e rode de novo.", "BRAVE_API_KEY", "https://api-dashboard.search.brave.com/app/keys"},
+		{"mapbox-devkit", "npx", "Instale Node.js 22 ou mais novo (npx) e rode de novo.", "MAPBOX_ACCESS_TOKEN", "https://account.mapbox.com/"},
+	} {
+		addon, ok := AddonByName(tc.name)
+		if !ok || addon.Kind != "mcp" || addon.CheckedAt != "2026-10-25" || !slices.Equal(addon.Requires, []string{tc.runtime}) || addon.RequiresNote != tc.note {
+			t.Fatalf("%s: requisito inválido: %+v", tc.name, addon)
+		}
+		if tc.env == "" {
+			if len(addon.Secrets) != 0 || !addon.Install["claude"].Steps[0].Prerequisite || !addon.Install["codex"].Steps[0].Prerequisite || addon.Install["claude"].Steps[1].AlreadyOK != "already exists" {
+				t.Fatalf("terraform: passos ou chave inválidos: %+v", addon)
+			}
+			continue
+		}
+		if len(addon.Secrets) != 1 || addon.Secrets[0].Env != tc.env || addon.Secrets[0].URL != tc.url || addon.Secrets[0].Label == "" || addon.Install["claude"].Steps[0].AlreadyOK != "No MCP server named" {
+			t.Fatalf("%s: segredo ou remoção inválidos: %+v", tc.name, addon)
+		}
+		for _, command := range append(addon.DisplayCommands("claude"), addon.DisplayCommands("codex")...) {
+			if strings.Contains(command, SecretPlaceholder) || strings.Contains(command, "fake-key-123") {
+				t.Fatalf("%s: comando exibido inseguro: %s", tc.name, command)
 			}
 		}
 	}

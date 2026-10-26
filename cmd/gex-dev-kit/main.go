@@ -170,9 +170,10 @@ func chatDeps(s session, home string, preset app.Request) screens.ChatDeps {
 			Apply:   s.deps.ApplyInstall,
 		},
 		Addons: screens.AddonDeps{
-			Plan: func(names, harnesses []string) (app.AddonPlan, error) {
-				return app.PlanAddons(names, harnesses, exec.LookPath)
+			Plan: func(names, harnesses []string, secrets map[string]string) (app.AddonPlan, error) {
+				return app.PlanAddonsWithSecrets(names, harnesses, exec.LookPath, secrets)
 			},
+			Secrets: app.AddonSecretsNeeded,
 			Install: func(plan app.AddonPlan, home string, progress func(app.AddonStepResult)) app.AddonResult {
 				return app.InstallAddons(plan, home, app.ExecAddonRunner, progress)
 			},
