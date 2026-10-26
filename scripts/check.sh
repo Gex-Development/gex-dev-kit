@@ -100,6 +100,9 @@ go test -race ./...
 passo 'instalador'
 /bin/bash "$root/scripts/test-install.sh"
 
+passo 'release'
+/bin/bash "$root/scripts/test-release.sh"
+
 passo 'go build'
 go build ./...
 
