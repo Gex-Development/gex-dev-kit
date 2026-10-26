@@ -226,7 +226,7 @@ func TestAddonsJSONListsSecretsWithoutValues(t *testing.T) {
 		} `json:"addons"`
 	}
 	readDecode(t, out.String(), &doc)
-	if doc.Schema != "gex-dev-kit.addons/v1" || len(doc.Addons) != 8 {
+	if doc.Schema != "gex-dev-kit.addons/v1" || len(doc.Addons) != 9 {
 		t.Fatalf("addons: schema=%s total=%d", doc.Schema, len(doc.Addons))
 	}
 	found := 0
@@ -264,7 +264,7 @@ func TestAddonsUnknownNameListsValidosESugere(t *testing.T) {
 	if code := cmdAddons(s); code != 2 {
 		t.Fatalf("addon inexistente: exit=%d; quero 2", code)
 	}
-	want := "addon desconhecido: cavemn\nAddons: caveman, ponytail, superpowers, spec-kit, context7, terraform, brave-search, mapbox-devkit. Você quis dizer caveman?\n"
+	want := "addon desconhecido: cavemn\nAddons: caveman, ponytail, superpowers, spec-kit, context7, terraform, brave-search, mapbox-devkit, claude-code-templates. Você quis dizer caveman?\n"
 	if errOut.String() != want {
 		t.Fatalf("saída de addon desconhecido = %q; quero %q", errOut.String(), want)
 	}

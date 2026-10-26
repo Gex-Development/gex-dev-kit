@@ -4,6 +4,10 @@ Todas as mudanças relevantes do Kit de Desenvolvimento GEX ficam neste arquivo.
 
 ## [Não publicada]
 
+### Adicionado
+
+- Addon `claude-code-templates` (hooks), com os 13 hooks pedidos: lint-on-save, smart-formatting, run-tests-after-changes, change-tracker, security-scanner, smart-commit, nextjs-code-quality-enforcer, tdd-gate, scope-guard, env-file-protection, format-javascript-files, subagent-read-only-guard e change-logger. O chat mostra o comando oficial fixado na 1.30.0, sem telemetria (`CCT_NO_TRACKING=true`); o kit não o executa, porque o instalador só oferece o escopo de projeto sem perguntas.
+
 ### Removido
 
 - A mensagem `Comando equivalente: gex-dev-kit install ...` que o chat mostrava ao terminar o setup, e a função que a montava.

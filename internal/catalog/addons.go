@@ -264,6 +264,31 @@ specify init my-project --integration codex`,
 			Conflicts:  []string{"O token define permissões: com escopos de escrita o agente cria e apaga estilos e tokens da conta; use o mínimo de escopos.", "O rollback do kit não remove MCP: rode claude mcp remove --scope user mapbox-devkit e codex mcp remove mapbox-devkit; revogue o token no painel Mapbox."},
 			CoreCompat: "Extra opt-in. Token fornecido pelo usuário.",
 		},
+		{
+			Name: "claude-code-templates", Kind: "hooks",
+			Summary: "13 hooks prontos para Claude Code: formatação, testes, segurança, commit e portões de qualidade.",
+			Source:  "https://github.com/davila7/claude-code-templates", License: "MIT",
+			Revision: "a2c15310c066a3c3c279c729bdb88036a6e1ad0b", Release: "1.30.0", CheckedAt: "2026-10-26",
+			InstallClaude: "CCT_NO_TRACKING=true npx -y claude-code-templates@1.30.0 --hook development-tools/lint-on-save,development-tools/smart-formatting,post-tool/run-tests-after-changes,development-tools/change-tracker,security/security-scanner,git-workflow/smart-commit,development-tools/nextjs-code-quality-enforcer,quality-gates/tdd-gate,quality-gates/scope-guard,security/env-file-protection,post-tool/format-javascript-files,security/subagent-read-only-guard,automation/change-logger",
+			InstallCodex:  "Sem equivalente: os hooks são do Claude Code.",
+			Pinned:        "Pacote npm claude-code-templates@1.30.0; commit do Release 1.30.0 conferido no GitHub.",
+			Requires:      []string{"npx"}, RequiresNote: "Instale Node.js (npx) e rode de novo.",
+			Install: map[string]AddonInstall{
+				"claude": {Manual: "Rode no terminal, dentro do projeto: CCT_NO_TRACKING=true npx -y claude-code-templates@1.30.0 --hook development-tools/lint-on-save,development-tools/smart-formatting,post-tool/run-tests-after-changes,development-tools/change-tracker,security/security-scanner,git-workflow/smart-commit,development-tools/nextjs-code-quality-enforcer,quality-gates/tdd-gate,quality-gates/scope-guard,security/env-file-protection,post-tool/format-javascript-files,security/subagent-read-only-guard,automation/change-logger (o instalador pergunta onde gravar: usuário, projeto ou local; é menu interativo, o kit não consegue automatizar)."},
+				"codex":  {Manual: "Sem equivalente no Codex: estes hooks são do Claude Code."},
+			},
+			Installs: []string{
+				"Grava hooks no settings do Claude Code, no escopo que você escolher, e scripts em .claude/hooks/ (tdd-gate, scope-guard, subagent-read-only-guard, change-logger).",
+				"Exige Node.js com npx; o npx baixa o pacote na primeira execução.",
+				"O instalador envia estatísticas de uso a aitmpl.com; CCT_NO_TRACKING=true desliga.",
+			},
+			Conflicts: []string{
+				"smart-commit roda git add a cada edição, e tdd-gate e scope-guard bloqueiam edições; a Core exige commit só sob pedido.",
+				"Vários hooks rodam formatadores e testes a cada edição e gravam ~/.claude/changes.log.",
+				"Podem sobrepor os hooks gex-* do kit, como gex-sensitive-action-warning.",
+			},
+			CoreCompat: "Extra opt-in, por conta de quem pede. Revise os conflitos antes de instalar.",
+		},
 	}
 }
 

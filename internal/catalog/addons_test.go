@@ -13,8 +13,8 @@ import (
 	"time"
 )
 
-func TestAddonCatalogoTemOitoEntradas(t *testing.T) {
-	want := []string{"caveman", "ponytail", "superpowers", "spec-kit", "context7", "terraform", "brave-search", "mapbox-devkit"}
+func TestAddonCatalogoTemNoveEntradas(t *testing.T) {
+	want := []string{"caveman", "ponytail", "superpowers", "spec-kit", "context7", "terraform", "brave-search", "mapbox-devkit", "claude-code-templates"}
 	var got []string
 	for _, addon := range Addons() {
 		got = append(got, addon.Name)
@@ -53,7 +53,7 @@ func TestAddonCamposObrigatoriosPreenchidos(t *testing.T) {
 				t.Fatalf("%s: item vazio em Installs ou Conflicts", addon.Name)
 			}
 		}
-		if addon.Kind != "estilo" && addon.Kind != "metodo" && addon.Kind != "mcp" {
+		if addon.Kind != "estilo" && addon.Kind != "metodo" && addon.Kind != "mcp" && addon.Kind != "hooks" {
 			t.Fatalf("%s: Kind inválido: %s", addon.Name, addon.Kind)
 		}
 	}
@@ -231,6 +231,25 @@ func TestMCPAddonMetadataAndSteps(t *testing.T) {
 		}
 		if harness == "claude" && steps[0].AlreadyOK != "already exists" {
 			t.Fatalf("%s: resposta existente = %+v", harness, steps)
+		}
+	}
+}
+
+func TestClaudeCodeTemplatesAddonShowsPinnedCommandWithoutTelemetry(t *testing.T) {
+	addon, ok := AddonByName("claude-code-templates")
+	if !ok || addon.Kind != "hooks" || len(addon.Install["claude"].Steps) != 0 {
+		t.Fatalf("claude-code-templates: %+v", addon)
+	}
+	manual := addon.Install["claude"].Manual
+	list := "development-tools/lint-on-save,development-tools/smart-formatting,post-tool/run-tests-after-changes,development-tools/change-tracker,security/security-scanner,git-workflow/smart-commit,development-tools/nextjs-code-quality-enforcer,quality-gates/tdd-gate,quality-gates/scope-guard,security/env-file-protection,post-tool/format-javascript-files,security/subagent-read-only-guard,automation/change-logger"
+	for _, text := range []string{manual, addon.InstallClaude} {
+		for _, want := range []string{"CCT_NO_TRACKING=true", "claude-code-templates@1.30.0", "--hook " + list} {
+			if !strings.Contains(text, want) {
+				t.Fatalf("falta %q em %q", want, text)
+			}
+		}
+		if strings.Contains(text, "@latest") || strings.Contains(text, "--yes") {
+			t.Fatalf("comando sem versão fixa ou sem menu de escopo: %q", text)
 		}
 	}
 }

@@ -402,6 +402,7 @@ Somente a etapa **Plugins** de `/setup` ou `/addons` no chat instala plugins e M
 | `terraform` (MCP) | Ferramentas Terraform | Imagem Docker `hashicorp/terraform-mcp-server:1.4.1`; registro no Claude Code e/ou Codex | Docker ligado; sem chave |
 | `brave-search` (MCP) | Busca na web | `npx -y @brave/brave-search-mcp-server@2.1.4`; registro no Claude Code e/ou Codex | Chave `BRAVE_API_KEY` |
 | `mapbox-devkit` (MCP) | Mapas e ferramentas Mapbox | `npx -y @mapbox/mcp-devkit-server@0.8.2`; registro no Claude Code e/ou Codex | Node.js 22+ e token `MAPBOX_ACCESS_TOKEN` com mínimo de escopos |
+| `claude-code-templates` (hooks) | 13 hooks para Claude Code: formatação, testes, segurança, commit e portões de qualidade | Não é automático: o chat mostra o comando `npx -y claude-code-templates@1.30.0 --hook ...` com `CCT_NO_TRACKING=true` | Rode no projeto; o instalador pergunta onde gravar. `smart-commit` faz `git add` a cada edição; `tdd-gate` e `scope-guard` bloqueiam edições |
 
 **Chaves de API dos MCPs**
 
