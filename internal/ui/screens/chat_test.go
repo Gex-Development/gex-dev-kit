@@ -520,6 +520,22 @@ func TestChatEnvironmentShowsEachCurrentStatus(t *testing.T) {
 	}
 }
 
+func TestChatEnvironmentBlockedAgentShowsFullMaskedReason(t *testing.T) {
+	m := chatTestSize(chatTestModel(false), 65, 24).flowGreeting(true)
+	spec := m.queue[0].tool
+	m, _ = m.pump()
+	m.coreDone, m.agentsDone = true, true
+	reason := "múltiplos executáveis: /home/demo/.local/bin/claude, /opt/one/claude, /opt/two/claude"
+	m.agents = []app.AgentChange{{Name: "claude", Blocked: true, Reason: reason}}
+	m, _ = chatTestUpdate(m, chatFinishedMsg{entry: m.running.entry, result: chatToolResult{state: theme.StateOK}, fill: spec.fill, then: spec.then})
+	m.focused = true
+	m, _ = chatTestUpdate(m, motion.FrameMsg{ID: chatFrame, Time: time.Now()})
+	transcript := chatTestTranscript(m)
+	if !strings.Contains(transcript, "Claude Code bloqueado: múltiplos executáveis: ~/.local/bin/claude, /opt/one/claude, /opt/two/claude") || strings.Contains(transcript, "/home/demo/.local/bin/claude") {
+		t.Fatalf("motivo completo mascarado ausente: %s", transcript)
+	}
+}
+
 func TestChatEnvironmentAgentDetails(t *testing.T) {
 	for _, tc := range []struct {
 		change app.AgentChange

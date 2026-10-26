@@ -22,14 +22,10 @@ func chatFakeAddons() AddonDeps {
 		Plan: func(names, harnesses []string, secrets map[string]string) (app.AddonPlan, error) {
 			return app.PlanAddonsWithSecrets(names, harnesses, func(string) (string, error) { return "/bin/fake", nil }, secrets)
 		},
-		Install: func(plan app.AddonPlan, _ string, progress func(app.AddonStepResult)) app.AddonResult {
-			var result app.AddonResult
-			result.Manual = plan.Manual
-			for _, step := range plan.Steps {
-				progress(app.AddonStepResult{Step: step, Status: app.AddonPending})
-				result.Steps = append(result.Steps, app.AddonStepResult{Step: step, Status: app.AddonOK})
-			}
-			return result
+		Install: func(plan app.AddonPlan, home string, progress func(app.AddonStepResult)) app.AddonResult {
+			return app.InstallAddons(plan, home, func(context.Context, string, []string, []string) (string, error) {
+				return "", nil
+			}, progress)
 		},
 	}
 }
@@ -168,7 +164,7 @@ func TestChatAddonFailureHidesSecretInToolRows(t *testing.T) {
 	m.deps.Addons = chatFakeAddons()
 	m.deps.Addons.Install = func(plan app.AddonPlan, home string, progress func(app.AddonStepResult)) app.AddonResult {
 		return app.InstallAddons(plan, home, func(context.Context, string, []string, []string) (string, error) {
-			return "falha fake-key-123", errors.New("erro fake-key-123")
+			return "primeira linha\nfalha fake-key-123", errors.New("erro fake-key-123")
 		}, progress)
 	}
 	m = chatSetupQuestion(t, m.flowAddons(), "Qual addon")
@@ -180,6 +176,12 @@ func TestChatAddonFailureHidesSecretInToolRows(t *testing.T) {
 	m = chatSetupQuestion(t, m, "Rodo estes comandos?")
 	m = chatSetupChoose(t, m, "install")
 	m = chatSetupQuestion(t, m, "Qual addon")
+	if !strings.Contains(chatTestTranscript(m), "Falhou: brave-search (Codex): falha [oculto]") {
+		t.Fatalf("faltou última linha redigida: %s", chatTestTranscript(m))
+	}
+	if strings.Contains(chatTestTranscript(m), "Falhou: brave-search (Codex): primeira linha") {
+		t.Fatal("mensagem deve mostrar somente última linha")
+	}
 	assertChatSecretAbsent(t, m)
 	if m.exitCode != 1 {
 		t.Fatal("falha de instalação sem código de erro")
@@ -281,6 +283,9 @@ func TestChatMCPShowsKindCommandsAndRisksBeforeConfirmation(t *testing.T) {
 			t.Fatalf("card sem informação %q", text)
 		}
 	}
+	if !strings.Contains(chatTestTranscript(m), "MCPs de terceiros: revise fonte e licença.") {
+		t.Fatal("card MCP deve nomear MCPs")
+	}
 	m = chatSetupChoose(t, m, "both")
 	m = chatSetupQuestion(t, m, "Rodo estes comandos?")
 	transcript := chatTestTranscript(m)
@@ -325,9 +330,6 @@ func TestChatMCPBlockedStepsNameTheRealMissingBinary(t *testing.T) {
 			return "/bin/fake", nil
 		}, secrets)
 	}
-	m.deps.Addons.Install = func(plan app.AddonPlan, home string, progress func(app.AddonStepResult)) app.AddonResult {
-		return app.InstallAddons(plan, home, func(context.Context, string, []string, []string) (string, error) { return "", nil }, progress)
-	}
 	m = chatSetupQuestion(t, m.flowAddons(), "Qual addon")
 	m = chatSetupChoose(t, m, "context7")
 	m = chatSetupQuestion(t, m, "O que você quer fazer")
@@ -335,6 +337,19 @@ func TestChatMCPBlockedStepsNameTheRealMissingBinary(t *testing.T) {
 	m = chatSetupQuestion(t, m, "Rodo estes comandos?")
 	m = chatSetupChoose(t, m, "install")
 	m = chatSetupQuestion(t, m, "Qual addon")
+	var skipped int
+	for _, entry := range m.entries {
+		if entry.isTool && entry.tool.Title == "Instalar plugins e MCPs" {
+			for _, row := range entry.tool.Rows {
+				if row.State == theme.StatePending && strings.Contains(row.Detail, "faltou npx") {
+					skipped++
+				}
+			}
+		}
+	}
+	if skipped != 2 {
+		t.Fatalf("fake deve pular ambos os passos sem npx: %d", skipped)
+	}
 	transcript := chatTestTranscript(m)
 	if strings.Contains(transcript, "instale claude") || strings.Contains(transcript, "instale codex") {
 		t.Fatalf("culpou o cliente em vez do npx ausente: %s", transcript)
@@ -375,7 +390,7 @@ func TestChatAddonsRowsFailureAndManual(t *testing.T) {
 	m = chatSetupQuestion(t, m, "")
 	var rows []string
 	for _, entry := range m.entries {
-		if entry.isTool && entry.tool.Title == "Instalar plugins" {
+		if entry.isTool && entry.tool.Title == "Instalar plugins e MCPs" {
 			if entry.tool.State != theme.StateError {
 				t.Fatal("falha deve marcar ferramenta")
 			}
@@ -386,6 +401,24 @@ func TestChatAddonsRowsFailureAndManual(t *testing.T) {
 	}
 	if m.exitCode != 1 || !strings.Contains(strings.Join(rows, "|"), "falhou · boom") || !strings.Contains(strings.Join(rows, "|"), "ignorado") || !strings.Contains(strings.Join(rows, "|"), "manual") {
 		t.Fatalf("status e linhas: exit=%d rows=%v", m.exitCode, rows)
+	}
+	if !strings.Contains(chatTestTranscript(m), "Falhou: superpowers (Claude Code): boom") || !strings.Contains(chatTestTranscript(m), "Alguns itens não foram instalados; veja os passos que falharam.") {
+		t.Fatal("mensagem de falha ou resumo ausente")
+	}
+}
+
+func TestChatAddonsSummarizesInstalledKindsSeparately(t *testing.T) {
+	m := chatTestModel(false)
+	m.deps.Addons = chatFakeAddons()
+	plan, err := m.deps.Addons.Plan([]string{"caveman", "context7"}, []string{"claude"}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m = m.installAddons(plan, m.common.Home, func(m chatModel) chatModel { return m.flowIdle() })
+	m = chatSetupQuestion(t, m, "")
+	transcript := chatTestTranscript(m)
+	if !strings.Contains(transcript, "Plugins instalados: caveman.") || !strings.Contains(transcript, "MCPs instalados: context7.") || strings.Contains(transcript, "Plugins instalados: caveman, context7.") {
+		t.Fatal(transcript)
 	}
 }
 

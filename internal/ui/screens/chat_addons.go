@@ -194,7 +194,7 @@ func (m chatModel) confirmAddons(plan app.AddonPlan) chatModel {
 }
 
 func (m chatModel) installAddons(plan app.AddonPlan, home string, next func(chatModel) chatModel) chatModel {
-	return m.tool(chatToolSpec{title: "Instalar plugins", write: true, run: func(progress func(string)) chatToolResult {
+	return m.tool(chatToolSpec{title: "Instalar plugins e MCPs", write: true, run: func(progress func(string)) chatToolResult {
 		if m.deps.Addons.Install == nil {
 			return chatToolResult{state: theme.StateError, err: fmt.Errorf("instalador de plugins indisponível")}
 		}
@@ -250,6 +250,7 @@ func (m chatModel) installAddons(plan app.AddonPlan, home string, next func(chat
 			}
 			if item.Status == app.AddonFailed {
 				m.exitCode = 1
+				m = m.say("Falhou: " + item.Step.Addon + " (" + addonHarness(item.Step.Harness) + "): " + lastAddonLine(item.Output))
 			}
 			if item.Status == app.AddonSkipped && !item.Step.Available && item.Step.BlockedBy == item.Step.Argv[0] {
 				m = m.say("Passo manual (" + item.Step.Addon + ", " + addonHarness(item.Step.Harness) + "): instale " + item.Step.Argv[0] + " e rode " + item.Step.Display)
@@ -264,15 +265,26 @@ func (m chatModel) installAddons(plan app.AddonPlan, home string, next func(chat
 			}
 		}
 		if m.exitCode == 1 {
-			m = m.say("Alguns plugins não foram instalados; veja os passos que falharam.")
+			m = m.say("Alguns itens não foram instalados; veja os passos que falharam.")
 		}
-		if len(installed) > 0 {
-			m = m.say("Plugins instalados: " + strings.Join(installed, ", ") + ".")
+		var plugins, mcps []string
+		for _, name := range installed {
+			if addonIsMCP(name) {
+				mcps = append(mcps, name)
+			} else {
+				plugins = append(plugins, name)
+			}
+		}
+		if len(plugins) > 0 {
+			m = m.say("Plugins instalados: " + strings.Join(plugins, ", ") + ".")
+		}
+		if len(mcps) > 0 {
+			m = m.say("MCPs instalados: " + strings.Join(mcps, ", ") + ".")
 		}
 		if codex {
 			m = m.say("No Codex, abra /hooks e aprove os hooks novos.")
 		}
-		m = m.say("O rollback do kit não desfaz plugins; para remover, use o próprio Claude Code ou Codex.")
+		m = m.say("O rollback do kit não desfaz plugins nem MCPs; para remover, use o próprio Claude Code ou Codex.")
 		for _, item := range result.Manual {
 			m = m.say(fmt.Sprintf("Passo manual (%s, %s): %s", item.Addon, addonHarness(item.Harness), item.Text))
 		}
@@ -309,6 +321,10 @@ func addonsShortRevision(revision string) string {
 }
 
 func addonsCard(t theme.Theme, a catalog.Addon, width int) string {
+	disclaimer := addonsDisclaimer
+	if a.Kind == "mcp" {
+		disclaimer = strings.Replace(disclaimer, "Plugins", "MCPs", 1)
+	}
 	lines := []string{
 		addonsField(t, "Resumo", a.Summary, width),
 		addonsField(t, "Fonte", a.Source, width),
@@ -316,7 +332,7 @@ func addonsCard(t theme.Theme, a catalog.Addon, width int) string {
 		addonsField(t, "Versões conferidas em "+a.CheckedAt, "release "+a.Release+" · commit conferido "+addonsShortRevision(a.Revision), width),
 		addonsCommand(t, "Comando oficial no Claude Code", a.InstallClaude, width),
 		addonsCommand(t, "Comando oficial no Codex", a.InstallCodex, width),
-		t.Warning.Width(width).Render(addonsDisclaimer),
+		t.Warning.Width(width).Render(disclaimer),
 		"",
 		addonsList(t, "O que instala", a.Installs, width),
 		"",
