@@ -451,15 +451,6 @@ func TestCLIMatrizSinalDuranteGravacao(t *testing.T) {
 	}
 }
 
-func TestCLIMatrizFlagsEquivalentesViramMesmoRequest(t *testing.T) {
-	home := cliIsolate(t)
-	req := cliRequest(t, cliInstallArgs(home, "--skill", "retro", "--skill", "writing-for-agents", "--hook", "gex-session-start", "--yes")...)
-	reanalisado := cliRequest(t, strings.Fields(app.EquivalentCommand(req))[1:]...)
-	if !reflect.DeepEqual(req, reanalisado) {
-		t.Fatalf("Request reanalisado difere: %+v != %+v", reanalisado, req)
-	}
-}
-
 func TestTUIAndCLIProduceSameHomeFiles(t *testing.T) {
 	homeCLI := cliIsolate(t)
 	homeTUI := t.TempDir()

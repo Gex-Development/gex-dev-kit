@@ -207,10 +207,6 @@ _Avoid_: skin, UI kit
 Tela `ds` que mostra todos os componentes e a cobertura Charm.
 _Avoid_: galeria, demo
 
-**Comando equivalente**:
-Linha de CLI que reproduz uma ação feita na TUI.
-_Avoid_: atalho
-
 ## Escopo aprovado
 
 - Core GEX nos dois agentes, com prévia, confirmação e histórico.

@@ -145,8 +145,6 @@ Sinais recebidos durante uma gravação são adiados até a gravação terminar.
 | Vitrine | `ds --ui=cli` |
 | Ajuda do chat (`/ajuda`) | `help` ou `comando --help` |
 
-O fluxo de setup mostra `app.EquivalentCommand` na conversa ao concluir a instalação do Core; plugins selecionados não têm comando CLI equivalente.
-
 ## Mapa de cobertura Charm
 
 A fonte real é `internal/ui/screens/coverage.go`. Cada linha liga um recurso de uma biblioteca a uma página da vitrine e a um teste.

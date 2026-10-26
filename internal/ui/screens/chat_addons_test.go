@@ -70,7 +70,7 @@ func TestChatAddonSecretsNeverReachTranscriptOrConfirmation(t *testing.T) {
 
 func assertChatSecretAbsent(t *testing.T, m chatModel) {
 	t.Helper()
-	for _, text := range []string{chatTestTranscript(m), m.View().Content, app.EquivalentCommand(m.request), fmt.Sprintf("%+v", m.request), fmt.Sprintf("%+v", m.history), fmt.Sprintf("%+v", m.ask), fmt.Sprintf("%+v", m.queue)} {
+	for _, text := range []string{chatTestTranscript(m), m.View().Content, fmt.Sprintf("%+v", m.request), fmt.Sprintf("%+v", m.history), fmt.Sprintf("%+v", m.ask), fmt.Sprintf("%+v", m.queue)} {
 		if strings.Contains(text, "fake-key-123") {
 			t.Fatal("chave exposta no chat")
 		}

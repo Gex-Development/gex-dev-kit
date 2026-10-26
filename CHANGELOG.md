@@ -2,6 +2,12 @@
 
 Todas as mudanças relevantes do Kit de Desenvolvimento GEX ficam neste arquivo. O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e as versões usam [SemVer](https://semver.org/lang/pt-BR/).
 
+## [Não publicada]
+
+### Removido
+
+- A mensagem `Comando equivalente: gex-dev-kit install ...` que o chat mostrava ao terminar o setup, e a função que a montava.
+
 ## [0.3.4] - 2026-10-26
 
 As notas da publicação estão em [`docs/release-notes/v0.3.4.md`](docs/release-notes/v0.3.4.md).

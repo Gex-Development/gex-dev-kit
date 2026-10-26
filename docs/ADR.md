@@ -172,6 +172,6 @@ O rollback do kit não remove MCPs; a remoção é manual. A ADR-0041 estende es
 
 Brave Search e Mapbox DevKit exigem chave; na v0.3.0, o kit não pedia nem gravava chaves. Testes mostraram que Claude Code repassa e expande variáveis de ambiente, mas Codex não repassa o ambiente aos servidores MCP e `codex mcp add` não grava `env_vars`.
 
-Por decisão do dono, o chat pede a chave em campo mascarado e o kit a grava com `--env` em `~/.claude.json` e `~/.codex/config.toml`, ambos `0600`. Esta exceção à regra anterior vale somente para MCPs. A chave não aparece na transcrição, confirmação, mensagens de erro, `EquivalentCommand`, diff, golden ou teste; a saída dos passos é redigida.
+Por decisão do dono, o chat pede a chave em campo mascarado e o kit a grava com `--env` em `~/.claude.json` e `~/.codex/config.toml`, ambos `0600`. Esta exceção à regra anterior vale somente para MCPs. A chave não aparece na transcrição, confirmação, mensagens de erro, diff, golden ou teste; a saída dos passos é redigida.
 
 Aceitam-se texto puro em disco e exposição na lista de processos enquanto o comando roda. Reinstalar substitui a chave; rollback não remove MCPs nem revoga chaves. Foram descartados herdar do shell, `${VAR}`, `env_vars` e um passo manual, pois não configuram os dois clientes pelo chat.

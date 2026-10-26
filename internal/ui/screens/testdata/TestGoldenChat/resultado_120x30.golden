@@ -1,12 +1,14 @@
-                                                                                        GEX - DEV KIT
-* Resumo da instalação:                                                                 
-    • Harness: OMP (oh-my-pi)                                                           AMBIENTE
-    • Destino: ~                                                                        [i] Claude Code
+* Plugins (caveman, ponytail…) são para Claude Code e Codex; como você escolheu só o    GEX - DEV KIT
+  OMP, pulo esta etapa.                                                                 
+                                                                                        AMBIENTE
+* Resumo da instalação:                                                                 [i] Claude Code
+    • Harness: OMP (oh-my-pi)                                                             não detectado
+    • Destino: ~                                                                        [i] Codex
     • Core GEX + 0 skill(s) e 0 hook(s) opcionais                                         não detectado
-    • Agentes: manter versões                                                           [i] Codex
-                                                                                          não detectado
-* Agora vou planejar a instalação.                                                      [i] Core
+    • Agentes: manter versões                                                           [i] Core
                                                                                           0/7 skills · não instalado
+* Agora vou planejar a instalação.                                                      
+                                                                                        
 +- v Planejar instala??o ~ -----------------------------------------------------------+ 
 | 1 arquivo(s) ? 0 agente(s) a atualizar                                              | 
 | criar .claude/CLAUDE.md ? novo                                                      | 
@@ -20,8 +22,6 @@
 +-------------------------------------------------------------------------------------+ 
                                                                                         
 * Pronto! Instalei 1 arquivo(s). Histórico: hist-1.                                     
-                                                                                        
-* Comando equivalente: gex-dev-kit install --home /home/demo --skip-agent-update --yes  
                                                                                         
 +- [GEX] [OMP] [gex-dev-kit]---------------------------------- -- Core 0/7 -- v0.3.0--+ 
 | > Digite / para ver os comandos                                                     | 
