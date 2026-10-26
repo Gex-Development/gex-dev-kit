@@ -2,6 +2,20 @@
 
 Todas as mudanças relevantes do Kit de Desenvolvimento GEX ficam neste arquivo. O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e as versões usam [SemVer](https://semver.org/lang/pt-BR/).
 
+## [Não publicada]
+
+### Alterado
+
+- **Processo de release.** `scripts/bump.sh vX.Y.Z` promove `[Não publicada]` a versão: troca a data, a versão do binário, o link de comparação e o badge do README. `scripts/release.sh` publica sem terminal com `--confirm vX.Y.Z` (a versão digitada de novo) e continua perguntando quando há terminal. Sem confirmação, falha antes de compilar. `scripts/test-release.sh`, offline, entra no `scripts/check.sh`.
+- O README não repete mais a versão da release, só o badge. O link aponta para `releases/latest` e a instalação manual baixa a última release por padrão. A opção de fixar a versão usa `vX.Y.Z` como marcador.
+- `scripts/release.sh` mostra a porcentagem do limite de tamanho do binário (ADR-0037) e avisa a partir de 85%.
+- **Chat dos addons.** O título passa a ser `Instalar plugins e MCPs`; plugins e MCPs instalados saem em frases separadas; a mensagem `Falhou:` mostra a última linha do erro inteira, já sem chaves; e a saudação mostra o motivo completo do agente bloqueado, que o cartão cortava.
+
+### Removido
+
+- `docs/assets/readme/social-preview.png`: o GitHub só usa essa imagem em repositório público.
+- O arquivo `docs/assets/.DS_Store`, que entrou por engano na v0.3.2. `.DS_Store` passa a ser ignorado pelo git.
+
 ## [0.3.2] - 2026-10-25
 
 As notas da publicação estão em [`docs/release-notes/v0.3.2.md`](docs/release-notes/v0.3.2.md).
