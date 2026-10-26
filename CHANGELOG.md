@@ -2,6 +2,12 @@
 
 Todas as mudanças relevantes do Kit de Desenvolvimento GEX ficam neste arquivo. O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e as versões usam [SemVer](https://semver.org/lang/pt-BR/).
 
+## [Não publicada]
+
+### Corrigido
+
+- **Hooks escolhidos no `/setup` quebravam o plano.** Ao abrir o kit sem argumentos, o chat começava sem o caminho do executável do kit, que os hooks precisam copiar para o HOME. Escolher qualquer hook terminava em `Catálogo: executável obrigatório para hook` e nada era instalado. Existia desde a v0.3.0 e só afetava o chat aberto sem argumentos; `gex-dev-kit install --hook ...` sempre funcionou.
+
 ## [0.3.3] - 2026-10-26
 
 As notas da publicação estão em [`docs/release-notes/v0.3.3.md`](docs/release-notes/v0.3.3.md).
